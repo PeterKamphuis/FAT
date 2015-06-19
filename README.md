@@ -81,7 +81,7 @@ Do you want to write a new log file. If set to 'n'  the existing log file will b
 
         velres=1
 
-The velocity resolution of the data cubes. If set to zero the code assume that the instrumental dispersion is equal to a (1.2*channel)/2*SQRT(2ln2) otherwise (1+vresolution)*channel/2*SQRT(2ln2). That is, if set to 1 it assumes Hanning smoothing. Default=1.
+The velocity resolution of the data cubes. If set to zero the code assume that the instrumental dispersion is equal to a (1.2 x channel)/(2 x SQRT(2ln2)) otherwise (1+vresolution) x channel/(2 x SQRT(2ln2)). That is, if set to 1 it assumes Hanning smoothing. Default=1.
 
         maps_output = 2
 
