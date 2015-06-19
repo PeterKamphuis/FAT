@@ -79,7 +79,7 @@ The name of a log file that will trace the iterations and steps that the code is
 
 Do you want to write a new log file. If set to 'n'  the existing log file will be appendended. Default='y'
 
-        velres=1
+        velocity_resolution=1
 
 The velocity resolution of the data cubes. If set to zero the code assume that the instrumental dispersion is equal to a (1.2 x channel)/(2 x SQRT(2ln2)) otherwise (1+vresolution) x channel/(2 x SQRT(2ln2)). That is, if set to 1 it assumes Hanning smoothing. Default=1.
 
