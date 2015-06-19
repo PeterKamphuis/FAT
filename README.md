@@ -23,6 +23,10 @@ Installation
 Unpack the zip file in a desired directory and you are ready to run FAT from this directory under IDL. 
 The rename command might have to be aliased to rename -s, as this depends on which exact rename command and their are many versions available the code excutes the command "rename originalstring replacestring filesonwhichtoexecute" make sure that this is what the rename command does in the shell that is run by IDL.
 
+You will also have to make a softlink in the Support directory to file sofia_pipeline.py in the sofia distribution i.e.:
+
+        cd Support/
+        ln -s pathtosofiainstallation/sofia_pipeline.py sofia_pipeline.py
 
 Running FAT
 -----------
@@ -79,6 +83,11 @@ Do you want to write a new log file. If set to 'n'  the existing log file will b
 
 The velocity resolution of the data cubes. If set to zero the code assume that the instrumental dispersion is equal to a (1.2*channel)/2*SQRT(2ln2) otherwise (1+vresolution)*channel/2*SQRT(2ln2). That is, if set to 1 it assumes Hanning smoothing. Default=1.
 
+        maps_output = 2
+
+A parameter to control the amount of outpur created by FAT.  0.= all possible output (This is a lot), 1= all steps model + maps + def files, 2 = Final model + maps + def files for steps + logs, 3 = Only final model def + logs. Default = 2
+
+
 The following parameters are predominantly set for testing the code and normally best left to their defaults, i.e. unset.
 
         testing=0
@@ -99,6 +108,8 @@ Parameter for finishing the fitting process early. if set to one the program fin
         opt_pixelbeam=4.
         
 The amount of pixels in the FWHM of the minor axis. Default = 4.
+
+    
 
 A default config file (FAT_INPUT.config) is included in the distribution.
 
