@@ -1,0 +1,19 @@
+number|distance|directoryname|cubename
+0|27|TheSingleGalaxyDirectory|TheNameoftheCubetobefitted(without .fits extension)
+1|14|TheSecondGalaxyDirectory|TheNameoftheCubetobefitted(without .fits extension)
+
+Or for SofiA pre-processed input
+
+number|distance|directoryname|cubename|basename
+0|27|TheSingleGalaxyDirectory|TheNameoftheCubetobefitted(without .fits extension) |TheNamefor Sofia file(Only important when allnew=2)
+1|14|TheSecondGalaxyDirectory|TheNameoftheCubetobefitted(without .fits extension) |TheNamefor Sofia file(Only important when allnew=2)
+
+
+If the output of sofia does not have a basename the catalog can be configured as
+
+number|distance|directoryname|cubename|moment0|moment1|mask|catlog
+0|27|TheSingleGalaxyDirectory|TheNameoftheCubetobefitted(without .fits extension) |TheNamefor Sofia file(Only important when allnew=2)
+1|14|TheSecondGalaxyDirectory|TheNameoftheCubetobefitted(without .fits extension) |TheNamefor Sofia file(Only important when allnew=2)
+
+
+The header lines are important for FAT to recognize the correct column. Only their order can be changed.
