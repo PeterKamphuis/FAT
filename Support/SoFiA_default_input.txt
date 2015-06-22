@@ -1,0 +1,98 @@
+# SoFiA default settings
+# Do not modify!
+
+# Pipeline modules
+
+steps.doSmooth                  =       false
+steps.doScaleNoise              =       false
+steps.doSCfind                  =       true
+steps.doThreshold               =       false
+steps.doWavelet                 =       false
+steps.doCNHI                    =       false
+steps.doMerge                   =       true
+steps.doReliability             =       true
+steps.doParameterise            =       true
+steps.doWriteMask               =       false
+steps.doWriteCat                =       true
+steps.doMom0                    =       false
+steps.doMom1                    =       false
+steps.doCubelets                =       false
+steps.doDebug                   =       false
+
+
+# Import module
+
+import.inFile                   =       
+import.weightsFile              =       
+import.maskFile                 =       
+
+
+# Smoothing module
+
+smooth.kernel                   =       gaussian
+smooth.edgeMode                 =       constant
+smooth.kernelX                  =       3.0
+smooth.kernelY                  =       3.0
+smooth.kernelZ                  =       3.0
+
+
+# Noise scaling module
+
+scaleNoise.statistic            =       mad
+scaleNoise.edgeX                =       0
+scaleNoise.edgeY                =       0
+scaleNoise.edgeZ                =       0
+
+
+# S+C finder module
+
+SCfind.threshold                =       4.0
+SCfind.sizeFilter               =       0.0
+SCfind.maskScaleXY              =       2.0
+SCfind.maskScaleZ               =       2.0
+SCfind.edgeMode                 =       constant
+SCfind.rmsMode                  =       negative
+SCfind.kernels                  =       [[ 0, 0, 0,'b'],[ 0, 0, 2,'b'],[ 0, 0, 4,'b'],[ 0, 0, 8,'b'],[ 0, 0,16,'b'],[ 3, 3, 0,'b'],[ 3, 3, 2,'b'],[ 3, 3, 4,'b'],[ 3, 3, 8,'b'],[ 3, 3,16,'b'],[ 6, 6, 0,'b'],[ 6, 6, 2,'b'],[ 6, 6, 4,'b'],[ 6, 6, 8,'b'],[ 6, 6,16,'b'],[ 9, 9, 0,'b'],[ 9, 9, 2,'b'],[ 9, 9, 4,'b'],[ 9, 9, 8,'b'],[ 9, 9,16,'b']]
+SCfind.kernelUnit               =       pixel
+SCfind.verbose                  =       false
+
+
+# Threshold finder module
+
+threshold.threshold             =       4.0
+threshold.clipMethod            =       relative
+threshold.rmsMode               =       std
+threshold.verbose               =       false
+
+
+# Merging module
+
+merge.mergeX                    =       3
+merge.mergeY                    =       3
+merge.mergeZ                    =       3
+merge.minSizeX                  =       3
+merge.minSizeY                  =       3
+merge.minSizeZ                  =       2
+
+
+# Reliability module
+
+reliability.parSpace            =       ['ftot','fmax','nrvox']
+reliability.kernel              =       [0.15,0.05,0.1]
+reliability.fMin                =       0.0
+reliability.relThresh           =       0.9
+
+
+# Parametrisation module
+
+parameters.fitBusyFunction      =       true
+parameters.optimiseMask         =       true
+
+
+# Output module
+
+writeCat.basename               =       
+writeCat.writeASCII             =       true
+writeCat.writeXML               =       false
+writeCat.writeSQL               =       false
+writeCat.parameters             =       ['*']
