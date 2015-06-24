@@ -2307,9 +2307,7 @@ noconfig:
         gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
         spawn,gipsyfirst,isthere2
                                 ;get the results
-        get_progress,maindir+'/'+catdirname[i]+'/progress1.txt',AC1,nopoint,loops,toymodels
-        print,AC1,nopoint,loops,toymodels
-        stop
+        get_progress,maindir+'/'+catdirname[i]+'/progress1.txt',AC1,nopoint,loops,toymodels     
                                 ;If failed try again
         IF AC1 EQ 0. and PAest LT 5 then begin
            IF size(log,/TYPE) EQ 7 then begin
