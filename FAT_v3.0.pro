@@ -628,6 +628,21 @@ noconfig:
            print,linenumber()+' Your velocity projection is not standard. The keyword is changed to VELO (relativistic definition). This might be dangerous.'   
         ENDELSE
      ENDIF
+     IF STRUPCASE(veltype) EQ 'KM/S' then begin
+         IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+' The channels in your input cube are in km/s. This sometimes leads to problems with wcs lib, hence we change it to m/s'          
+           close,66
+        ENDIF ELSE BEGIN
+           printf,66,linenumber()+' The channels in your input cube are in km/s. This sometimes leads to problems with wcs lib, hence we change it to m/s'   
+        ENDELSE
+        sxaddpar,hed,'CDELT3',sxpar(hed,'CDELT3')*1000.
+        sxaddpar,hed,'CRVAL3',sxpar(hed,'CRVAL3')*1000.
+        sxaddpar,hed,'CUNIT3','M/S'
+        channelwidth=ABS(sxpar(hed,'CDELT3'))   
+        veltype=strtrim(strcompress(sxpar(hed,'CUNIT3')))
+     ENDIF
+        
      sizex=sxpar(hed,'NAXIS1')
      sizey=sxpar(hed,'NAXIS2')
                                 ;Let's check for presence of the beam in the header. IF present
