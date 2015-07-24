@@ -6,7 +6,9 @@ Pro extract_pv,Cube,header,pa,xv,CENTER=center,XVHEADER=new_header
 ;
 ; PURPOSE:
 ;       Program to extract a PV diagram along a Position Angle from a
-;       Line emission cube
+;       Line emission cube. The strip width along which to extract the
+;       XV-diagram is the beam's major axis FWHM  if stated in
+;       the header else a single pixel is used. 
 ;
 ; CATEGORY:
 ;       Support
@@ -29,10 +31,6 @@ Pro extract_pv,Cube,header,pa,xv,CENTER=center,XVHEADER=new_header
 ;       if blank it will rotate around the center set in the header of
 ;       the cube
 ;       XVHEADER = A new header to write the xv array to a fits files
-;       WIDTH = a strip width along which to extract the XV-diagram if
-;       unset the header is checked for a major axis FWHM and that is
-;       used else we use a single pixel. The units should be the same
-;       as the pixel scale in the cube
 ;
 ; OUTPUTS:
 ;       xv = a 2-dimensional array with the XV - Diagram

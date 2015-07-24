@@ -40,6 +40,8 @@ Pro check_cflux,nopoints,tirificfirst,tirificfirstvars,cfluxadjusted,log=log
 ;
 ;
 ; MODIFICATION HISTORY:
+;     23-07-2015 added a upper limit of 0.005 and a check that CFLUX
+;     is never set to 0.
 ;     Written by P.Kamphuis 01-01-2015 
 ;
 ; NOTE:
@@ -52,15 +54,19 @@ Pro check_cflux,nopoints,tirificfirst,tirificfirstvars,cfluxadjusted,log=log
            IF j EQ 0 then begin
               tmppos=where('CFLUX' EQ tirificfirstvars)
               currentcflux=str_sep(strtrim(strcompress(tirificfirst[tmppos]),2),'=')
-              tirificfirst[tmppos]='CFLUX= '+string(double(currentcflux[1])*nopoints[j]/1e6)
+              IF double(string(double(currentcflux[1])*nopoints[j]/1e6)) NE 0. then $
+                 tirificfirst[tmppos]='CFLUX= '+string(double(currentcflux[1])*nopoints[j]/1e6) else $
+                    tirificfirst[tmppos]='CFLUX= 1e-5'
            ENDIF ELSE BEGIN
               tmppos=where('CFLUX_'+strtrim(strcompress(fix(j+1)),2) EQ tirificfirstvars)
               currentcflux=str_sep(strtrim(strcompress(tirificfirst[tmppos]),2),'=')
-              tirificfirst[tmppos]=currentcflux[0]+'= '+string(double(currentcflux[1])*nopoints[j]/1e6)
+              IF double(string(double(currentcflux[1])*nopoints[j]/1e6)) NE 0. then $
+                 tirificfirst[tmppos]=currentcflux[0]+'= '+string(double(currentcflux[1])*nopoints[j]/1e6) else $
+                    tirificfirst[tmppos]=currentcflux[0]+'= 1e-5'
            ENDELSE
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"CFLUX is scaled down"
+              printf,66,linenumber()+"CFLUX is scaled down to"+STRJOIN(string(double(currentcflux[1])*nopoints/1e6),' and ')
               close,66
            endif
            cfluxadjusted=1.
@@ -69,15 +75,19 @@ Pro check_cflux,nopoints,tirificfirst,tirificfirstvars,cfluxadjusted,log=log
            IF j EQ 0 then begin
               tmppos=where('CFLUX' EQ tirificfirstvars)
               currentcflux=str_sep(strtrim(strcompress(tirificfirst[tmppos]),2),'=')
-              tirificfirst[tmppos]='CFLUX= '+string(double(currentcflux[1])*nopoints[j]/1E6)
+              IF double(string(double(currentcflux[1])*nopoints[j]/1e6)) LT 0.005 then $
+                 tirificfirst[tmppos]='CFLUX= '+string(double(currentcflux[1])*nopoints[j]/1E6) else $
+                    tirificfirst[tmppos]='CFLUX= 0.005'
            ENDIF ELSE BEGIN
               tmppos=where('CFLUX_'+strtrim(strcompress(fix(j+1)),2) EQ tirificfirstvars)
               currentcflux=str_sep(strtrim(strcompress(tirificfirst[tmppos]),2),'=')
-              tirificfirst[tmppos]=currentcflux[0]+'= '+string(double(currentcflux[1])*nopoints[j]/1E6)
+              IF double(string(double(currentcflux[1])*nopoints[j]/1e6)) LT 0.005 then $
+                 tirificfirst[tmppos]=currentcflux[0]+'= '+string(double(currentcflux[1])*nopoints[j]/1E6) else $
+                    tirificfirst[tmppos]=currentcflux[0]+'= 0.005'
            ENDELSE
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"CFLUX is scaled up"
+              printf,66,linenumber()+"CFLUX is scaled up to"+STRJOIN(string(double(currentcflux[1])*nopoints/1e6),' and ')
               close,66
            endif
         end  
