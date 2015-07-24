@@ -40,6 +40,10 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
 ;  RESOLVE_ROUTINE, STRLOWCASE, and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      24-07-2015 P. Kamphuis; Replaced the usage of SNR from Sofia
+;      with a proper flux from the integrated intensity map. Improved
+;      clean up and cflux handling. Also improved treatment of small
+;      galaxies and a better determination of CONDISP.  
 ;      Written by P.Kamphuis 01-01-2015 
 ; NOTES:
                                 ; please note that this pipeline uses the following command line
