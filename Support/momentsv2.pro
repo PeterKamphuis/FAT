@@ -56,7 +56,7 @@ Pro momentsv2,Cube,Momentmap,header,map
 IF map EQ 0 then begin
    blank=WHERE(FINITE(Cube) NE 1.)
    IF blank[0] NE -1 then Cube[blank]=0
-   Momentmap=dblarr(n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]))
+   Momentmap=fltarr(n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]))
    Momentmap[*,*]=SUM(Cube,2)*ABS(sxpar(header,'CDELT3'))
    IF isnumeric(sxpar(header,'CUNIT3')) then begin
       IF sxpar(header,'CDELT3') GT 500. then sxaddpar,header,'CUNIT3','M/S' else sxaddpar,header,'CUNIT3','M/S'
@@ -74,8 +74,7 @@ IF map EQ 1 then begin
    buildaxii,header,xaxis,yaxis,zaxis=zaxis
    blank=WHERE(FINITE(Cube) NE 1.)
    IF blank[0] NE -1 then Cube[blank]=0
-   Momentmap=dblarr(n_elements(Cube(*,0,0)),n_elements(Cube(0,*,0)))
-
+   Momentmap=fltarr(n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]))
    c=rebin(reform(zaxis,1,1,n_elements(zaxis)),n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]),n_elements(Cube[0,0,*]))
    Momentmap=SUM(c*Cube,2)/sum(Cube,2)
    IF isnumeric(sxpar(header,'CUNIT3')) then begin

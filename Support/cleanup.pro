@@ -46,32 +46,33 @@ dirs=['Optimized','Intermediate','Finalmodel','No_Warp','Moments','PV-Diagrams',
 ext=['.fits','.log','.ps','.def']
 for i=0,n_elements(dirs)-1 do begin
    IF FILE_TEST(dirs[i],/DIRECTORY) THEN begin
-      
-      CASE dirs[i] of
-         'Optimized' OR 'Intermediate': begin
+      CASE 1 of
+        dirs[i] EQ 'Optimized' OR dirs[i] EQ 'Intermediate': begin
             CD,dirs[i]
             spawn,'rm -f Finalmodel* No_Warp*'
             CD,'../'
          end
-         'Finalmodel' or 'No_Warp':begin
+         dirs[i] EQ 'Finalmodel' or dirs[i] EQ 'No_Warp':begin
             for j=0,n_elements(ext)-1 do begin
                spawn,'rm -f '+dirs[i]+'/'+dirs[i]+ext[j]
             endfor
          end
-         'Moments':begin
+         dirs[i] EQ 'Moments':begin
             spawn,'rm -f Moments/No_Warp_mom0.fits'
             spawn,'rm -f Moments/Finalmodel_mom0.fits'
             spawn,'rm -f Moments/No_Warp_mom1.fits'
             spawn,'rm -f Moments/Finalmodel_mom1.fits'
             spawn,'rm -f Moments/'+name+'*_mom*.fits'
          end
-         'PV-Diagrams':begin
+         dirs[i] EQ 'PV-Diagrams':begin
             spawn,'rm -f PV-Diagrams/No_Warp_xv.fits',isthere
             spawn,'rm -f PV-Diagrams/Finalmodel_xv.fits',isthere
          end
-         'Sofia_Output':begin
+         dirs[i] EQ 'Sofia_Output':begin
+            spawn,'rm -f Sofia_Output/'+name+'*_binmask*',isthere
+            spawn,'rm -f Sofia_Output/'+name+'*.ascii',isthere
          end
-         'Def_Files':spawn,'rm -f Def_Files/*.def'
+         dirs[i] EQ 'Def_Files':spawn,'rm -f Def_Files/*.def'
       endcase
    endif
 endfor

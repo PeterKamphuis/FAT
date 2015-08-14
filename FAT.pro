@@ -12,6 +12,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
 ; CALLING SEQUENCE:
 ;      FAT,support='supportdir',configuration_file='configfile' 
 ;
+
 ; INPUTS:
 ;      - 
 ; OPTIONAL INPUT KEYWORDS:
@@ -717,10 +718,10 @@ noconfig:
         tmpnoblank=dummy[*,*,0]
         wherefinite=WHERE(FINITE(tmpnoblank))
         WHILE wherefinite[0] EQ -1 DO begin
-           tmp=dblarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*])-1)
+           tmp=fltarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*])-1)
            tmp[*,*,0:n_elements(tmp[0,0,*])-1]=dummy[*,*,1:n_elements(dummy[0,0,*])-1]
            sxaddpar,hed,'CRPIX3',sxpar(hed,'CRPIX3')-1.
-           dummy=dblarr(n_elements(tmp[*,0,0]),n_elements(tmp[0,*,0]),n_elements(tmp[0,0,*]))
+           dummy=fltarr(n_elements(tmp[*,0,0]),n_elements(tmp[0,*,0]),n_elements(tmp[0,0,*]))
            IF n_elements(dummy[0,0,*]) LT 5 then begin
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
@@ -740,6 +741,8 @@ noconfig:
               printf,66,linenumber()+' We are cutting the cube as the first channel is completely blank'
               close,66
            ENDIF
+           sxaddpar,hed,'NAXIS3',sxpar(hed,'NAXIS3')-1.
+           changedcube=1
            dummy=tmp
            tmpnoblank=dummy[*,*,0]
            wherefinite=WHERE(FINITE(tmpnoblank))
@@ -748,9 +751,9 @@ noconfig:
         tmpnoblank=dummy[*,*,n_elements(dummy[0,0,*])-1]
         wherefinite=WHERE(FINITE(tmpnoblank))
         WHILE wherefinite[0] EQ -1 DO begin
-           tmp=dblarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*])-1)
+           tmp=fltarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*])-1)
            tmp[*,*,0:n_elements(tmp[0,0,*])-1]=dummy[*,*,0:n_elements(dummy[0,0,*])-2]
-           dummy=dblarr(n_elements(tmp[*,0,0]),n_elements(tmp[0,*,0]),n_elements(tmp[0,0,*]))
+           dummy=fltarr(n_elements(tmp[*,0,0]),n_elements(tmp[0,*,0]),n_elements(tmp[0,0,*]))
            IF n_elements(dummy[0,0,*]) LT 5 then begin
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
@@ -770,6 +773,8 @@ noconfig:
               printf,66,linenumber()+' We are cutting the cube as the last channel is completely blank'
               close,66
            ENDIF
+           sxaddpar,hed,'NAXIS3',sxpar(hed,'NAXIS3')-1.
+           changedcube=1
            dummy=tmp
            tmpnoblank=dummy[*,*,n_elements(dummy[0,0,*])-1]
            wherefinite=WHERE(FINITE(tmpnoblank))
@@ -798,14 +803,15 @@ noconfig:
               print,linenumber()+' Noise in the last channel is '+string(rmslastchannel)       
            ENDELSE
            changedcube=1.
-           tmp=dblarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*])-1)
+           tmp=fltarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*])-1)
            IF rmsfirstchannel GT rmslastchannel OR NOT FINITE(rmsfirstchannel) then begin
               tmp[*,*,0:n_elements(tmp[0,0,*])-1]=dummy[*,*,1:n_elements(dummy[0,0,*])-1]
               sxaddpar,hed,'CRPIX3',sxpar(hed,'CRPIX3')-1.
            ENDIF ELSE BEGIN
               tmp[*,*,0:n_elements(tmp[0,0,*])-1]=dummy[*,*,0:n_elements(dummy[0,0,*])-2]
            endelse
-           dummy=dblarr(n_elements(tmp[*,0,0]),n_elements(tmp[0,*,0]),n_elements(tmp[0,0,*]))
+           sxaddpar,hed,'NAXIS3',sxpar(hed,'NAXIS3')-1.
+           dummy=fltarr(n_elements(tmp[*,0,0]),n_elements(tmp[0,*,0]),n_elements(tmp[0,0,*]))
            dummy=tmp
         ENDELSE
      ENDWHILE
@@ -851,7 +857,7 @@ noconfig:
      pythoncube=catcubename[i]
      possiblecentral=0
      IF tmp[0] NE -1 then begin
-        extbl=dblarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*]))
+        extbl=fltarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*]))
         extbl=dummy
         extbl[tmp]=!values.f_nan
         pythoncube=catcubename[i]+'_extbl'
@@ -1089,7 +1095,7 @@ noconfig:
                                 ;read the mask 
         mask=readfits(maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'.fits',hedmask,/NOSCALE)        
                                 ;mask the data cube
-        tmpmask=dblarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*]))
+        tmpmask=fltarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*]))
         tmpmask[WHERE(mask GT 0.)]=dummy[WHERE(mask GT 0.)]
         hedmap=hed
                                 ;Same as in gipsy
@@ -1108,7 +1114,7 @@ noconfig:
         mom1ext='.fits'
                                 ;Make a noisemap as well
         IF veltype EQ 'M/S' then channelwidthkm=channelwidth/1000. else channelwidthkm=channelwidth
-        noisemap=dblarr(n_elements(mask[*,0,0]),n_elements(mask[*,0,0]))
+        noisemap=fltarr(n_elements(mask[*,0,0]),n_elements(mask[*,0,0]))
         for j=0,n_elements(mask[0,0,*])-1 do begin
            noisemap=noisemap+(mask[*,*,j]*catnoise[i]*channelwidthkm)^2
         endfor
@@ -1135,7 +1141,7 @@ noconfig:
               tmp=WHERE(mask NE 0.)
               mask[tmp]=1.
            ENDIF
-           noisemap=dblarr(n_elements(mask[*,0,0]),n_elements(mask[*,0,0]))
+           noisemap=fltarr(n_elements(mask[*,0,0]),n_elements(mask[*,0,0]))
            IF veltype EQ 'M/S' then channelwidthkm=channelwidth/1000. else channelwidthkm=channelwidth
            for j=0,n_elements(mask[0,0,*])-1 do begin
               noisemap=noisemap+(mask[*,*,j]*catnoise[i]*channelwidthkm)^2
@@ -1200,7 +1206,7 @@ noconfig:
         IF floor(RApix-newsize/2.) GE 0. AND floor(RApix+newsize/2.) LT  sxpar(hed,'NAXIS1') AND $
            floor(DECpix-newsize/2.) GE 0. AND floor(DECpix+newsize/2.) LT sxpar(hed,'NAXIS2') AND $
            not smallexists then begin
-           newdummy=dblarr(newsize+1,newsize+1,n_elements(dummy[0,0,*]))
+           newdummy=fltarr(newsize+1,newsize+1,n_elements(dummy[0,0,*]))
            newdummy[*,*,*]=dummy[floor(RApix-newsize/2.):floor(RApix+newsize/2.),floor(DECpix-newsize/2.):floor(DECpix+newsize/2.),*]
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
@@ -1218,7 +1224,7 @@ noconfig:
            writefits,maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'_small.fits',newdummy,hed
            mask=newdummy
            moment0map=readfits(maindir+'/'+catdirname[i]+'/'+catMom0Name[i]+'.fits',hedmap,/SILENT)
-           newdummy=dblarr(newsize+1,newsize+1)
+           newdummy=fltarr(newsize+1,newsize+1)
            sxaddpar,hedmap,'NAXIS1',newsize
            sxaddpar,hedmap,'NAXIS2',newsize
            sxaddpar,hedmap,'CRPIX1',sxpar(hedmap,'CRPIX1')-floor(RApix-newsize/2.)
@@ -1226,7 +1232,7 @@ noconfig:
            newdummy[*,*]=moment0map[floor(RApix-newsize/2.):floor(RApix+newsize/2.),floor(DECpix-newsize/2.):floor(DECpix+newsize/2.)]
            writefits,maindir+'/'+catdirname[i]+'/'+catMom0name[i]+'_small.fits',newdummy,hedmap
            moment1map=readfits(maindir+'/'+catdirname[i]+'/'+catMom1Name[i]+'.fits',hedvel,/SILENT)
-           newdummy=dblarr(newsize+1,newsize+1)
+           newdummy=fltarr(newsize+1,newsize+1)
            sxaddpar,hedvel,'NAXIS1',newsize
            sxaddpar,hedvel,'NAXIS2',newsize
            sxaddpar,hedvel,'CRPIX1',sxpar(hedvel,'CRPIX1')-floor(RApix-newsize/2.)
@@ -1234,7 +1240,7 @@ noconfig:
            newdummy[*,*]=moment1map[floor(RApix-newsize/2.):floor(RApix+newsize/2.),floor(DECpix-newsize/2.):floor(DECpix+newsize/2.)]
            writefits,maindir+'/'+catdirname[i]+'/'+catMom1name[i]+'_small.fits',newdummy,hedvel
            noisemap=readfits(maindir+'/'+catdirname[i]+'/'+catCubename[i]+'_6.0_noisemap.fits',hednoise,/SILENT)
-           newdummy=dblarr(newsize+1,newsize+1)
+           newdummy=fltarr(newsize+1,newsize+1)
            sxaddpar,hednoise,'NAXIS1',newsize
            sxaddpar,hednoise,'NAXIS2',newsize
            sxaddpar,hednoise,'CRPIX1',sxpar(hednoise,'CRPIX1')-floor(RApix-newsize/2.)
@@ -3516,7 +3522,7 @@ noconfig:
      ENDIF 
      mask=readfits(maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'.fits',hedmask,/NOSCALE)        
                                 ;mask the data cube
-     tmpmask=dblarr(n_elements(tmpcube[*,0,0]),n_elements(tmpcube[0,*,0]),n_elements(tmpcube[0,0,*]))
+     tmpmask=fltarr(n_elements(tmpcube[*,0,0]),n_elements(tmpcube[0,*,0]),n_elements(tmpcube[0,0,*]))
      tmpmask[WHERE(mask GT 0.)]=tmpcube[WHERE(mask GT 0.)]
      momentsv2,tmpmask,tmpmap,hedtmp1st,0.
      writefits,maindir+'/'+catdirname[i]+'/1stfit_mom0.fits',tmpmap,hedtmp1st
@@ -5156,7 +5162,7 @@ noconfig:
      totflux=[TOTAL(tmpcube[tmpix])/pixperbeam,(2.*cutoff*norings[0])/(n_elements(tmpix)/pixperbeam)]
      mask=readfits(maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'.fits',hedmask,/NOSCALE)        
                                 ;mask the data cube
-     tmpmask=dblarr(n_elements(tmpcube[*,0,0]),n_elements(tmpcube[0,*,0]),n_elements(tmpcube[0,0,*]))
+     tmpmask=fltarr(n_elements(tmpcube[*,0,0]),n_elements(tmpcube[0,*,0]),n_elements(tmpcube[0,0,*]))
      tmpmask[WHERE(mask GT 0.)]=tmpcube[WHERE(mask GT 0.)]
      momentsv2,tmpmask,tmpmap,hedtmp1st,0.
      writefits,maindir+'/'+catdirname[i]+'/2ndfit_mom0.fits',tmpmap,hedtmp1st
