@@ -75,10 +75,8 @@ Pro get_fixedringsv8,Parametersin,rings
      ENDIF
      av1=Parameters[0,j]
      av2=MEAN(Parameters[0:half,j])
-     print,av1,av2,rms,SIGMA(Parameters[*,j]-newPA),ROBUST_SIGMA(Parameters[*,j]-newPA)
      IF ABS(av1-av2) GT rms AND n_elements(Parameters[0:half,j]) LT 8. then av=av1 else av=av2
      tmp=WHERE(ABS(Parameters[*,j]-av) GT rms)
-     print,tmp
      IF n_elements(tmp) GT 1 then begin
         for i=0,n_elements(tmp)-2 do begin
            IF tmp[i+1]-tmp[i] EQ 1 then begin

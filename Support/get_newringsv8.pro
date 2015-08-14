@@ -123,7 +123,6 @@ Pro get_newringsv8,SBR1in,SBR2in,cutoffin,newrings,INDIVIDUAL=individual
                                 ; rings are not very bright as
      check=0                    ; we'll just end up adding rings 
      WHILE check EQ 0 do begin
-        Print,newrings ,SBR1[newrings[0]-1],25*cutoff[newrings[0]-1],n_elements(SBR1)
         IF (SBR1[newrings[0]-1] GT 25*cutoff[newrings[0]-1] AND newrings[0] LT n_elements(SBR1))  then newrings[0]=newrings[0]+1. else begin 
            check=1
         ENDELSE

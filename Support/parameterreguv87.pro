@@ -69,6 +69,8 @@ Pro parameterreguv87,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixedringsin,RE
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       11-08-2015 P.Kamphuis; Modified the handling of single value
+;       rotation curves
 ;       Written 01-01-2015 P.Kamphuis v1.0
 ;
 ; NOTE:
@@ -870,22 +872,8 @@ refit:
      ENDIF
      
   ENDELSE
-                                ;the accuracy of the fixed rings is
-                                ;not necesarrily high when they only
-                                ;make up a small part of the inner model
-;  IF n_elements(fixedrings) NE 0 and not keyword_set(rev) then begin 
-;     fixedfrac=RADIIin[fixedrings]/RADIIin[n_elements(PA)-1]
-;     IF fixedfrac LT 0.2 then errors[0:fixedrings]=errors[0:fixedrings]/fixedfrac*SQRT(accuracy)
- 
-
- ;    IF keyword_set(debug) then begin
- ;       print,'The fraction of fixed rings'
- ;       print,fixedfrac,fixedrings,n_elements(PA)
- ;       print,'the final errors'
- ;       print,errors
- ;    ENDIF
- ; ENDIF
-
+   
+   
   IF keyword_set(debug) then begin
      print,'PA after Errors'
      print,PA
@@ -945,6 +933,8 @@ refit:
      fiterrors=tmp[1:n_elements(tmp)-1]
   ENDIF
   IF keyword_set(rev) then begin
+     tmp=WHERE(fitPA NE fitPA[0])
+     IF tmp[0] EQ -1 then fitPA[0]=fitPA[0]/2.
      fitPA=reverse(fitPA) 
      fiterrors=reverse(fiterrors)
   ENDIF 
@@ -1008,12 +998,12 @@ shifterrors=fiterrors
            print,'IT should fit', n_elements(fitRADII)
         ENDIF
         shifterrors=fiterrors*errfact
-        IF fixedrings GE cutoffring+1 then begin
+        IF fixedrings GE cutoffring+1 AND  not keyword_set(reverse) then begin           
            order=0
            minchi=1e9
            IF keyword_set(debug) then begin
               print,'As all rings above the cutoff are fixed we fit a straight line'
-             
+              
            ENDIF
            goto,allfixed
         ENDIF
@@ -1091,18 +1081,12 @@ shifterrors=fiterrors
                        for j=n_elements(newPA)-2,fix(n_elements(newPA)/2.),-1 do begin
                           deltaslope=(newPA[j+1]-newPA[j])-(newPA[j]-newPA[j-1])
                           deltaslope2=(fitPA[j+1]-fitPA[j])-(fitPA[j]-fitPA[j-1])
-                          ;IF keyword_set(debug) then begin
-                          ;   print,tmp, MAxdev/accuracy,maxdev,accuracy,deltaslope,deltaslope2,'Penalizing for slope',j,fitPA[j+1],fitPA[j],fitPA[j-1]
-                          ;ENDIF
                           IF (ABS(deltaslope/deltaslope2) GT 2.5 OR ABS(deltaslope/deltaslope2) LT 1./2.5) AND deltaslope GT maxdev/accuracy then begin
                              IF j EQ n_elements(newPA)-2 then begin
                                 tmp=tmp*((ABS(deltaslope))/(maxdev/accuracy))^2*2
                              ENDIF ELSE BEGIN
                                 tmp=tmp*((ABS(deltaslope))/(maxdev/accuracy))^2
                              ENDELSE
-                             IF ABS(deltaslope) GT maxdev then begin
-                                print,tmp, maxdev/accuracy,deltaslope,deltaslope2,'Penalizing for slope'
-                             ENDIF
                           ENDIF
                        endfor
                     ENDELSE
@@ -1459,7 +1443,13 @@ shifterrors=fiterrors
                  print,newPA[i],newPA[i-1],'increasing'
               ENDIF
               IF newPA[i] LT 0. then begin
-                 IF newPA[i-1] GT 0. then newPA[i]=newPA[i-1] else newPA[i]=PAmin*2. 
+                 IF newPA[i-1] GT 0. then newPA[i]=newPA[i-1] else begin
+                    IF n_elements(PAmin) GT 0 then newPA[i]=PAmin*2. else begin
+                       tmpind=WHERE(newPA GT 0.)
+                       if tmpind[0] NE -1 then newPA[i]=MEAN(newPA[tmpind]) else newPA[i]=1.
+                    ENDELSE
+                 ENDELSE
+                       
               endif else newPA[i]=newPA[i]*1.05
            ENDWHILE
            

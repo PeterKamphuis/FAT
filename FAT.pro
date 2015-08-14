@@ -30,16 +30,26 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
 ;     IDL> FAT,CONFIGURATION_FILE='~/Myfittingdirectory/FAT.config'
 ;
 ; PROCEDURES CALLED
-;  BUILDAXII, CALC_EDGE, CHANGERADII, CHECK_CFLUX, COLUMNDENSITY,
+;  BOOK_KEEPING, BUILDAXII, CALC_EDGE, CHANGERADII, CHECK_CFLUX, CLEANUP, COLUMNDENSITY,
 ;  CONVERTRADEC, CONVERTSKYANGLEFUNCTION(), EXTRACT_PV, FIT_ELLIPSE(),
-;  GETDHI, GET_FIXEDRINGSV8, GET_NEWRINGSV8, GET_PROGRESS,
+;  GETDHI, GET_FIXEDRINGSV8, GET_NEWRINGSV8, GET_PROGRESS, 
 ;  INT_PROFILEV2, INTERPOLATE, ISNUMERIC(), LINENUMBER(), MOMENTSV2,
-;  OBTAIN_INCLINATIONV8, OBTAIN_PAV2, OBTAIN_VELPA, OBTAIN_W50,
+;  OBTAIN_INCLINATIONV8, OBTAIN_PAV2, OBTAIN_VELPA, OBTAIN_W50, 
 ;  PARAMETERREGUV87, READ_TEMPLATE, SBR_CHECK, SET_SBR, SET_VROTV6,
 ;  SET_WARP_SLOPEV2, WRITEFITTINGVARIABLES, WRITENEWTOTEMPLATE,
 ;  RESOLVE_ROUTINE, STRLOWCASE, and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      12-08-2015 P. Kamphuis; Improved Bookkeeping for failed fits,
+;      improved noise determination  and fixed an issue with spaces in
+;      the config file
+;      10-08-2015 P. Kamphuis; On line 4012 it was possible to set the
+;      rotation curve to zero by having the inner INCL and PA hit the
+;      border. Made sure that if taking ring 0 for PA and INCL that
+;      the mean is taken for VROT.
+;      30-07-2015 P. Kamphuis; Added a set of routines for
+;      bookkeeping. Still need to implement proper removal.  
+;      24-07-2015 P. Kamphuis; Added routine for the creation of residual files
 ;      24-07-2015 P. Kamphuis; Replaced the usage of SNR from Sofia
 ;      with a proper flux from the integrated intensity map. Improved
 ;      clean up and cflux handling. Also improved treatment of small
@@ -83,7 +93,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
                           
   COMPILE_OPT IDL2 
 
-  version='v3.0.1'
+  version='v3.0.2'
   if n_elements(supportdir) EQ 0 then supportdir='Support'
   CD,supportdir,CURRENT=old_dir
   spawn,'pwd',supportdir
@@ -102,13 +112,16 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
 
   spawn,'pwd',originaldir
   CD,supportdir,current=old_dir
+  RESOLVE_ROUTINE, 'book_keeping'
   RESOLVE_ROUTINE, 'buildaxii'
   RESOLVE_ROUTINE, 'calc_edge'
   RESOLVE_ROUTINE, 'changeradii'
   RESOLVE_ROUTINE, 'check_cflux'
+  RESOLVE_ROUTINE, 'cleanup'
   RESOLVE_ROUTINE, 'columndensity'
   RESOLVE_ROUTINE, 'convertradec'
   RESOLVE_ROUTINE, 'convertskyanglefunction',/IS_FUNCTION
+  RESOLVE_ROUTINE, 'create_residuals'
   RESOLVE_ROUTINE, 'extract_pv'
   RESOLVE_ROUTINE, 'fit_ellipse',/IS_FUNCTION
   RESOLVE_ROUTINE, 'getdhi'
@@ -124,6 +137,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
   RESOLVE_ROUTINE, 'obtain_pav2'
   RESOLVE_ROUTINE, 'obtain_velpa'
   RESOLVE_ROUTINE, 'obtain_w50'
+  RESOLVE_ROUTINE, 'organize_output'
   RESOLVE_ROUTINE, 'parameterreguv87'
   RESOLVE_ROUTINE, 'read_template'
   RESOLVE_ROUTINE, 'sbr_check'
@@ -160,11 +174,11 @@ tryconfigagain:
   h=' '
   openr,1,configfile
   filelength=FILE_LINES(configfile)-1
-  for i=0,filelength do begin
+  WHILE ~ EOF(1) DO BEGIN
      readf,1,h
      tmp=str_sep(strtrim(strcompress(h),2),'=')
      IF n_elements(tmp) GT 1 then begin
-        case STRLOWCASE(tmp[0]) of
+        case STRLOWCASE(strtrim(tmp[0],2)) of
                                 ;thefirst galaxy to be fitted
            'startgalaxy':startgalaxy=double(tmp[1])
                                 ;thelast galaxy to be fitted
@@ -205,14 +219,9 @@ tryconfigagain:
            end
         endcase
      endif
-  endfor
+  ENDWHILE
   close,1
-
-
-
-
-
-
+ 
 noconfig:
                                 ;Make idiot failsafe standards for the config files 
   IF size(maindir,/TYPE) NE 7 then begin
@@ -269,10 +278,11 @@ noconfig:
   IF n_elements(vresolution) EQ 0 then vresolution=1.
   IF n_elements(optpixelbeam) EQ 0 then optpixelbeam=4.
   IF n_elements(allnew) EQ 0 then allnew=1
-  IF n_elements(bookkeeping) EQ 0 then bookkeeping=2
+  IF n_elements(bookkeeping) EQ 0 then bookkeeping=3
  
-  IF finishafter LT 2 then bookkeeping=1
+  IF bookkeeping EQ 5. then bookkeeping=4
 
+  bookkeepingin=bookkeeping
   finishafterold=finishafter
                                 ;start a log with current program name
   help,calls=cc
@@ -429,6 +439,8 @@ noconfig:
                                 ;To ensure using the right template we
                                 ;read them everytime we start a new galaxy
      finishafter=finishafterold
+     bookkeeping=bookkeepingin
+     noisemapname=catCubename[i]+'_6.0_noisemap'
      close,1
                                 ;Start a galaxy specific fitting log
      IF size(olog,/TYPE) EQ 7 then begin
@@ -468,17 +480,14 @@ noconfig:
                                 ;case somebody is still using gipsy file
      cubeext=' '
      new_dir=maindir+'/'+catdirname[i]+'/'
+   
      CD,new_dir,CURRENT=old_dir
                                 ;To avoid confusion we remove all
                                 ;initial fits and subsequent fits that
                                 ;are present if we want to start all
                                 ;over again
      IF allnew EQ 1 then begin
-        IF testing LT 1 then spawn,'rm -f '+catcubename[i]+'*_small*',isthere
-        IF testing LT 1 then spawn,'rm -f '+catcubename[i]+'*_cut*',isthere
-        IF testing LT 1 then spawn,'rm -f '+catcubename[i]+'*_binmask*',isthere
-        IF testing LT 1 then spawn,'rm -f '+catcubename[i]+'*_mom*',isthere
-        IF testing LT 1 then spawn,'rm -f '+catcubename[i]+'BasicInfo*txt',isthere        
+        IF testing LT 1 then cleanup,catcubename[i]               
      ENDIF
      IF testing LT 1 then spawn,'rm -f 1stfit*',isthere
      IF testing LT 2 then spawn,'rm -f 2ndfit*',isthere
@@ -525,6 +534,7 @@ noconfig:
         endfor
         extset:
      endif
+
                                 ;See if we already cut the initial cube to something more accesible
      smallexists=FILE_TEST(maindir+'/'+catdirname[i]+'/'+catCubename[i]+'_small.fits')
      IF smallexists then begin
@@ -532,8 +542,11 @@ noconfig:
         currentfitcube=catcubename[i]+'_small'
         catcubename[i]=catcubename[i]+'_small'
      ENDIF
-                                ;and we make sure that all the naming stuff adds up
+                                ;and we make sure that all the naming
+                                ;stuff adds up
      fitsexists=FILE_TEST(maindir+'/'+catdirname[i]+'/'+catcubename[i]+cubeext)
+
+
                                 ;Let's go to the right directory
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
@@ -554,11 +567,7 @@ noconfig:
         ENDIF ELSE BEGIN
            print,linenumber()+catDirname[i]+" This galaxy has no fits to work with, it is skipped"
         ENDELSE
-        IF size(log,/TYPE) EQ 7 then begin
-           openu,66,log,/APPEND
-           printf,66,linenumber()+"Finished "+catDirname[i]+"in loop"+string(i)+systime()
-           close,66
-        ENDIF 
+        bookkeeping=5
         goto,finishthisgalaxy
      endif
                                 ;set some triggers at 0
@@ -595,6 +604,7 @@ noconfig:
         ENDIF ELSE BEGIN
            print,linenumber()+'FREQUENCY IS NOT A SUPPORTED VELOCITY AXIS'    
         ENDELSE
+        bookkeeping=5
         GOTO,FINISHTHISGALAXY
      ENDIF
      IF isnumeric(veltype) then begin
@@ -673,7 +683,9 @@ noconfig:
                                 ; check for 0 values, they
                                 ; shouldn't be present and mess
                                 ; things up
-                                ;IF present assume they are blanks and add warning
+                                ;IF present assume they are blanks and
+                                ;add warning
+  
      tmp=WHERE(dummy EQ 0.d)
      IF tmp[0] NE -1 then begin
         IF size(log,/TYPE) EQ 7 then begin
@@ -701,14 +713,79 @@ noconfig:
      difference = 10.
      changedcube=0.
      WHILE difference GT 1 do begin
+       
         tmpnoblank=dummy[*,*,0]
-        rmsfirstchannel=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
+        wherefinite=WHERE(FINITE(tmpnoblank))
+        WHILE wherefinite[0] EQ -1 DO begin
+           tmp=dblarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*])-1)
+           tmp[*,*,0:n_elements(tmp[0,0,*])-1]=dummy[*,*,1:n_elements(dummy[0,0,*])-1]
+           sxaddpar,hed,'CRPIX3',sxpar(hed,'CRPIX3')-1.
+           dummy=dblarr(n_elements(tmp[*,0,0]),n_elements(tmp[0,*,0]),n_elements(tmp[0,0,*]))
+           IF n_elements(dummy[0,0,*]) LT 5 then begin
+              IF size(log,/TYPE) EQ 7 then begin
+                 openu,66,log,/APPEND
+                 printf,66,linenumber()+catdirname[i]+'/'+catcubename[i]+' has too many blanked channels'
+                 close,66
+              ENDIF ELSE BEGIN
+                 printf,linenumber()+catdirname[i]+'/'+catcubename[i]+'has too many blanked channels'
+              ENDELSE         
+              openu,1,outputcatalogue,/APPEND
+              printf,1,format='(A60,A90)', catDirname[i],'The Cube has too many blanked channels'
+              close,1    
+              bookkeeping=5
+              goto,finishthisgalaxy
+           ENDIF
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+' We are cutting the cube as the first channel is completely blank'
+              close,66
+           ENDIF
+           dummy=tmp
+           tmpnoblank=dummy[*,*,0]
+           wherefinite=WHERE(FINITE(tmpnoblank))
+        ENDWHILE
+        rmsfirstchannel=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])          
         tmpnoblank=dummy[*,*,n_elements(dummy[0,0,*])-1]
+        wherefinite=WHERE(FINITE(tmpnoblank))
+        WHILE wherefinite[0] EQ -1 DO begin
+           tmp=dblarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*])-1)
+           tmp[*,*,0:n_elements(tmp[0,0,*])-1]=dummy[*,*,0:n_elements(dummy[0,0,*])-2]
+           dummy=dblarr(n_elements(tmp[*,0,0]),n_elements(tmp[0,*,0]),n_elements(tmp[0,0,*]))
+           IF n_elements(dummy[0,0,*]) LT 5 then begin
+              IF size(log,/TYPE) EQ 7 then begin
+                 openu,66,log,/APPEND
+                 printf,66,linenumber()+catdirname[i]+'/'+catcubename[i]+' has too many blanked channels'
+                 close,66
+              ENDIF ELSE BEGIN
+                 printf,linenumber()+catdirname[i]+'/'+catcubename[i]+'has too many blanked channels'
+              ENDELSE         
+              openu,1,outputcatalogue,/APPEND
+              printf,1,format='(A60,A90)', catDirname[i],'The Cube has too many blanked channels'
+              close,1    
+              bookkeeping=5
+              goto,finishthisgalaxy
+           ENDIF
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+' We are cutting the cube as the last channel is completely blank'
+              close,66
+           ENDIF
+           dummy=tmp
+           tmpnoblank=dummy[*,*,n_elements(dummy[0,0,*])-1]
+           wherefinite=WHERE(FINITE(tmpnoblank))
+        ENDWHILE
         rmslastchannel=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
         IF rmsfirstchannel EQ 0. then rmsfirstchannel=2.*rmslastchannel
         IF rmslastchannel EQ 0. then rmslastchannel=2.*rmsfirstchannel
+        tmpnoblank=dummy[0:2,0:2,*]
+        rmsbottom=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
+        tmpnoblank=dummy[n_elements(dummy[*,0,0])-3:n_elements(dummy[*,0,0])-1,n_elements(dummy[0,*,0])-3:n_elements(dummy[0,*,0])-1,*]
+        rmstop=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
+        rmschan=(rmsfirstchannel+rmslastchannel)/2.
+        rmscorn=(rmsbottom+rmstop)/2.
         diff=ABS((rmsfirstchannel-rmslastchannel)/rmsfirstchannel)
-        IF diff LT 0.2 AND FINITE(diff) then difference=0. else begin
+        diff2=ABS((rmschan-rmscorn)/rmschan)
+        IF diff LT 0.2 AND FINITE(diff) AND diff2 LT 0.2 then difference=0. else begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
               printf,66,linenumber()+' We are cutting the cube as clearly the noise statistics are off'
@@ -732,11 +809,11 @@ noconfig:
            dummy=tmp
         ENDELSE
      ENDWHILE
-     
+  
      tmpfirst=dummy[*,*,0]
      tmplast=dummy[*,*,n_elements(dummy[0,0,*])-1]
      catnoise[i]=(SIGMA(tmpfirst[WHERE(FINITE(tmpfirst))])+SIGMA(tmpfirst[WHERE(FINITE(tmpfirst))]))/2.
-     
+  
      IF changedcube EQ 1. then begin
         IF n_elements(dummy[0,0,*]) LT 5 then begin
            IF size(log,/TYPE) EQ 7 then begin
@@ -749,11 +826,7 @@ noconfig:
            openu,1,outputcatalogue,/APPEND
            printf,1,format='(A60,A90)', catDirname[i],'The Cube has noise statistics that cannot be dealt with'
            close,1    
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+"Finished "+catDirname[i]+"in loop"+string(i)+systime()
-              close,66
-           ENDIF 
+           bookkeeping=5
            goto,finishthisgalaxy
         ENDIF
         currentfitcube=catcubename[i]+'_cut'
@@ -852,6 +925,8 @@ noconfig:
         openu,1,outputcatalogue,/APPEND
         printf,1,format='(A60,A90)', catDirname[i],'Cannot produce a mask'
         close,1 
+        CD,old_dir
+        bookkeeping=5
         goto,finishthisgalaxy
      endif
      catCatalogname[i]=pythoncube+'_cat.ascii'
@@ -936,6 +1011,8 @@ noconfig:
         openu,1,outputcatalogue,/APPEND
         printf,1,format='(A60,A90)', catDirname[i],'Sofia failed on this cube'
         close,1 
+        CD,old_dir
+        bookkeeping=5
         goto,finishthisgalaxy
      ENDIF
      IF size(log,/TYPE) EQ 7 then begin
@@ -1075,9 +1152,7 @@ noconfig:
      CD,old_dir
                                 ;let's check the size of this cube to see whether it is reasonable 
      IF maxrings EQ 0. then begin
-        CD,new_dir,CURRENT=old_dir
-        mask=readfits(catmaskname[i]+'.fits',hedmask,/NOSCALE)
-        CD,old_dir
+        mask=readfits(maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'.fits',hedmask,/NOSCALE)
         foundmin=0.
         minx=intarr(sxpar(hedmask,'NAXIS1'))
         maxx=intarr(sxpar(hedmask,'NAXIS1'))
@@ -1139,7 +1214,6 @@ noconfig:
            writefits,maindir+'/'+catdirname[i]+'/'+catCubename[i]+'_small.fits',newdummy,hed
            dummy=newdummy
            newdummy[*,*,*]=0.
-           help,mask,newdummy
            newdummy[*,*,*]=mask[floor(RApix-newsize/2.):floor(RApix+newsize/2.),floor(DECpix-newsize/2.):floor(DECpix+newsize/2.),*]
            writefits,maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'_small.fits',newdummy,hed
            mask=newdummy
@@ -1307,11 +1381,7 @@ noconfig:
         ENDIF ELSE BEGIN
            print,linenumber()+catDirname[i]+'The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit'
         ENDELSE
-        IF size(log,/TYPE) EQ 7 then begin
-           openu,66,log,/APPEND
-           printf,66,linenumber()+"Finished "+catDirname[i]+"in loop"+string(i)+systime()
-           close,66
-        ENDIF 
+        bookkeeping=5 
         goto,finishthisgalaxy
      ENDIF 
      pixelarea=ABS(3600.^2*sxpar(hed,'CDELT2')*sxpar(hed,'CDELT1'))
@@ -1329,6 +1399,7 @@ noconfig:
      rad=[0.,((findgen(maxrings+2.))*catmajbeam[i]+catmajbeam[i]/5.)]
      calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i]],cutoffor
                                 ;And print the values
+   
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         printf,66,linenumber()+"We use an intrinsic cutoff value of: "
@@ -1372,11 +1443,7 @@ noconfig:
            openu,1,outputcatalogue,/APPEND
            printf,1,format='(A60,A80)', catDirname[i],'This Cube is too small'
            close,1
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+"Finished "+catDirname[i]+"in loop"+string(i)+systime()
-              close,66
-           ENDIF 
+           bookkeeping=5
            goto,finishthisgalaxy
         ENDIF                   
      ENDIF
@@ -1804,6 +1871,7 @@ noconfig:
            printf,1,format='(A60,A12,A80)', catDirname[i],'You have chosen to skip the fitting process after all preparations for the fit'
            close,1
         ENDIF
+        bookkeeping=5
         goto,finishthisgalaxy
      ENDIF
                                 ;build up moment 0 axis
@@ -2697,7 +2765,7 @@ noconfig:
         openu,1,outputcatalogue,/APPEND
         printf,1,format='(A60,A80)', catDirname[i],'We could not find a proper center'
         close,1 
-        bookkeeping=4
+        bookkeeping=0
         goto,finishthisgalaxy
      ENDIF
      ;Write the current array to the def file
@@ -3313,7 +3381,7 @@ noconfig:
            openu,1,outputcatalogue,/APPEND
            printf,1,format='(A60,A80)',catDirname[i],'This galaxy diverged out of the set boundaries'
            close,1   
-           bookkeeping=4
+           bookkeeping=0
            goto,finishthisgalaxy
         ENDELSE
      ENDELSE
@@ -3438,7 +3506,7 @@ noconfig:
            printf,66,linenumber()+"No flux in final fit, aborting "
            close,66
         ENDIF 
-        bookkeeping=4
+        bookkeeping=0
         goto,finishthisgalaxy
      endif
      IF size(log,/TYPE) EQ 7 then begin
@@ -3482,19 +3550,18 @@ noconfig:
         openu,1,outputcatalogue,/APPEND
         printf,1,format='(A60,A12,A80)', catDirname[i],AC1,'You have chosen to skip the fitting process after the first fit'
         close,1
-        bookkeeping=1
+        bookkeeping=bookkeeping+0.5
         goto,finishthisgalaxy
      ENDIF
      prevmodification=0
 ;******************************************This is the end of the first fit******************************
-
-  
 
      sigmapa1=0.
      sigmapa2=0.
      sigmaincl1=0.
      sigmaincl2=0.
      sigmarot=0.
+     velfixrings=1
      tmppos=where('INSET' EQ tirificsecondvars)
      tirificsecond[tmppos]='INSET=  '+strtrim(strcompress(string(currentfitcube+'.fits')))
                                 ;then open the previous fit 
@@ -3526,7 +3593,7 @@ noconfig:
      tmppos=where('PA_2' EQ firstfitvaluesnames)
      PAang2=firstfitvalues[*,tmppos]    
      tmppos=where('NUR' EQ firstfitvaluesnames)
-     norings[0]=firstfitvalues[0,tmppos]
+     norings=firstfitvalues[0,tmppos]
      IF norings LE 4 then begin     
         IF norings GE 3 and finishafter NE 1.1 then begin
            finishafter=1.1 
@@ -3567,7 +3634,7 @@ noconfig:
               printf,66,linenumber()+"Finished "+catDirname[i]+"in loop"+string(i)+systime()
               close,66
            ENDIF 
-           bookkeeping=1
+           bookkeeping=0
            goto,finishthisgalaxy
         ENDELSE
      ENDIF
@@ -3831,6 +3898,7 @@ noconfig:
                                 ; only want to do a smoothing we come
                                 ; back to this point
      lastadjust:
+ 
                                 ;We get the previous fit and read it into the fitting template
      writenewtotemplate,tirificsecond,maindir+'/'+catdirname[i]+'/2ndfit.def',Arrays=secondfitvalues,VariableChange=secondfitvaluesnames,Variables=tirificsecondvars
      tmppos=where('RADI' EQ secondfitvaluesnames)
@@ -3860,6 +3928,7 @@ noconfig:
            Close,66
         ENDIF        
      ENDIF
+
 ;Let's see how many of the inner rings we want to fix
      tmppos=where('VSYS' EQ firstfitvaluesnames)
      vsys=firstfitvalues[0,tmppos]
@@ -3879,6 +3948,7 @@ noconfig:
                                 ;Then set the surface brighness profile parameters
      set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter
                                 ;Update the rings to be fitted in the other parameters
+
      IF norings[0] LE 4 or finishafter EQ 1.1 then begin                 
         INCLinput1[0]='INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                       ' INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
@@ -3892,6 +3962,7 @@ noconfig:
                                 ;update INCL and PA
         set_warp_slopev2,SBRarr,SBRarr2,cutoff,INCLinput2,PAinput2,INCLinput3,PAinput3,norings,log=log,innerfix=innerfix
      ENDELSE
+
                                 ;additionallly we should updat the min
                                 ;and max in the fitting if more than
                                 ;two rings reach it
@@ -3972,7 +4043,7 @@ noconfig:
         IF lastreliablerings LT n_elements(SBRarr)-1 then begin
            INCLang[lastreliablerings:n_elements(SBRarr)-1]=INCLang[lastreliablerings-1]
            PAang[lastreliablerings:n_elements(SBRarr)-1]=PAang[lastreliablerings-1]
-           VROTarr[lastreliablerings:n_elements(SBRarr)-1]=VROTarr[lastreliablerings-1]
+           IF lastreliablerings EQ 1 then VROTarr[lastreliablerings:n_elements(SBRarr)-1]=MEAN(VROTarr[1:n_elements(VROTarr)-1]) else VROTarr[lastreliablerings:n_elements(SBRarr)-1]=VROTarr[lastreliablerings-1]
            parameterreguv87,PAang,SBRarror,RADarr,fixedrings=3,difference=1.0,cutoff=cutoff,arctan=1,order=polorder,max_par=PAinput2[1],min_par=PAinput2[2],accuracy=1/4.,error=sigmapa1
            parameterreguv87,INCLang,SBRarror,RADarr,fixedrings=3,difference=8.*exp(-catinc[i]^2.5/10^3.5)+2.,cutoff=cutoff,arctan=1,order=polorder,max_par=PAinput2[1],min_par=PAinput2[2],accuracy=1,error=sigmaincl1
            stringINCL='INCL= '+STRJOIN(string(INCLang),' ')
@@ -3987,10 +4058,11 @@ noconfig:
               SBRarr2[j]=cutoff[j]*2.
            ENDIF else break
         endfor
+       
         IF lastreliablerings LT n_elements(SBRarr)-1 then begin
            INCLang2[lastreliablerings:n_elements(SBRarr2)-1]=INCLang2[lastreliablerings-1]
            PAang2[lastreliablerings:n_elements(SBRarr2)-1]=PAang2[lastreliablerings-1]
-           VROTarr2[lastreliablerings:n_elements(SBRarr2)-1]=VROTarr2[lastreliablerings-1]
+           IF lastreliablerings EQ 1 then VROTarr2[lastreliablerings:n_elements(SBRarr)-1]=MEAN(VROTarr2[1:n_elements(VROTarr2)-1]) else VROTarr2[lastreliablerings:n_elements(SBRarr2)-1]=VROTarr2[lastreliablerings-1]
            parameterreguv87,PAang2,SBRarr2or,RADarr,fixedrings=3,difference=1.0,cutoff=cutoff,arctan=1,order=polorder,max_par=PAinput2[1],min_par=PAinput2[2],accuracy=1/4.,error=sigmapa2
            parameterreguv87,INCLang2,SBRarr2or,RADarr,fixedrings=3,difference=8.*exp(-catinc[i]^2.5/10^3.5)+2.,cutoff=cutoff,arctan=1,order=polorder,max_par=PAinput2[1],min_par=PAinput2[2],accuracy=1,error=sigmaincl2
            stringINCL='INCL_2= '+STRJOIN(string(INCLang2),' ')
@@ -4008,6 +4080,7 @@ noconfig:
         ENDIF ELSE BEGIN
            parameterreguv87,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=2,/NOCENTRAL,error=sigmarot
         ENDELSE
+
         stringVROT='VROT= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
         tmppos=where('VROT' EQ tirificsecondvars)
         tirificsecond[tmppos]=stringVROT
@@ -4043,7 +4116,7 @@ noconfig:
                                 ;goto the point where the the second
                                 ;fit is not accepted and try again
         goto,notacceptedtwo
-     ENDIF                     
+     ENDIF                 
                                 ;If we are smoothing with polynomials
                                 ;we want to make sure that the minimum
                                 ;sbr is actually of some value for the
@@ -5047,6 +5120,10 @@ noconfig:
            printf,1,tirificsecond[index]
         endfor
         close,1
+        if optimized then begin
+           spawn,'rm -f 2ndfit_opt.*',isthere
+           spawn,'rename 2ndfit. 2ndfit_opt. 2ndfit.*',isthere
+        endif
         gipsyfirst=strarr(1)
         gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
         spawn,gipsyfirst,isthere2
@@ -5160,56 +5237,14 @@ noconfig:
 
      
      finishthisgalaxy:
-     spawn,'pwd',currentdir
-     IF size(log,/TYPE) EQ 7 then begin
-                openu,66,log,/APPEND
-                printf,66,linenumber()+"Removing the following files from "+currentdir
-                close,66
-     ENDIF 
+   
      IF optimized then begin
         catcubename[i]= noptname[0]
      ENDIF
-     case bookkeeping of
-        1: begin
-           spawn,'rm -f 1stfit_opt.def  1stfit_opt.fits 1stfit_opt.log 1stfit_opt.ps 1stfit.log 1stfit.ps 1stfitold.def 1stfitold.fits 1stfitold.log 1stfitold.ps 2ndfit.log 2ndfit.ps 2ndfitold.def 2ndfitold.fits 2ndfituncor.log 2ndfitold.log 2ndfitold.ps  2ndfitslop.log 2ndfitunsmooth.log '+catCatalogname[i]+' '+catcubename[i]+'_opt.fits progress1.txt progress2.txt sofia_input.txt tirific.def',isthere 
-              IF size(log,/TYPE) EQ 7 then begin
-                 openu,66,log,/APPEND
-                 printf,66,linenumber()+ spawn,'rm -f 1stfit_opt.def  1stfit_opt.fits 1stfit_opt.log 1stfit_opt.ps 1stfit.log 1stfit.ps 1stfitold.def 1stfitold.fits 1stfitold.log 1stfitold.ps 2ndfit.log 2ndfit.ps 2ndfituncor.log 2ndfitold.def 2ndfitold.fits 2ndfitold.log 2ndfitold.ps  2ndfitslop.log 2ndfitunsmooth.log '+catCatalogname[i]+' '+catcubename[i]+'_opt.fits progress1.txt progress2.txt sofia_input.txt tirific.def' 
-                 close,66
-              ENDIF 
-           end
-        2: begin
-           spawn,'rm -f 1stfit_mom0.fits 1stfit_mom1.fits 1stfit_opt.def  1stfit_opt.fits 1stfit_opt.log 1stfit_opt.ps 1stfit_xv.fits 1stfit.fits 1stfit.log 1stfit.ps 1stfitold.def 1stfitold.fits 1stfitold.log 1stfitold.ps 2ndfit.log 2ndfit.ps 2ndfitold.def 2ndfitold.fits 2ndfitold.log 2ndfitold.ps  2ndfituncor.fits 2ndfituncor.ps 2ndfituncor.log 2ndfitslop.fits 2ndfitslop.log 2ndfitslop.ps 2ndfitunsmooth.fits 2ndfitunsmooth.log 2ndfitunsmooth.ps '+noisemapname+'.fits '+catCatalogname[i]+' '+catcubename[i]+'_1_xv.fits '+catcubename[i]+'_opt.fits progress1.txt progress2.txt sofia_input.txt tirific.def',isthere
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+'rm -f 1stfit_mom0.fits 1stfit_mom1.fits 1stfit_opt.def  1stfit_opt.fits 1stfit_opt.log 1stfit_opt.ps 1stfit_xv.fits 1stfit.fits 1stfit.log 1stfit.ps 1stfitold.def 1stfitold.fits 1stfitold.log 1stfitold.ps 2ndfit.log 2ndfit.ps 2ndfitold.def 2ndfitold.fits 2ndfitold.log 2ndfitold.ps 2ndfituncor.fits 2ndfituncor.ps 2ndfituncor.log 2ndfitslop.fits 2ndfitslop.log 2ndfitslop.ps 2ndfitunsmooth.fits 2ndfitunsmooth.log 2ndfitunsmooth.ps '+noisemapname+'.fits '+catCatalogname[i]+' '+catcubename[i]+'_1_xv.fits '+catcubename[i]+'_opt.fits progress1.txt progress2.txt sofia_input.txt tirific.def' 
-              close,66
-           ENDIF 
-        end
-        3: begin
-           spawn,'rm -f 1stfit_mom0.fits 1stfit_mom1.fits 1stfit_opt.def 1stfit.def 1stfit_opt.fits 1stfit_opt.log 1stfit_opt.ps 1stfit_xv.fits 1stfit.fits 1stfit.log 1stfit.ps 1stfitold.def 1stfitold.fits 1stfitold.log 1stfitold.ps 2ndfit_mom0.fits 2ndfit_mom1.fits 2ndfit_xv.fits  2ndfit.fits 2ndfit.log 2ndfit.ps 2ndfitold.def 2ndfitold.fits 2ndfitold.log 2ndfitold.ps 2ndfitslop.def 2ndfitslop.fits 2ndfitslop.log 2ndfitslop.ps 2ndfituncor.fits 2ndfituncor.ps 2ndfituncor.log 2ndfitunsmooth.def 2ndfitunsmooth.fits 2ndfitunsmooth.log 2ndfitunsmooth.ps '+basicinfo+'_'+catcubename[i]+'.txt '+catMom0name[i]+'.fits '+catMom1name[i]+'.fits '+catmaskname[i]+'.fits '+noisemapname+'.fits '+catCatalogname[i]+' '+catcubename[i]+'_[0-2]_xv.fits '+catcubename[i]+'_opt.fits progress1.txt progress2.txt sofia_input.txt tirific.def',isthere 
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+'rm -f 1stfit_mom0.fits 1stfit_mom1.fits 1stfit_opt.def 1stfit.def 1stfit_opt.fits 1stfit_opt.log 1stfit_opt.ps 1stfit_xv.fits 1stfit.fits 1stfit.log 1stfit.ps 1stfitold.def 1stfitold.fits 1stfitold.log 1stfitold.ps 2ndfit_mom0.fits 2ndfit_mom1.fits 2ndfit_xv.fits  2ndfit.fits 2ndfit.log 2ndfit.ps 2ndfitold.def 2ndfitold.fits 2ndfitold.log 2ndfitold.ps 2ndfitslop.def 2ndfitslop.fits 2ndfitslop.log 2ndfituncor.fits 2ndfituncor.ps 2ndfituncor.log 2ndfitslop.ps 2ndfitunsmooth.def 2ndfitunsmooth.fits 2ndfitunsmooth.log 2ndfitunsmooth.ps '+basicinfo+'_'+catcubename[i]+'.txt '+catMom0name[i]+'.fits '+catMom1name[i]+'.fits '+catmaskname[i]+'.fits '+noisemapname+'.fits '+catCatalogname[i]+' '+catcubename[i]+'_[0-2]_xv.fits '+catcubename[i]+'_opt.fits progress1.txt progress2.txt sofia_input.txt tirific.def' 
-              close,66
-           ENDIF 
-        end
-        4: begin
-           spawn,'rm -f 2ndfit.log 2ndfit.ps 2ndfitold.def 2ndfitold.fits 2ndfitold.log 2ndfituncor.log 2ndfitold.ps  2ndfitslop.log 2ndfitunsmooth.log '+catCatalogname[i]+' '+catcubename[i]+'_opt.fits progress1.txt progress2.txt sofia_input.txt tirific.def',isthere 
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+ spawn,'rm -f  2ndfit.log 2ndfit.ps 2ndfitold.def 2ndfituncor.log 2ndfitold.fits 2ndfitold.log 2ndfitold.ps  2ndfitslop.log 2ndfitunsmooth.log '+catCatalogname[i]+' '+catcubename[i]+'_opt.fits progress1.txt progress2.txt sofia_input.txt tirific.def' 
-              close,66
-           ENDIF 
-        end    
-        else:begin
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+"none "+currentdir
-              close,66
-           ENDIF
-        END
-     endcase
+     cd, new_dir
+     names=[catcubename[i],catMom0name[i],catMom1name[i],catmaskname[i],noisemapname,catCatalogname[i],basicinfo]
+     book_keeping,names,bookkeeping
+     
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         printf,66,linenumber()+"Finished "+catDirname[i]+"in loop"+string(i)+systime()

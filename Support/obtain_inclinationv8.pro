@@ -261,7 +261,6 @@ for i=0,n_elements(PA)-1 do begin
    ENDELSE
 
 endfor
-print,tmpinc,'Here are the incs determined'
 inclination=dblarr(2)
 nozer=WHERE(tmpinc GT 1.)
 If nozer[0] EQ -1 then begin
