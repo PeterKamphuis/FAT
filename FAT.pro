@@ -331,7 +331,7 @@ noconfig:
                                 ;correct column names
      tmpnumber=WHERE(STRLOWCASE(tmp) EQ 'number')
      tmpdistance=WHERE(STRLOWCASE(tmp) EQ 'distance')
-     tmpdir=WHERE(STRLOWCASE(tmp) EQ 'dirname')
+     tmpdir=WHERE(STRLOWCASE(tmp) EQ 'directoryname')
      tmpcube=WHERE(STRLOWCASE(tmp) EQ 'cubename')
      IF n_elements(tmp) GT 4 then begin
         test=WHERE(STRLOWCASE(tmp) EQ 'basename')
