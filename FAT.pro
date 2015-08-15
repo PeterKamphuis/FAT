@@ -782,12 +782,16 @@ noconfig:
         rmslastchannel=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
         IF rmsfirstchannel EQ 0. then rmsfirstchannel=2.*rmslastchannel
         IF rmslastchannel EQ 0. then rmslastchannel=2.*rmsfirstchannel
-        tmpnoblank=dummy[0:2,0:2,*]
-        rmsbottom=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
-        tmpnoblank=dummy[n_elements(dummy[*,0,0])-3:n_elements(dummy[*,0,0])-1,n_elements(dummy[0,*,0])-3:n_elements(dummy[0,*,0])-1,*]
-        rmstop=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
+        tmpnoblank=dummy[0:5,0:5,*]
+        rmsbottoml=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
+        tmpnoblank=dummy[n_elements(dummy[*,0,0])-6:n_elements(dummy[*,0,0])-1,0:5,*]
+        rmsbottomr=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
+        tmpnoblank=dummy[n_elements(dummy[*,0,0])-6:n_elements(dummy[*,0,0])-1,n_elements(dummy[0,*,0])-6:n_elements(dummy[0,*,0])-1,*]
+        rmstopr=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
+        tmpnoblank=dummy[0:5,n_elements(dummy[0,*,0])-6:n_elements(dummy[0,*,0])-1,*]
+        rmstopl=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
         rmschan=(rmsfirstchannel+rmslastchannel)/2.
-        rmscorn=(rmsbottom+rmstop)/2.
+        rmscorn=(rmsbottoml+rmsbottomr+rmstopl+rmstopr)/4.
         diff=ABS((rmsfirstchannel-rmslastchannel)/rmsfirstchannel)
         diff2=ABS((rmschan-rmscorn)/rmschan)
         IF diff LT 0.2 AND FINITE(diff) AND diff2 LT 0.2 then difference=0. else begin
@@ -796,6 +800,7 @@ noconfig:
               printf,66,linenumber()+' We are cutting the cube as clearly the noise statistics are off'
               printf,66,linenumber()+' Noise in the first channel is '+string(rmsfirstchannel)
               printf,66,linenumber()+' Noise in the last channel is '+string(rmslastchannel)
+              printf,66,linenumber()+' Noise in the corners is '+string(rmscorn)
               close,66
            ENDIF ELSE BEGIN
               print,linenumber()+' We are cutting the cube as clearly the noise statistics are off '
@@ -804,7 +809,9 @@ noconfig:
            ENDELSE
            changedcube=1.
            tmp=fltarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*])-1)
-           IF rmsfirstchannel GT rmslastchannel OR NOT FINITE(rmsfirstchannel) then begin
+           firstcomp=ABS((rmsfirstchannel-rmscorn)/rmscorn)
+           secondcomp=ABS((rmslastchannel-rmscorn)/rmscorn)
+           IF firstcomp GT secondcomp OR NOT FINITE(rmsfirstchannel) then begin
               tmp[*,*,0:n_elements(tmp[0,0,*])-1]=dummy[*,*,1:n_elements(dummy[0,0,*])-1]
               sxaddpar,hed,'CRPIX3',sxpar(hed,'CRPIX3')-1.
            ENDIF ELSE BEGIN
@@ -813,15 +820,7 @@ noconfig:
            sxaddpar,hed,'NAXIS3',sxpar(hed,'NAXIS3')-1.
            dummy=fltarr(n_elements(tmp[*,0,0]),n_elements(tmp[0,*,0]),n_elements(tmp[0,0,*]))
            dummy=tmp
-        ENDELSE
-     ENDWHILE
-  
-     tmpfirst=dummy[*,*,0]
-     tmplast=dummy[*,*,n_elements(dummy[0,0,*])-1]
-     catnoise[i]=(SIGMA(tmpfirst[WHERE(FINITE(tmpfirst))])+SIGMA(tmpfirst[WHERE(FINITE(tmpfirst))]))/2.
-  
-     IF changedcube EQ 1. then begin
-        IF n_elements(dummy[0,0,*]) LT 5 then begin
+           IF n_elements(dummy[0,0,*]) LT 5 then begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
               printf,66,linenumber()+catdirname[i]+'/'+catcubename[i]+' has noise statistics that cannot be dealt with'
@@ -835,6 +834,10 @@ noconfig:
            bookkeeping=5
            goto,finishthisgalaxy
         ENDIF
+        ENDELSE
+     ENDWHILE
+     catnoise[i]=rmscorn
+     IF changedcube EQ 1. then begin        
         currentfitcube=catcubename[i]+'_cut'
         catcubename[i]=catcubename[i]+'_cut'      
         writefits,maindir+'/'+catdirname[i]+'/'+catcubename[i]+cubeext,dummy,hed
@@ -1045,7 +1048,7 @@ noconfig:
                                 ;Read the centre values and make sure
                                 ;they fall inside the cube
      RApix=double(vals[5])
-     RApixboun=[double(vals[8]),double(vals[9])]
+     RApixboun=[double(vals[8]),double(vals[9])]   
      IF RApix GT sxpar(hed,'NAXIS1')-10 then BEGIN
         RApix=double(sxpar(hed,'NAXIS1')/2.)
         RApixboun=[double(sxpar(hed,'NAXIS1')/4.),double(sxpar(hed,'NAXIS1')/4.)*3.]
@@ -1061,6 +1064,13 @@ noconfig:
      IF VSYSpix GT sxpar(hed,'NAXIS3')-5 then BEGIN
         VSYSpix=fix( sxpar(hed,'NAXIS3')/2.)
         ROTpixboun=[double(sxpar(hed,'NAXIS3')/4.),double(sxpar(hed,'NAXIS3')/4.)*3.]
+     ENDIF
+     IF RApix LT RApixboun[0] OR RApix GT RApixboun[1] $
+        OR DECpix LT DECpixboun[0] OR DECpix GT DECpixboun[1] $
+        OR VSYSpix LT ROTpixboun[0] OR VSYSpix GT ROTpixboun[1] then begin
+        RApix=double(vals[2])
+        DECpix=double(vals[3])
+        VSYSpix=double(vals[4])
      ENDIF
      Totflux=[double(vals[17])] ;Jy/beam   
                                 ;let's check whether we have flux in this central pixel
