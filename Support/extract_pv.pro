@@ -79,7 +79,7 @@ Pro extract_pv,Cube,header,pa,xv,CENTER=center,XVHEADER=new_header
      ENDIF
      IF istart Ne 0 then centrpix=xpix-istart
      iend=fix(xpix+xsize-1)
-     IF iend GT n_elements(xv[*,0])-1 then iend=n_elements(xv[*,0])-1
+     IF iend-istart GT n_elements(xv[*,0])-1 then iend=n_elements(xv[*,0])-1
      xv[0:iend-istart,*]=SUM(Newcube[istart:iend,fix(ypix-(width)/(2.*(sxpar(inheader,'CDELT2')))):fix(ypix+(width)/(2.*(sxpar(inheader,'CDELT2')))),*],1)/n_elements(Newcube[0,fix(ypix-(width)/(2.*(sxpar(inheader,'CDELT2')))):fix(ypix+(width)/(2.*(sxpar(inheader,'CDELT2')))),0])
   ENDELSE
   IF sxpar(inheader,'CDELT1') LT 0 then BEGIN

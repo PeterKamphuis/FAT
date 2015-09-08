@@ -597,7 +597,7 @@ Pro parameterreguv87,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixedringsin,RE
               
               IF count LT n_elements(PA)-1-fixedrings then begin
                  PA[count:n_elements(PA)-1]=TOTAL(PA[count:n_elements(PA)-1])/(n_elements(PA)-count)
-                 fixedrings=n_elements(PA)-count
+                 IF count EQ 0 then fixedrings=n_elements(PA)-1 else fixedrings=n_elements(PA)-count
               ENDIF
               
            ENDIF
@@ -651,20 +651,20 @@ refit:
            maxerr=MAX(errors[1:n_elements(errors)-1],MIN=minerr)
            errors=errors/minerr
            
-           IF (n_elements(PA)-fixedrings GT 10 AND fixedrings GT 5) OR n_elements(PA)-fixedrings GT 15 then begin
-              for j=1,n_elements(errors)-1 do begin
-                 IF keyword_set(extending) then begin
-                    errors[j]=errors[j-1]*fact
-                 ENDIF ELSE BEGIN
-                    errors[j]=(errors[j-1]+errors[j])/2.*fact
-                 ENDELSE
-              endfor
-           ENDIF else begin
+         ;  IF (n_elements(PA)-fixedrings GT 10 AND fixedrings GT 5) OR n_elements(PA)-fixedrings GT 15 then begin
+         ;     for j=1,n_elements(errors)-1 do begin
+         ;        IF keyword_set(extending) then begin
+         ;           errors[j]=errors[j-1]*fact
+         ;        ENDIF ELSE BEGIN
+         ;           errors[j]=(errors[j-1]+errors[j])/2.*fact
+         ;        ENDELSE
+         ;     endfor
+         ;  ENDIF else begin
               for j=1,n_elements(errors)-1 do begin
                  WHILE errors[j-1] GT errors[j] do errors[j]=errors[j]*fact
                  
               endfor
-           ENDELSE
+         ;  ENDELSE
            IF keyword_set(rev) then begin
               IF keyword_set(nocentral) then begin
                  errors[0:1]=errors[1]*10.

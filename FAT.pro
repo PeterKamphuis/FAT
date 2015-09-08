@@ -569,6 +569,7 @@ noconfig:
            print,linenumber()+catDirname[i]+" This galaxy has no fits to work with, it is skipped"
         ENDELSE
         bookkeeping=5
+        optimized=0
         goto,finishthisgalaxy
      endif
                                 ;set some triggers at 0
@@ -741,7 +742,7 @@ noconfig:
               printf,66,linenumber()+' We are cutting the cube as the first channel is completely blank'
               close,66
            ENDIF
-           sxaddpar,hed,'NAXIS3',fix(sxpar(hed,'NAXIS3')-1.)
+           sxaddpar,hed,'NAXIS3',sxpar(hed,'NAXIS3')-1.
            changedcube=1
            dummy=tmp
            tmpnoblank=dummy[*,*,0]
@@ -773,7 +774,7 @@ noconfig:
               printf,66,linenumber()+' We are cutting the cube as the last channel is completely blank'
               close,66
            ENDIF
-           sxaddpar,hed,'NAXIS3',fix(sxpar(hed,'NAXIS3')-1.)
+           sxaddpar,hed,'NAXIS3',sxpar(hed,'NAXIS3')-1.
            changedcube=1
            dummy=tmp
            tmpnoblank=dummy[*,*,n_elements(dummy[0,0,*])-1]
@@ -817,7 +818,7 @@ noconfig:
            ENDIF ELSE BEGIN
               tmp[*,*,0:n_elements(tmp[0,0,*])-1]=dummy[*,*,0:n_elements(dummy[0,0,*])-2]
            endelse
-           sxaddpar,hed,'NAXIS3',fix(sxpar(hed,'NAXIS3')-1.)
+           sxaddpar,hed,'NAXIS3',sxpar(hed,'NAXIS3')-1.
            dummy=fltarr(n_elements(tmp[*,0,0]),n_elements(tmp[0,*,0]),n_elements(tmp[0,0,*]))
            dummy=tmp
            IF n_elements(dummy[0,0,*]) LT 5 then begin
@@ -3660,7 +3661,7 @@ noconfig:
      levels=(sbrarr+sbrarr2)/2.*1000.
      Columndensity,levels,vsys,[catmajbeam[i],catminbeam[i]],/ARCSQUARE
      tmp=WHERE(levels GT 2E20)
-     IF tmp[0] NE -1 then innerfix=floor(tmp[n_elements(tmp)-1]/1.5)-1.
+     IF tmp[0] NE -1 then innerfix=floor(tmp[n_elements(tmp)-1]/1.5)-1. else innerfix=4
      IF innerfix LT 4 OR innerfix GE norings[0] OR finishafter EQ 1.1 then innerfix=4
 
 
