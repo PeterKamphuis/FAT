@@ -48,6 +48,11 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
 ;      threshold is changed from 4.0 to 5.5 to get similar masks dues
 ;      to SoFiA moving back to their initial way of defining the
 ;      threshold. SNR values no longer present in SoFiA.
+;      29-12-2015 P.Kamphuis; There is an issue with the usage of
+;      NAXIS3 as the commit history show going back and forth between
+;      making this an integer or Double precision. I do not remember
+;      the reason for going to double precision but it has been
+;      reversed now because SoFiA requires and integer (As it should be)  
 ;      12-08-2015 P. Kamphuis; Improved Bookkeeping for failed fits,
 ;      improved noise determination  and fixed an issue with spaces in
 ;      the config file

@@ -74,7 +74,7 @@ wavelet.iterations              =       3
 
 SCfind.threshold                =       5.5
 SCfind.sizeFilter               =       0.0
-SCfind.maskScaleXY              =       2.0
+SCfind.maskScaleXY              =      2.0
 SCfind.maskScaleZ               =       2.0
 SCfind.edgeMode                 =       constant
 SCfind.rmsMode                  =       negative
