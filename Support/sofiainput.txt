@@ -12,9 +12,8 @@ steps.doThreshold               =       false
 steps.doWavelet                 =       false
 steps.doCNHI                    =       false
 steps.doMerge                   =       true
-steps.doReliability             =       false
-steps.doParameterise            =       false
-steps.doWriteFilteredCube       =       false
+steps.doReliability             =       true
+steps.doParameterise            =       true
 steps.doWriteMask               =       true
 steps.doWriteCat                =       true
 steps.doMom0                    =       false
@@ -25,18 +24,16 @@ steps.doOptical                 =       false
 
 # Import module
 
-import.inFile                   =       Cube.fits
+import.inFile                   =       
 import.weightsFile              =       
 import.maskFile                 =       
 import.weightsFunction          =       
 import.subcube                  =       []
 import.subcubeMode              =       pixel
 
-
 # Flagging module
 
 flag.regions                    =       []
-
 
 # Optical finder module
 
@@ -44,7 +41,6 @@ optical.sourceCatalogue         =
 optical.spatSize                =       0.01
 optical.specSize                =       1e+5
 optical.storeMultiCat           =       false
-
 
 # Smoothing module
 
@@ -65,7 +61,6 @@ scaleNoise.edgeX                =       0
 scaleNoise.edgeY                =       0
 scaleNoise.edgeZ                =       0
 
-
 # 2D-1D wavelet finder module
 
 wavelet.threshold               =       5.0
@@ -77,13 +72,13 @@ wavelet.iterations              =       3
 
 # S+C finder module
 
-SCfind.threshold                =       6.0
+SCfind.threshold                =       5.5
 SCfind.sizeFilter               =       0.0
-SCfind.maskScaleXY              =       1.333
-SCfind.maskScaleZ               =       1.333
+SCfind.maskScaleXY              =       2.0
+SCfind.maskScaleZ               =       2.0
 SCfind.edgeMode                 =       constant
 SCfind.rmsMode                  =       negative
-SCfind.kernels                  =    [[ 0, 0, 0,'b'],[ 0, 0, 2,'b'],[ 0, 0, 4,'b'],[ 0, 0, 8,'b'],[ 0, 0,16,'b'],[ 3, 3, 0,'b'],[ 3, 3, 2,'b'],[ 3, 3, 4,'b'],[ 3, 3, 8,'b'],[ 3, 3,16,'b'],[ 6, 6, 0,'b'],[ 6, 6, 2,'b'],[ 6, 6, 4,'b'],[ 6, 6, 8,'b'],[ 6, 6,16,'b'],[ 9, 9, 0,'b'],[ 9, 9, 2,'b'],[ 9, 9, 4,'b'],[ 9, 9, 8,'b'],[ 9, 9,16,'b']]
+SCfind.kernels                  =       [[ 0, 0, 0,'b'],[ 0, 0, 2,'b'],[ 0, 0, 4,'b'],[ 0, 0, 8,'b'],[ 0, 0,16,'b'],[ 3, 3, 0,'b'],[ 3, 3, 2,'b'],[ 3, 3, 4,'b'],[ 3, 3, 8,'b'],[ 3, 3,16,'b'],[ 6, 6, 0,'b'],[ 6, 6, 2,'b'],[ 6, 6, 4,'b'],[ 6, 6, 8,'b'],[ 6, 6,16,'b'],[ 9, 9, 0,'b'],[ 9, 9, 2,'b'],[ 9, 9, 4,'b'],[ 9, 9, 8,'b'],[ 9, 9,16,'b']]
 SCfind.kernelUnit               =       pixel
 SCfind.verbose                  =       false
 
@@ -113,7 +108,6 @@ merge.minSizeX                  =       3
 merge.minSizeY                  =       3
 merge.minSizeZ                  =       2
 
-
 # Parametrisation module
 
 parameters.fitBusyFunction      =       false
@@ -123,22 +117,29 @@ parameters.dilateThreshold      =       0.02
 parameters.dilatePixMax         =       10
 parameters.dilateChan           =       1
 
-
 # Reliability module
 
 reliability.parSpace            =       ['SNRsum','SNRmax','NRvox']
+reliability.autoKernel          =       true
+reliability.negPerBin           =       5.0
+reliability.skellamTol          =       -0.2
 reliability.kernel              =       [0.15,0.05,0.1]
 reliability.fMin                =       0.0
-reliability.threshold           =       1.0
+reliability.threshold           =       0.9
 reliability.makePlot            =       false
+
+
 
 
 # Output module
 
+writeCat.overwrite              =       true
 writeCat.compress               =       false
 writeCat.outputDir              =       
 writeCat.basename               =       
 writeCat.writeASCII             =       true
 writeCat.writeXML               =       false
 writeCat.writeSQL               =       false
-writeCat.parameters             =       ['*']
+writeCat.parameters             =      ['id','x_geo','y_geo','z_geo','x','y','z','x_min','x_max','y_min','y_max','z_min','z_max','f_int']
+
+

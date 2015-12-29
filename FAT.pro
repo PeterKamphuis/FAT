@@ -41,6 +41,13 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
 ;  RESOLVE_ROUTINE, STRLOWCASE, and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      29-12-2015 P.Kamphuis; Updated interaction to the latest
+;      version of SoFiA. Also introduced column recognition in order
+;      to facilitate future changes more easily. Additionally this
+;      allows the user to add extra output to the SofiA file. S+C
+;      threshold is changed from 4.0 to 5.5 to get similar masks dues
+;      to SoFiA moving back to their initial way of defining the
+;      threshold. SNR values no longer present in SoFiA.
 ;      12-08-2015 P. Kamphuis; Improved Bookkeeping for failed fits,
 ;      improved noise determination  and fixed an issue with spaces in
 ;      the config file
@@ -70,8 +77,10 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
                                 ; and callable from the command line
                                 ; as tirific.
 
-                                ; SoFIA (any version should work)
-                                ; should be properly installed and the
+                                ; SoFIA (The pipeline is updated to be
+                                ; compatible with the latest version,
+                                ; if there is any problem please let
+                                ; me know.) should be properly installed and the
                                 ; python file sofia_pipeline.py should
                                 ; be copied or linked into the Support
                                 ; directory
@@ -94,7 +103,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
                           
   COMPILE_OPT IDL2 
 
-  version='v3.0.2'
+  version='v3.1'
   if n_elements(supportdir) EQ 0 then supportdir='Support'
   CD,supportdir,CURRENT=old_dir
   spawn,'pwd',supportdir
@@ -742,7 +751,7 @@ noconfig:
               printf,66,linenumber()+' We are cutting the cube as the first channel is completely blank'
               close,66
            ENDIF
-           sxaddpar,hed,'NAXIS3',sxpar(hed,'NAXIS3')-1.
+           sxaddpar,hed,'NAXIS3',fix(sxpar(hed,'NAXIS3')-1)
            changedcube=1
            dummy=tmp
            tmpnoblank=dummy[*,*,0]
@@ -774,7 +783,7 @@ noconfig:
               printf,66,linenumber()+' We are cutting the cube as the last channel is completely blank'
               close,66
            ENDIF
-           sxaddpar,hed,'NAXIS3',sxpar(hed,'NAXIS3')-1.
+           sxaddpar,hed,'NAXIS3',fix(sxpar(hed,'NAXIS3')-1)
            changedcube=1
            dummy=tmp
            tmpnoblank=dummy[*,*,n_elements(dummy[0,0,*])-1]
@@ -818,7 +827,7 @@ noconfig:
            ENDIF ELSE BEGIN
               tmp[*,*,0:n_elements(tmp[0,0,*])-1]=dummy[*,*,0:n_elements(dummy[0,0,*])-2]
            endelse
-           sxaddpar,hed,'NAXIS3',sxpar(hed,'NAXIS3')-1.
+           sxaddpar,hed,'NAXIS3',fix(sxpar(hed,'NAXIS3')-1)
            dummy=fltarr(n_elements(tmp[*,0,0]),n_elements(tmp[0,*,0]),n_elements(tmp[0,0,*]))
            dummy=tmp
            IF n_elements(dummy[0,0,*]) LT 5 then begin
@@ -953,6 +962,27 @@ noconfig:
      ID=0.
      trig=0.
      catvals=0.
+                                ;Define the parameters that need to be present and that we want.
+     sofia_parameters=['id','x','x_min','x_max','y','y_min','y_max','z','z_min','z_max','x_geo','y_geo','z_geo','f_int']
+                                ;Check whether they are present and
+                                ;which index number they have
+     readf,1,line
+     readf,1,line
+     sofia_column_ids=strtrim(strcompress(str_sep(strtrim(strcompress(line),2),' ')),2)
+     sofia_locations=intarr(n_elements(sofia_parameters))
+     for j=0,n_elements(sofia_parameters)-1 do begin
+        sofia_locations[j]=WHERE(sofia_parameters[j] EQ sofia_column_ids)-1
+        IF sofia_locations[j] EQ -2 then begin
+           print,'We cannot find the required column for '+sofia_parameters[i]+' in the sofia catalogue'
+           print,'This can happen because a) you have tampered with the sofiainput.txt file in the directory '+supportdirchecked
+           print,'or b) you are using an updated version of SoFiA where the names have changed and FAT is not yet updated.'
+           print,'In this case please file a bug report at https://github.com/PeterKamphuis/FAT/issues/'
+           stop
+        ENDIF
+     endfor
+     ;reset file pointer to the beginning of the file
+     point_lun,1,0
+     
                                 ;find the number 1 source
      WHILE ID NE 1 and counter LT paralines do begin
                                 ;create a skip array
@@ -965,7 +995,7 @@ noconfig:
         vals=strtrim(strcompress(str_sep(strtrim(strcompress(line),2),' ')),2)
                                 ;set ID
         IF vals[0] EQ '#' then goto,nogame
-        ID=fix(vals[0])
+        ID=fix(vals[sofia_locations[0]])
         IF ID eq 1 then begin
            IF trig EQ 0. then catvals=double(vals) ELSE begin
               tmp=catvals
@@ -993,11 +1023,11 @@ noconfig:
         counter++
      ENDWHILE
      close,1
-     IF n_elements(catvals[0,*]) GT 1 then begin
+     IF n_elements(catvals[sofia_locations[0],*]) GT 1 then begin
         voxratio=dblarr(n_elements(catvals[0,*]))
-        maxvoxel=MAX(catvals[17,*])
+        maxvoxel=MAX(catvals[sofia_locations[13],*])
         for j=0,n_elements(catvals[0,*])-1 do begin
-           voxratio[j]=maxvoxel/catvals[17,j]
+           voxratio[j]=maxvoxel/catvals[sofia_locations[13],j]
         endfor
         rmp=WHERE(voxratio LT 3)
         IF rmp[0] EQ -1 then begin
@@ -1005,14 +1035,14 @@ noconfig:
         ENDIF ELSE BEGIN        
            diff=dblarr(n_elements(rmp))
            for j=0,n_elements(rmp)-1 do begin
-              diff[j]=SQRT((sxpar(hed,'CRPIX1')-catvals[5,rmp[j]])^2+(sxpar(hed,'CRPIX2')-catvals[6,rmp[j]])^2)
+              diff[j]=SQRT((sxpar(hed,'CRPIX1')-catvals[sofia_locations[1],rmp[j]])^2+(sxpar(hed,'CRPIX2')-catvals[sofia_locations[4],rmp[j]])^2)
            endfor
            maxdiff=MAX(diff,MIN=whatwelookfor)
            vals=catvals[*,rmp[WHERE(diff EQ whatwelookfor)]]
         ENDELSE
      ENDIF ELSE vals=catvals
                                 ;If sofia didn't work and there is no preprocessed stuff then abort
-     IF double(vals[0]) EQ 0. AND allnew NE 2 then begin
+     IF double(vals[sofia_locations[0]]) EQ 0. AND allnew NE 2 then begin
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+"Sofia failed, the original cube is too small"
@@ -1027,19 +1057,19 @@ noconfig:
      ENDIF
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+"We picked the "+string(vals[0])+" object of the parameter list"
+        printf,66,linenumber()+"We picked the "+string(vals[sofia_locations[0]])+" object of the parameter list"
         close,66
      ENDIF
                                 ;If not using preprocessed stuff then we make logical names 
      IF allnew NE 2 then begin
-        print,vals[0],catmaskname[i]
         nummask=readfits(catmaskname[i]+'.fits',hedmasknotproper)
-        tmp=where(nummask NE double(vals[0])) 
+        tmp=where(nummask NE double(vals[sofia_locations[0]])) 
         IF tmp[0] NE -1 then begin
            nummask[tmp]=0.
         ENDIF
         IF vals[0] NE 1. then begin
-           tmp=where(nummask EQ double(vals[0]))
+           print,vals[sofia_locations[0]]
+           tmp=where(nummask EQ double(vals[sofia_locations[0]]))
            nummask[tmp]=1.
         ENDIF
         writefits,pythoncube+'_6.0_binmask.fits',nummask,hed
@@ -1048,20 +1078,20 @@ noconfig:
      ENDIF
                                 ;Read the centre values and make sure
                                 ;they fall inside the cube
-     RApix=double(vals[5])
-     RApixboun=[double(vals[8]),double(vals[9])]   
+     RApix=double(vals[sofia_locations[1]])
+     RApixboun=[double(vals[sofia_locations[2]]),double(vals[sofia_locations[3]])]   
      IF RApix GT sxpar(hed,'NAXIS1')-10 then BEGIN
         RApix=double(sxpar(hed,'NAXIS1')/2.)
         RApixboun=[double(sxpar(hed,'NAXIS1')/4.),double(sxpar(hed,'NAXIS1')/4.)*3.]
      ENDIF
-     DECpix=double(vals[6])
-     DECpixboun=[double(vals[10]),double(vals[11])]
+     DECpix=double(vals[sofia_locations[4]])
+     DECpixboun=[double(vals[sofia_locations[5]]),double(vals[sofia_locations[6]])]
      IF DECpix GT sxpar(hed,'NAXIS2')-10 then begin
         DECpix=fix( sxpar(hed,'NAXIS2')/2.)
         DECpixboun=[double(sxpar(hed,'NAXIS2')/4.),double(sxpar(hed,'NAXIS2')/4.)*3.]
      ENDIF
-     VSYSpix=double(vals[7])
-     ROTpixboun=[double(vals[12]),double(vals[13])]
+     VSYSpix=double(vals[sofia_locations[7]])
+     ROTpixboun=[double(vals[sofia_locations[8]]),double(vals[sofia_locations[9]])]
      IF VSYSpix GT sxpar(hed,'NAXIS3')-5 then BEGIN
         VSYSpix=fix( sxpar(hed,'NAXIS3')/2.)
         ROTpixboun=[double(sxpar(hed,'NAXIS3')/4.),double(sxpar(hed,'NAXIS3')/4.)*3.]
@@ -1069,11 +1099,11 @@ noconfig:
      IF RApix LT RApixboun[0] OR RApix GT RApixboun[1] $
         OR DECpix LT DECpixboun[0] OR DECpix GT DECpixboun[1] $
         OR VSYSpix LT ROTpixboun[0] OR VSYSpix GT ROTpixboun[1] then begin
-        RApix=double(vals[2])
-        DECpix=double(vals[3])
-        VSYSpix=double(vals[4])
+        RApix=double(vals[sofia_locations[10]])
+        DECpix=double(vals[sofia_locations[11]])
+        VSYSpix=double(vals[sofia_locations[12]])
      ENDIF
-     Totflux=[double(vals[17])] ;Jy/beam   
+     Totflux=[double(vals[sofia_locations[13]])] ;Jy/beam   
                                 ;let's check whether we have flux in this central pixel
    
 
@@ -1381,7 +1411,7 @@ noconfig:
            endfor
         endif
         extmom1set:     
-     ENDIF     
+     ENDIF
                                 ;We check whether the galaxy is bright
                                 ;enough
      tmp=WHERE(mask EQ 1.)
@@ -1389,14 +1419,14 @@ noconfig:
      maxSN=maxbright/catnoise[i]
      IF maxSN LT 5. then begin
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A90)', catDirname[i],'The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit'
+        printf,1,format='(A60,A90)', catDirname[i],' The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit'
         close,1    
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+catDirname[i]+'The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit'
+           printf,66,linenumber()+catDirname[i]+' The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit'
            close,66
         ENDIF ELSE BEGIN
-           print,linenumber()+catDirname[i]+'The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit'
+           print,linenumber()+catDirname[i]+' The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit'
         ENDELSE
         bookkeeping=5 
         goto,finishthisgalaxy
@@ -1838,7 +1868,8 @@ noconfig:
      DEChr=DECdeg
      DECdiff=TOTAL(ABS(DECDeg-DECboundeg))/2.*3600.
      VSYSdiff=TOTAL(ABS(catVSYS[i]-ROTboun))
-     HIMASS=2.36E5*catDistance[i]^2*totflux*ABS(channelwidth)/pixperbeam
+     totflux[0]=totflux[0]/pixperbeam
+     HIMASS=2.36E5*catDistance[i]^2*totflux*ABS(channelwidth)
      convertradec,RAhr,DEChr
      getDHI,moment0map,hedmap,catPA[i],[RADeg,DECdeg,catVSYS[i]],DHI
      catmaxrotdev[i]=(VSYSdiff/2.)/SIN((newinclination[0])*!pi/180.)
@@ -1849,7 +1880,6 @@ noconfig:
         printf,66,linenumber()+"We are using maxrot of "+string(catmaxrot[i])+" +/- "+string(catmaxrotdev[i])   
         close,66
      ENDIF 
-     totflux[0]=totflux[0]/pixperbeam
      basicinfofile=maindir+'/'+catdirname[i]+'/'+basicinfo+'_'+catcubename[i]+'.txt'
      openw,1,basicinfofile
      printf,1,"#This file contains the basic parameters of the Galaxy"
@@ -1871,6 +1901,7 @@ noconfig:
             string(strtrim(strcompress(string(HIMass[0],format='(E10.3)')),2)),$
             string(strtrim(strcompress(string(convertskyanglefunction(DHI,catDistance[i]),format='(F8.1)')),2))
      close,1
+     
                                 ;and we make a pv-diagram based on these parameters
      IF optimized then begin
         noptname=str_sep(strtrim(strcompress(currentfitcube),2),'_opt')
@@ -2803,12 +2834,12 @@ noconfig:
      counter++
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+"Starting tirific First estimate in  "+catDirname[i]+" loop"+string(i)+systime()
+        printf,66,linenumber()+"Starting tirific first estimate in  "+catDirname[i]+" galaxy "+string(i)+systime()
         printf,66,linenumber()+"We have rerun "+string(counter)+" times"
         printf,66,linenumber()+"We have modified the rings "+string(countsbr)+" times"
         close,66
      ENDIF 
-     print,linenumber()+"Starting tirific First estimate in  "+catDirname[i]+" loop"+string(i)+systime()
+     print,linenumber()+"Starting tirific first estimate in  "+catDirname[i]+" galaxy "+string(i)+systime()
      spawn,'rm -f 1stfitold.*',isthere
      ;Add this line in to follow the evolution of the first fit.
 ;     spawn,'mv 1stfit.def 1stfit_'+strtrim(strcompress(string(fix(counter))),2)+'.def'
@@ -3543,7 +3574,7 @@ noconfig:
      getDHI,tmpmap,hedtmp1st,Basicinfovalues[0,3],[RAhr,DEChr,Basicinfovalues[0,4]],DHI
      totflux=[TOTAL(tmpcube[tmpix])/pixperbeam,(TOTAL(2.*cutoff[0:norings[0]-1]))/(n_elements(tmpix)/pixperbeam)]
      VSYSdiff=maxchangevel
-     HIMASS=2.36E5*catDistance[i]^2*totflux*ABS(channelwidth)/pixperbeam
+     HIMASS=2.36E5*catDistance[i]^2*totflux*ABS(channelwidth)
      convertradec,RAhr,DEChr
  
                                 ;write our general overview parameters
@@ -5182,7 +5213,7 @@ noconfig:
      writefits,maindir+'/'+catdirname[i]+'/2ndfit_mom1.fits',tmpmapv,hedtmp1stv
      getDHI,tmpmap,hedtmp1st,Basicinfovalues[0,3],[RAhr,DEChr,Basicinfovalues[0,4]],DHI
      VSYSdiff=maxchangevel
-     HIMASS=2.36E5*catDistance[i]^2*totflux*ABS(channelwidth)/pixperbeam
+     HIMASS=2.36E5*catDistance[i]^2*totflux*ABS(channelwidth)
      convertradec,RAhr,DEChr
      openu,1,basicinfofile,/APPEND
      printf,1,"#After the second fit"
@@ -5199,6 +5230,7 @@ noconfig:
             string(strtrim(strcompress(string(HIMass[0],format='(E10.3)')),2)),$
             string(strtrim(strcompress(string(convertskyanglefunction(DHI,catDistance[i]),format='(F8.1)')),2))
      close,1
+     
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         printf,66,linenumber()+"We finished the second fit of "+catDirname[i]+"  at "+systime()
