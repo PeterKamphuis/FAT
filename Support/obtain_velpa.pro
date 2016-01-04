@@ -30,12 +30,14 @@ Pro obtain_velpa,map,velpa,CENTER=center
 ;       -
 ; 
 ; PROCEDURES CALLED:
-;       GAUSS_SMOOTH(), WRITEFITS
+;       FAT_GAUSS_SMOOTH(), WRITEFITS
 ;
 ; EXAMPLE:
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       29-12-2016 P.Kamphuis: Replaced GAUSS_SMOOTH and SMOOTH with FAT_SMOOTH
+;       for increased compatibility with IDL 7.0 and GDL 
 ;       Written 01-01-2015 P.Kamphuis v1.0
 ;
 ; NOTE:
@@ -51,10 +53,10 @@ Pro obtain_velpa,map,velpa,CENTER=center
   smoothfield=map
   pixsmooth=3
 smoothagain:
-  smoothfield=GAUSS_SMOOTH(smoothfield,pixsmooth,/EDGE_TRUNCATE)
+  smoothfield=FAT_SMOOTH(smoothfield,pixsmooth,/GAUSSIAN)
   tmp=WHERE(FINITE(smoothfield))
-
-  IF tmp[0] NE -1 then begin
+ 
+  IF tmp[0] NE -1 AND n_elements(tmp) GT 10. then begin
      maxvel=MAX(smoothfield[tmp],min=minvel)
      POS1=WHERE(maxvel EQ smoothfield)
      POS2=WHERE(minvel EQ smoothfield)
@@ -107,10 +109,7 @@ smoothagain:
      ENDIF ELSE begin
         smoothfield=map
         
-        smoothfield=SMOOTH(smoothfield,3,/NAN)
-
-
-        writefits,'test.fits',smoothfield
+        smoothfield=FAT_SMOOTH(smoothfield,3,/BOX)
 
         tmp=WHERE(FINITE(smoothfield))
         
@@ -158,18 +157,20 @@ smoothagain:
               velnocen GT 0 AND x2-x1 LT 0: velnocen=ABS(velnocen)+180.*!DtoR
               else:velnocen=!values.f_nan
            endcase
-           
            arr=[velpamax,velpamin,velnocen]
            tmp=WHERE(FINITE(arr))
            IF tmp [0] NE -1 then velpam=MEAN(arr[tmp])*!RADEG else begin
+              print,'we do this?'
               velpa=[!values.f_nan,!values.f_nan]
               goto,endthis
            ENDELSE
            paerr=SIGMA(arr[tmp]*!RADEG)*3.
            IF paerr GT 10. then begin
+              print,'or maybe this?'
               velpa=[!values.f_nan,!values.f_nan]
               goto,endthis
            ENDIF ELSE BEGIN
+              print,'surely not this?'
               velpa=[velpam,paerr]
               goto,endthis
            ENDELSE

@@ -64,10 +64,12 @@ Pro check_cflux,nopoints,tirificfirst,tirificfirstvars,cfluxadjusted,log=log
                  tirificfirst[tmppos]=currentcflux[0]+'= '+string(double(currentcflux[1])*nopoints[j]/1e6) else $
                     tirificfirst[tmppos]=currentcflux[0]+'= 1e-5'
            ENDELSE
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+"CFLUX is scaled down to"+STRJOIN(string(double(currentcflux[1])*nopoints/1e6),' and ')
-              close,66
+           if j eq n_elements(nopoints)-1 then begin
+              IF size(log,/TYPE) EQ 7 then begin
+                 openu,66,log,/APPEND
+                 printf,66,linenumber()+"CFLUX is scaled down to"+STRJOIN([string(double(currentcflux[1])*nopoints[0]/1e6),string(double(currentcflux[1])*nopoints[1]/1e6)],' and ')
+                 close,66
+              endif
            endif
            cfluxadjusted=1.
         end
@@ -85,17 +87,21 @@ Pro check_cflux,nopoints,tirificfirst,tirificfirstvars,cfluxadjusted,log=log
                  tirificfirst[tmppos]=currentcflux[0]+'= '+string(double(currentcflux[1])*nopoints[j]/1E6) else $
                     tirificfirst[tmppos]=currentcflux[0]+'= 0.005'
            ENDELSE
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+"CFLUX is scaled up to"+STRJOIN(string(double(currentcflux[1])*nopoints/1e6),' and ')
-              close,66
+           if j eq n_elements(nopoints)-1 then begin
+              IF size(log,/TYPE) EQ 7 then begin
+                 openu,66,log,/APPEND
+                 printf,66,linenumber()+"CFLUX is scaled up to"+STRJOIN([string(double(currentcflux[1])*nopoints[0]/1e6),string(double(currentcflux[1])*nopoints[1]/1e6)],' and ')
+                 close,66
+              endif
            endif
         end  
         else:begin
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+"CFLUX is ok."
-              close,66
+           if j eq n_elements(nopoints)-1 then begin
+              IF size(log,/TYPE) EQ 7 then begin
+                 openu,66,log,/APPEND
+                 printf,66,linenumber()+"CFLUX is ok."
+                 close,66
+              endif
            endif
         end
      ENDCASE

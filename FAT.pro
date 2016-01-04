@@ -32,7 +32,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
 ;
 ; PROCEDURES CALLED
 ;  BOOK_KEEPING, BUILDAXII, CALC_EDGE, CHANGERADII, CHECK_CFLUX, CLEANUP, COLUMNDENSITY,
-;  CONVERTRADEC, CONVERTSKYANGLEFUNCTION(), EXTRACT_PV, FIT_ELLIPSE(),
+;  CONVERTRADEC, CONVERTSKYANGLEFUNCTION(), EXTRACT_PV, FIT_ELLIPSE(),FAT_SMOOTH()
 ;  GETDHI, GET_FIXEDRINGSV8, GET_NEWRINGSV8, GET_PROGRESS, 
 ;  INT_PROFILEV2, INTERPOLATE, ISNUMERIC(), LINENUMBER(), MOMENTSV2,
 ;  OBTAIN_INCLINATIONV8, OBTAIN_PAV2, OBTAIN_VELPA, OBTAIN_W50, 
@@ -41,6 +41,15 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
 ;  RESOLVE_ROUTINE, STRLOWCASE, and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      04-01-2016 P.Kamphuis; Added fail conditions when final model
+;      is outside the boundaries set in Kamphuis et al. 2015. 
+;      04-01-2016 P.Kamphuis; Removed the usage of the rename command
+;      and replaced it with a tirific specific idl routine.
+;      04-01-2016 P.Kamphuis; Extensive editing of output messages to
+;      keep log clear and readable.
+;      04-01-2016 P.Kamphuis; Minor bug fixes.
+;      29-12-2016 P.Kamphuis: Replaced GAUSS_SMOOTH and SMOOTH with FAT_SMOOTH
+;      for increased compatibility with IDL 7.0 and GDL 
 ;      29-12-2015 P.Kamphuis; Updated interaction to the latest
 ;      version of SoFiA. Also introduced column recognition in order
 ;      to facilitate future changes more easily. Additionally this
@@ -138,6 +147,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
   RESOLVE_ROUTINE, 'convertskyanglefunction',/IS_FUNCTION
   RESOLVE_ROUTINE, 'create_residuals'
   RESOLVE_ROUTINE, 'extract_pv'
+  RESOLVE_ROUTINE, 'fat_smooth',/IS_FUNCTION
   RESOLVE_ROUTINE, 'fit_ellipse',/IS_FUNCTION
   RESOLVE_ROUTINE, 'getdhi'
   RESOLVE_ROUTINE, 'get_fixedringsv8'
@@ -155,6 +165,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
   RESOLVE_ROUTINE, 'organize_output'
   RESOLVE_ROUTINE, 'parameterreguv87'
   RESOLVE_ROUTINE, 'read_template'
+  RESOLVE_ROUTINE, 'rename'
   RESOLVE_ROUTINE, 'sbr_check'
   RESOLVE_ROUTINE, 'set_sbr'
   RESOLVE_ROUTINE, 'set_vrotv6'
@@ -463,12 +474,12 @@ noconfig:
         IF not FILE_TEST(log) OR strupcase(newlog) EQ 'Y' then begin
            openw,66,log
            printf,66,linenumber()+"This file is a log of the fitting process run at "+systime()
-           printf,66,linenumber()+"This is version "+version[0]+" of the program"
+           printf,66,linenumber()+"This is version "+version[0]+" of the program."
            close,66
         ENDIF ELSE BEGIN
            openu,66,log,/APPEND
-           printf,66,linenumber()+"This file is a log of the fitting process Continued at "+systime()
-           printf,66,linenumber()+"This is version "+version[0]+" of the program"
+           printf,66,linenumber()+"This file is a log of the fitting process continued at "+systime()
+           printf,66,linenumber()+"This is version "+version[0]+" of the program."
            close,66
         ENDELSE
      ENDIF
@@ -483,10 +494,10 @@ noconfig:
         read_template,supportdir+'/sofiainput.txt',sofia,sofiatriggers,/SOFIA
      ENDIF
                                 ;print which galaxy we are at
-     print,linenumber()+"We're at Galaxy number "+strtrim(string(i,format='(I10)'),2)+". Which is "+catnumber[i]+" "+systime()
+     print,linenumber()+"We're at galaxy number "+strtrim(string(i,format='(I10)'),2)+". Which is catalogue id number "+catnumber[i]
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+"We're at Galaxy number "+strtrim(string(i,format='(I10)'),2)+". Which is "+catnumber[i]+" "+systime()
+        printf,66,linenumber()+"We're at galaxy number "+strtrim(string(i,format='(I10)'),2)+". Which is catalogue id number "+catnumber[i]
         close,66
      ENDIF
                                 ;set the name of the cube to be fitted
@@ -573,14 +584,14 @@ noconfig:
                                 ;Break if the cube cannot be found
      if fitsexists EQ 0 then begin
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A100)',catDirname[i],' This galaxy has no fits cube to work with, it is skipped'
+        printf,1,format='(A60,A100)',catDirname[i],' This galaxy has no fits cube to work with, it is skipped.'
         close,1   
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+catDirname[i]+" This galaxy has no fits cube to work with, it is skipped"
+           printf,66,linenumber()+catDirname[i]+" This galaxy has no fits cube to work with, it is skipped."
            close,66
         ENDIF ELSE BEGIN
-           print,linenumber()+catDirname[i]+" This galaxy has no fits to work with, it is skipped"
+           print,linenumber()+catDirname[i]+" This galaxy has no fits to work with, it is skipped."
         ENDELSE
         bookkeeping=5
         optimized=0
@@ -615,10 +626,10 @@ noconfig:
      IF STRUPCASE(veltype) EQ 'HZ' then begin
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+'FREQUENCY IS NOT A SUPPORTED VELOCITY AXIS'          
+           printf,66,linenumber()+'FREQUENCY IS NOT A SUPPORTED VELOCITY AXIS.'          
            close,66
         ENDIF ELSE BEGIN
-           print,linenumber()+'FREQUENCY IS NOT A SUPPORTED VELOCITY AXIS'    
+           print,linenumber()+'FREQUENCY IS NOT A SUPPORTED VELOCITY AXIS.'    
         ENDELSE
         bookkeeping=5
         GOTO,FINISHTHISGALAXY
@@ -635,12 +646,12 @@ noconfig:
         endelse
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+' Your header did not have a unit for the third axis, that is bad policy.'          
-           printf,66,linenumber()+'We have set it to '+veltype+'. Please ensure that is correct'          
+           printf,66,linenumber()+'Your header did not have a unit for the third axis, that is bad policy.'          
+           printf,66,linenumber()+'We have set it to '+veltype+'. Please ensure that is correct.'          
            close,66
         ENDIF ELSE BEGIN
-           print,linenumber()+' Your header did not have a unit for the third axis, that is bad policy.'          
-           print,linenumber()+'We have set it to '+veltype+'. Please ensure that is correct'     
+           print,linenumber()+'Your header did not have a unit for the third axis, that is bad policy.'          
+           print,linenumber()+'We have set it to '+veltype+'. Please ensure that is correct.'     
         ENDELSE
      ENDIF
      velproj=sxpar(hed,'CTYPE3')
@@ -654,19 +665,19 @@ noconfig:
         writecube=1
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+' Your velocity projection is not standard. The keyword is changed to VELO (relativistic definition). This might be dangerous.'          
+           printf,66,linenumber()+'Your velocity projection is not standard. The keyword is changed to VELO (relativistic definition). This might be dangerous.'          
            close,66
         ENDIF ELSE BEGIN
-           print,linenumber()+' Your velocity projection is not standard. The keyword is changed to VELO (relativistic definition). This might be dangerous.'   
+           print,linenumber()+'Your velocity projection is not standard. The keyword is changed to VELO (relativistic definition). This might be dangerous.'   
         ENDELSE
      ENDIF
      IF STRUPCASE(veltype) EQ 'KM/S' then begin
          IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+' The channels in your input cube are in km/s. This sometimes leads to problems with wcs lib, hence we change it to m/s'          
+           printf,66,linenumber()+'The channels in your input cube are in km/s. This sometimes leads to problems with wcs lib, hence we change it to m/s.'          
            close,66
         ENDIF ELSE BEGIN
-           printf,66,linenumber()+' The channels in your input cube are in km/s. This sometimes leads to problems with wcs lib, hence we change it to m/s'   
+           printf,66,linenumber()+'The channels in your input cube are in km/s. This sometimes leads to problems with wcs lib, hence we change it to m/s.'   
         ENDELSE
         sxaddpar,hed,'CDELT3',sxpar(hed,'CDELT3')*1000.
         sxaddpar,hed,'CRVAL3',sxpar(hed,'CRVAL3')*1000.
@@ -706,12 +717,12 @@ noconfig:
      IF tmp[0] NE -1 then begin
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+' Your cube contains values exactly 0. If this is padding these should be blanks'
-           printf,66,linenumber()+' We have changed them to blanks'
+           printf,66,linenumber()+'Your cube contains values exactly 0. If this is padding these should be blanks.'
+           printf,66,linenumber()+'We have changed them to blanks.'
            close,66
         ENDIF ELSE BEGIN
-           print,linenumber()+' Your cube contains values exactly 0. If this is padding these should be blanks'
-           print,linenumber()+' We have changed them to blanks'
+           print,linenumber()+'Your cube contains values exactly 0. If this is padding these should be blanks.'
+           print,linenumber()+'We have changed them to blanks.'
         ENDELSE
         dummy[tmp]=!values.f_nan
         writecube=1
@@ -740,10 +751,10 @@ noconfig:
            IF n_elements(dummy[0,0,*]) LT 5 then begin
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+catdirname[i]+'/'+catcubename[i]+' has too many blanked channels'
+                 printf,66,linenumber()+catdirname[i]+'/'+catcubename[i]+' has too many blanked channels.'
                  close,66
               ENDIF ELSE BEGIN
-                 printf,linenumber()+catdirname[i]+'/'+catcubename[i]+'has too many blanked channels'
+                 printf,linenumber()+catdirname[i]+'/'+catcubename[i]+'has too many blanked channels.'
               ENDELSE         
               openu,1,outputcatalogue,/APPEND
               printf,1,format='(A60,A90)', catDirname[i],'The Cube has too many blanked channels'
@@ -753,7 +764,7 @@ noconfig:
            ENDIF
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+' We are cutting the cube as the first channel is completely blank'
+              printf,66,linenumber()+' We are cutting the cube as the first channel is completely blank.'
               close,66
            ENDIF
            sxaddpar,hed,'NAXIS3',fix(sxpar(hed,'NAXIS3')-1)
@@ -772,20 +783,20 @@ noconfig:
            IF n_elements(dummy[0,0,*]) LT 5 then begin
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+catdirname[i]+'/'+catcubename[i]+' has too many blanked channels'
+                 printf,66,linenumber()+catdirname[i]+'/'+catcubename[i]+' has too many blanked channels.'
                  close,66
               ENDIF ELSE BEGIN
-                 printf,linenumber()+catdirname[i]+'/'+catcubename[i]+'has too many blanked channels'
+                 printf,linenumber()+catdirname[i]+'/'+catcubename[i]+'has too many blanked channels.'
               ENDELSE         
               openu,1,outputcatalogue,/APPEND
-              printf,1,format='(A60,A90)', catDirname[i],'The Cube has too many blanked channels'
+              printf,1,format='(A60,A90)', catDirname[i],'The cube has too many blanked channels'
               close,1    
               bookkeeping=5
               goto,finishthisgalaxy
            ENDIF
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+' We are cutting the cube as the last channel is completely blank'
+              printf,66,linenumber()+'We are cutting the cube as the last channel is completely blank.'
               close,66
            ENDIF
            sxaddpar,hed,'NAXIS3',fix(sxpar(hed,'NAXIS3')-1)
@@ -812,15 +823,15 @@ noconfig:
         IF diff LT 0.2 AND FINITE(diff) AND diff2 LT 0.2 then difference=0. else begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+' We are cutting the cube as clearly the noise statistics are off'
-              printf,66,linenumber()+' Noise in the first channel is '+string(rmsfirstchannel)
-              printf,66,linenumber()+' Noise in the last channel is '+string(rmslastchannel)
-              printf,66,linenumber()+' Noise in the corners is '+string(rmscorn)
+              printf,66,linenumber()+'We are cutting the cube as clearly the noise statistics are off.'
+              printf,66,linenumber()+'Noise in the first channel is '+string(rmsfirstchannel)
+              printf,66,linenumber()+'Noise in the last channel is '+string(rmslastchannel)
+              printf,66,linenumber()+'Noise in the corners is '+string(rmscorn)
               close,66
            ENDIF ELSE BEGIN
-              print,linenumber()+' We are cutting the cube as clearly the noise statistics are off '
-              print,linenumber()+' Noise in the first channel is '+string(rmsfirstchannel)
-              print,linenumber()+' Noise in the last channel is '+string(rmslastchannel)       
+              print,linenumber()+'We are cutting the cube as clearly the noise statistics are off.'
+              print,linenumber()+'Noise in the first channel is '+string(rmsfirstchannel)
+              print,linenumber()+'Noise in the last channel is '+string(rmslastchannel)       
            ENDELSE
            changedcube=1.
            tmp=fltarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*])-1)
@@ -838,10 +849,10 @@ noconfig:
            IF n_elements(dummy[0,0,*]) LT 5 then begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+catdirname[i]+'/'+catcubename[i]+' has noise statistics that cannot be dealt with'
+              printf,66,linenumber()+catdirname[i]+'/'+catcubename[i]+' has noise statistics that cannot be dealt with.'
               close,66
            ENDIF ELSE BEGIN
-              printf,linenumber()+catdirname[i]+'/'+catcubename[i]+' has noise statistics that cannot be dealt with'
+              printf,linenumber()+catdirname[i]+'/'+catcubename[i]+' has noise statistics that cannot be dealt with.'
            ENDELSE         
            openu,1,outputcatalogue,/APPEND
            printf,1,format='(A60,A90)', catDirname[i],'The Cube has noise statistics that cannot be dealt with'
@@ -858,12 +869,12 @@ noconfig:
         writefits,maindir+'/'+catdirname[i]+'/'+catcubename[i]+cubeext,dummy,hed
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+' The cube was cut due to incorrect noise statistics'
-           printf,66,linenumber()+' The new cube is '+catcubename[i]+cubeext
+           printf,66,linenumber()+'The cube was cut due to incorrect noise statistics.'
+           printf,66,linenumber()+'The new cube is '+catcubename[i]+cubeext
            close,66
         ENDIF ELSE BEGIN
-           print,linenumber()+' The cube was cut due to incorrect noise statistics'
-           print,linenumber()+' The new cube is '+catcubename[i]+cubeext      
+           print,linenumber()+'The cube was cut due to incorrect noise statistics.'
+           print,linenumber()+'The new cube is '+catcubename[i]+cubeext      
         ENDELSE
         propermom0=-1
         propermom1=-1
@@ -891,11 +902,11 @@ noconfig:
         possiblecentral=1
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+' Your cube had values below -10*sigma. If you do not have a central absorption source there is something seriously wrong with the cube'
+           printf,66,linenumber()+'Your cube had values below -10*sigma. If you do not have a central absorption source there is something seriously wrong with the cube.'
            
            close,66
         ENDIF ELSE BEGIN
-           print,linenumber()+' Your cube had values below -10.*sigma. If you do not have a central absorption source there is something seriously wrong with the cube'
+           print,linenumber()+'Your cube had values below -10.*sigma. If you do not have a central absorption source there is something seriously wrong with the cube.'
            
            
         ENDELSE
@@ -943,7 +954,7 @@ noconfig:
      IF not FILE_TEST(pythoncube+'_cat.ascii') then begin
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"Can't make a mask, aborting"
+           printf,66,linenumber()+"Can't make a mask, aborting."
            close,66
         ENDIF
         openu,1,outputcatalogue,/APPEND
@@ -1050,11 +1061,11 @@ noconfig:
      IF double(vals[sofia_locations[0]]) EQ 0. AND allnew NE 2 then begin
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"Sofia failed, the original cube is too small"
+           printf,66,linenumber()+"Sofia failed, the original cube is too small."
            close,66
         ENDIF
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A90)', catDirname[i],'Sofia failed on this cube'
+        printf,1,format='(A60,A90)', catDirname[i],'Sofia failed on this cube.'
         close,1 
         CD,old_dir
         bookkeeping=5
@@ -1062,7 +1073,7 @@ noconfig:
      ENDIF
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+"We picked the "+string(vals[sofia_locations[0]])+" object of the parameter list"
+        printf,66,linenumber()+"We picked the "+string(vals[sofia_locations[0]])+" object of the parameter list."
         close,66
      ENDIF
                                 ;If not using preprocessed stuff then we make logical names 
@@ -1132,7 +1143,7 @@ noconfig:
                                 ;a moment one map then we are going to
                                 ;make them now
      IF propermom0 LE 0 OR propermom1 LE 0 and allnew NE 2 THEN BEGIN
-        print,linenumber()+'We are removing the moment maps'
+        print,linenumber()+'We are removing the moment maps.'
                                 ;We are not remake merely one as the
                                 ;velocity field and the moment 0 map
                                 ;should be consistent
@@ -1173,10 +1184,10 @@ noconfig:
                                 ;Print the log what we have done
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"We have created the moment maps"
+           printf,66,linenumber()+"We have created the moment maps."
            close,66
         ENDIF ELSE BEGIN
-           print,linenumber()+"We have created the moment maps"
+           print,linenumber()+"We have created the moment maps."
         Endelse    
      ENDIF ELSE BEGIN
                                 ; if we are using preprocessed stuff then read and adapt them
@@ -1256,7 +1267,7 @@ noconfig:
            newdummy[*,*,*]=dummy[floor(RApix-newsize/2.):floor(RApix+newsize/2.),floor(DECpix-newsize/2.):floor(DECpix+newsize/2.),*]
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"In order to speed up the fitting process significantly we cut the cube to "+string(newsize)+ " pixels" 
+              printf,66,linenumber()+"In order to speed up the fitting process significantly we cut the cube to "+string(newsize)+ " pixels." 
               close,66
            ENDIF          
            sxaddpar,hed,'NAXIS1',newsize
@@ -1314,19 +1325,19 @@ noconfig:
      centralflux=dummy[fix(RApix),fix(DECpix),fix(VSYSpix)]
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+"We have this value in the central pixel "+string(centralflux)+" at "+string(fix(RApix))+","+string(fix(DECpix))+","+string(fix(VSYSpix))
-        IF not FINITE(centralflux) then           printf,66,linenumber()+"Central exclude = 1" else   printf,66,linenumber()+"Central exclude = 1"
+        printf,66,linenumber()+"We have this value in the central pixel "+string(centralflux)+" at the pixel (x,y,z) "+string(fix(RApix))+","+string(fix(DECpix))+","+string(fix(VSYSpix))
+        IF not FINITE(centralflux) then           printf,66,linenumber()+"Central exclude = 1" else   printf,66,linenumber()+"Central exclude = 0"
         close,66
      ENDIF
      IF not FINITE(centralflux) then centralexclude=1 else centralexclude=0.
                                 ; Print the source finder results
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+"The source finder found the following center in pixels"
+        printf,66,linenumber()+"The source finder found the following center in pixels."
         printf,66,linenumber()+"DEC center="+string(DECpix)+"DEC Boundaries"+string(DECpixboun[0])+","+string(DECpixboun[1])
         printf,66,linenumber()+"RA center="+string(RApix)+"RA Boundaries"+string(RApixboun[0])+","+string(RApixboun[1])
         printf,66,linenumber()+"V_sys center="+string(VSYSpix)+"V_sys Boundaries"+string(ROTpixboun[0])+","+string(ROTpixboun[1])
-        printf,66,linenumber()+"Which converts to real coordinates as"      
+        printf,66,linenumber()+"Which converts to real coordinates as."      
         printf,66,linenumber()+"DEC center="+string(DECdeg)+"DEC Boundaries"+string(DECboundeg[0])+","+string(DECboundeg[1])
         printf,66,linenumber()+"RA center="+string(RAdeg)+"RA Boundaries"+string(RAboundeg[0])+","+string(RAboundeg[1])
         printf,66,linenumber()+"V_sys center="+string(catVSYS[i])+"V_sys Boundaries"+string(ROTboun[0])+","+string(ROTboun[1])
@@ -1424,14 +1435,14 @@ noconfig:
      maxSN=maxbright/catnoise[i]
      IF maxSN LT 5. then begin
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A90)', catDirname[i],' The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit'
+        printf,1,format='(A60,A90)', catDirname[i],' The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit.'
         close,1    
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+catDirname[i]+' The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit'
+           printf,66,linenumber()+catDirname[i]+' The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit.'
            close,66
         ENDIF ELSE BEGIN
-           print,linenumber()+catDirname[i]+' The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit'
+           print,linenumber()+catDirname[i]+' The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit.'
         ENDELSE
         bookkeeping=5 
         goto,finishthisgalaxy
@@ -1461,7 +1472,7 @@ noconfig:
         endfor
         close,66
      ENDIF ELSE begin
-        print,linenumber()+"We calculated the cutoff  values "
+        print,linenumber()+"We calculated the cutoff  values. "
      endelse
                                 ;create the rings to be fitted with major beam
                                 ;Let's calculate how many rings
@@ -1476,8 +1487,8 @@ noconfig:
         IF sxpar(hedmap,'CDELT1') NE sxpar(hed,'CDELT1') OR sxpar(hedmap,'CDELT2') NE sxpar(hed,'CDELT2') then begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"the pixel scale in your cube and moment 0 map do not correspond"
-              printf,66,linenumber()+"recreating the moment maps"
+              printf,66,linenumber()+"the pixel scale in your cube and moment 0 map do not correspond."
+              printf,66,linenumber()+"recreating the moment maps."
               close,66
            ENDIF 
            propermom0=0.
@@ -1660,20 +1671,19 @@ noconfig:
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         printf,66,linenumber()+'We find a W50 of'+string(W50)
-        printf,66,linenumber()+'We find an extend of '+string(norings)+' at this point from the inclination estimates'
+        printf,66,linenumber()+'We find an extend of '+strtrim(string(fix(norings)),2)+' at this point from the inclination estimates.'
         close,66
      ENDIF
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+catdirname[i]
         printf,66,linenumber()+"The original estimates are:"
-        printf,66,linenumber()+"maxrings:"+string(maxrings)
-        printf,66,linenumber()+"norings:"+string(norings)
-        printf,66,linenumber()+"Kinematical PA:"+string(velPA)
-        printf,66,linenumber()+"Morphological PA:"+string(newPA)
+        printf,66,linenumber()+"maxrings:"+string(fix(maxrings))
+        printf,66,linenumber()+"norings:"+strtrim(string(fix(norings)),2)
+        printf,66,linenumber()+"Kinematical PA:"+string(velPA[0])+'+/-'+string(velPA[1])
+        printf,66,linenumber()+"Morphological PA:"+string(newPA[0])+'+/-'+string(newPA[1])
         printf,66,linenumber()+"noringspix:"+string(noringspix)
-        printf,66,linenumber()+"newinclination:"+string(newinclination)
-        printf,66,linenumber()+"PA:"+string(avPA)
+        printf,66,linenumber()+"newinclination:"+string(newinclination[0])+'+/-'+string(newinclination[1])
+        printf,66,linenumber()+"PA:"+string(avPA[0])+'+/-'+string(avPA[1])
         close,66
      ENDIF 
      newPA=avPA
@@ -1693,7 +1703,7 @@ noconfig:
            close,1
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"Finished "+catDirname[i]+"in loop"+string(i)+systime()
+              printf,66,linenumber()+"Finished "+catDirname[i]+"in galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
               close,66
            ENDIF 
            finishafter=0.
@@ -1705,7 +1715,7 @@ noconfig:
                                 ;we also want to make sure that we are in the cube    
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"Being a small galaxy we have halved the rings sizes "+catDirname[i]+"in loop"+string(i)+systime()
+              printf,66,linenumber()+"Being a small galaxy we have halved the rings sizes "+catDirname[i]+"in galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
               printf,66,linenumber()+"The new cutoff values are: "
               printf,66,linenumber()+"Radius           Minimum SBR"
               for j=0,n_elements(rad)-1 do begin
@@ -1728,12 +1738,12 @@ noconfig:
         norings[0]=norings[0]+1.
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"The number of rings for the fitting = "+string(norings[0])
-           printf,66,linenumber()+"Fitting with half the beam major axis FWHM as ringsize"
+           printf,66,linenumber()+"The number of rings for the fitting = "+strtrim(string(fix(norings[0])),2)
+           printf,66,linenumber()+"Fitting with half the beam major axis FWHM as ringsize."
            close,66
         ENDIF ELSE BEGIN
-           print,linenumber()+"The number of rings for the fitting = "+string(norings[0])
-           print,linenumber()+"Fitting with half the beam major axis FWHM as ringsize"
+           print,linenumber()+"The number of rings for the fitting = "+strtrim(string(fix(norings[0])),2)
+           print,linenumber()+"Fitting with half the beam major axis FWHM as ringsize."
         Endelse  
      ENDIF ELSE BEGIN
         IF maxrings GT 25 then begin
@@ -1750,7 +1760,7 @@ noconfig:
            cutoff=cutoffor*cutoffcorrection
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"Being a large galaxy we have doubled the outer the ring sizes "+catDirname[i]+"in loop"+string(i)+systime()
+              printf,66,linenumber()+"Being a large galaxy we have doubled the outer the ring sizes "+catDirname[i]+"in galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
               printf,66,linenumber()+"The new cutoff values are: "
               printf,66,linenumber()+"Radius           Minimum SBR"
               for j=0,n_elements(rad)-1 do begin
@@ -1760,12 +1770,12 @@ noconfig:
            ENDIF   
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"The number of rings for the fitting = "+string(norings[0])
-              printf,66,linenumber()+"Fitting with the twice the beam major axis FWHM beyond ring 10"
+              printf,66,linenumber()+"The number of rings for the fitting = "+strtrim(string(fix(norings[0])),2)
+              printf,66,linenumber()+"Fitting with the twice the beam major axis FWHM beyond ring 10."
               close,66
            ENDIF ELSE BEGIN
-              print,linenumber()+"The number of rings for the fitting = "+string(norings[0])
-              print,linenumber()+"Fitting with the twice the beam major axis FWHM beyond ring 10"
+              print,linenumber()+"The number of rings for the fitting = "+strtrim(string(fix(norings[0])),2)
+              print,linenumber()+"Fitting with the twice the beam major axis FWHM beyond ring 10."
            Endelse  
 
 
@@ -1774,12 +1784,12 @@ noconfig:
            norings[0]=norings[0]+1.
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"The number of rings for the fitting = "+string(norings[0])
-              printf,66,linenumber()+"Fitting with the beam major axis FWHM as ringsize"
+              printf,66,linenumber()+"The number of rings for the fitting = "+strtrim(string(fix(norings[0])),2)
+              printf,66,linenumber()+"Fitting with the beam major axis FWHM as ringsize."
               close,66
            ENDIF ELSE BEGIN
-              print,linenumber()+"The number of rings for the fitting = "+string(norings[0])
-              print,linenumber()+"Fitting with the beam major axis FWHM as ringsize"
+              print,linenumber()+"The number of rings for the fitting = "+strtrim(string(fix(norings[0])),2)
+              print,linenumber()+"Fitting with the beam major axis FWHM as ringsize."
            Endelse  
         ENDELSE
      ENDELSE
@@ -1800,8 +1810,8 @@ noconfig:
         IF sxpar(hedvel,'CDELT1') NE sxpar(hed,'CDELT1') OR sxpar(hedvel,'CDELT2') NE sxpar(hed,'CDELT2') then begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"the pixel scale in your cube and moment 0 map do not correspond"
-              printf,66,linenumber()+"recreating the moment maps"
+              printf,66,linenumber()+"the pixel scale in your cube and moment 0 map do not correspond."
+              printf,66,linenumber()+"recreating the moment maps."
               close,66
            ENDIF 
            propermom0=0.
@@ -2072,10 +2082,10 @@ noconfig:
      
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+"The number of rings used = "+string(norings[0])
+        printf,66,linenumber()+"The number of rings used = "+strtrim(string(fix(norings[0])),2)
         close,66
      ENDIF ELSE begin
-        print,linenumber()+"The number of rings used = "+string(norings[0])
+        print,linenumber()+"The number of rings used = "+strtrim(string(fix(norings[0])),2)
      endelse
      fluxadjust=0. 
                                 ;let's write the number of rings to the tirific file
@@ -2327,7 +2337,7 @@ noconfig:
            againINCLestimate:
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"Because there are only a few beams across the minor axis we first adjust the inclination  "+catDirname[i]+" loop"+string(i)+systime()
+              printf,66,linenumber()+"Because there are only a few beams across the minor axis we first adjust the inclination "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
               close,66
            ENDIF 
            openw,1,maindir+'/'+catdirname[i]+'/tirific.def'
@@ -2338,12 +2348,12 @@ noconfig:
            gipsyfirst=strarr(1)
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"Starting tirific INCL estimate in  "+catDirname[i]+" loop"+string(i)+systime()
+              printf,66,linenumber()+"Starting tirific the INCL estimate in  "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
               close,66
            ENDIF
            
            IF testing GE 1 then goto,testing1INCL
-           print,linenumber()+"Starting tirific INCL estimate in  "+catDirname[i]+" loop"+string(i)+systime()
+           print,linenumber()+"Starting tirific the INCL estimate in  "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
            gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
            spawn,gipsyfirst,isthere2
            ; Let's check how we did in the fit
@@ -2429,11 +2439,11 @@ noconfig:
         gipsyfirst=strarr(1)
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"Starting tirific PA estimate in  "+catDirname[i]+" loop"+string(i)+systime()
+           printf,66,linenumber()+"Starting tirific the PA estimate in  "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
            close,66
         ENDIF        
         IF testing GE 1 then goto,testing1PA
-        print,linenumber()+"Starting tirific PA estimate in  "+catDirname[i]+" loop"+string(i)+systime()
+        print,linenumber()+"Starting tirific the PA estimate in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
         gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
         spawn,gipsyfirst,isthere2
                                 ;get the results
@@ -2502,11 +2512,11 @@ noconfig:
         IF INCLest GT 0. then begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"Because of a low number of beams across the minor axis "
+              printf,66,linenumber()+"Because of a low number of beams across the minor axis,"
               printf,66,linenumber()+"We have adjusted the PA from to "+string(catPA[i])+'+/-'+string(newPA[1])
               printf,66,linenumber()+"The inclination to "+string(catInc[i])+'+/-'+string(newinclination[1])
               printf,66,linenumber()+"Maxrot to "+string(newrot[0])+'+/-'+string(catmaxrotdev[i])
-              printf,66,linenumber()+"We have adjusted the fit setting of the inclination and VROT" 
+              printf,66,linenumber()+"We have adjusted the fit setting of the inclination and VROT." 
               close,66
            ENDIF
         ENDIF ELSE BEGIN
@@ -2515,7 +2525,7 @@ noconfig:
               printf,66,linenumber()+"Because of low inclination "+string(catinc[i])
               printf,66,linenumber()+"We have adjusted the PA from "+string(catPA[i])+" to "+string(firstfitvalues[0,0])+'+/-'+string(newPA[1])
               printf,66,linenumber()+"The inclination from "+string(catInc[i])+" to "+string(newinclination[0])+'+/-'+string(newinclination[1])
-              printf,66,linenumber()+"We have adjusted the fit setting of the inclination and VROT" 
+              printf,66,linenumber()+"We have adjusted the fit setting of the inclination and VROT." 
               close,66
            ENDIF
         ENDELSE
@@ -2588,10 +2598,10 @@ noconfig:
         close,1
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"Starting tirific SBR estimate in  "+catDirname[i]+" loop"+string(i)+systime()
+           printf,66,linenumber()+"Starting tirific SBR estimate in  "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
            close,66
         ENDIF 
-        print,linenumber()+"Starting tirific SBR estimate in  "+catDirname[i]+" loop"+string(i)+systime()
+        print,linenumber()+"Starting tirific SBR estimate in  "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
         gipsyfirst=strarr(1)
         IF testing GE 1 then goto,testing1SBR
         gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
@@ -2641,7 +2651,7 @@ noconfig:
         IF catmaxrotdev[i] LT 3*channelwidth then catmaxrotdev[i]=3*channelwidth
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"Because Changing SBR "
+           printf,66,linenumber()+"Because of changing the SBR,"
            printf,66,linenumber()+"We have adjusted the PA from "+string(catPA[i])+" to "+string(firstfitvalues[0,4])
            printf,66,linenumber()+"The inclination from "+string(catInc[i])+" to "+string(newinclination[0])+'+/-'+string(newinclination[1])
            printf,66,linenumber()+"Maxrot from "+string(catmaxrot[i])+" to "+string(newrot[0])+'+/-'+string(catmaxrotdev[i])
@@ -2810,13 +2820,13 @@ noconfig:
      IF counter GT 50 then begin
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"We have rerun "+string(counter)+" times and still haven't found an acceptable solution"
-           printf,66,linenumber()+"We have modified the rings "+string(countsbr)+" times"
-           printf,66,linenumber()+"We are aborting this galaxy"
+           printf,66,linenumber()+"We have rerun "+string(counter)+" times and still haven't found an acceptable solution."
+           printf,66,linenumber()+"We have modified the rings "+string(countsbr)+" times."
+           printf,66,linenumber()+"We are aborting this galaxy."
            close,66
         ENDIF
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A80)', catDirname[i],'We could not find a proper center'
+        printf,1,format='(A60,A80)', catDirname[i],'We could not find a proper center.'
         close,1 
         bookkeeping=0
         goto,finishthisgalaxy
@@ -2833,24 +2843,21 @@ noconfig:
                                 ;to keep the first one not being old
      IF testing GE 1 then goto,testing1
      IF tryone EQ 1 then begin
-        spawn,'rm -f 1stfitall.*',isthere
-        spawn,'rename 1stfit. 1stfitall. 1stfit.*',isthere
+        rename,'1stfit.','1stfitall.'
      endif
      counter++
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+"Starting tirific first estimate in  "+catDirname[i]+" galaxy "+string(i)+systime()
-        printf,66,linenumber()+"We have rerun "+string(counter)+" times"
-        printf,66,linenumber()+"We have modified the rings "+string(countsbr)+" times"
+        printf,66,linenumber()+"Starting tirific first estimate in  "+catDirname[i]+"  which is galaxy #  "+strtrim(string(fix(i)),2)+" at "+systime()
+        printf,66,linenumber()+"We have rerun "+string(counter)+" times."
+        printf,66,linenumber()+"We have modified the rings "+string(countsbr)+" times."
         close,66
      ENDIF 
-     print,linenumber()+"Starting tirific first estimate in  "+catDirname[i]+" galaxy "+string(i)+systime()
-     spawn,'rm -f 1stfitold.*',isthere
+     print,linenumber()+"Starting tirific first estimate in  "+catDirname[i]+"  which is galaxy #  "+strtrim(string(fix(i)),2)+" at "+systime()
      ;Add this line in to follow the evolution of the first fit.
 ;     spawn,'mv 1stfit.def 1stfit_'+strtrim(strcompress(string(fix(counter))),2)+'.def'
 
-     spawn,'rename 1stfit. 1stfitold. 1stfit.*',isthere
-     spawn,'rm -f 1stfit.*',isthere
+     rename,'1stfit.','1stfitold.'
      gipsyfirst=strarr(1)
      gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
      spawn,gipsyfirst,isthere2
@@ -2861,25 +2868,24 @@ noconfig:
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         IF AC1 EQ 1 then begin
-           printf,66,linenumber()+"The First estimate was accepted in this run" 
-           printf,66,linenumber()+"Tirific ran through "+strtrim(strcompress(string(loops)))+" loops and produced "+strtrim(strcompress(string(toymodels)))+" models"
-           printf,66,linenumber()+"Disk 1 had "+strtrim(strcompress(string(nopoints[0])))+"Point sources and Disk 2 "+strtrim(strcompress(string(nopoints[1])))
+           printf,66,linenumber()+"The first estimate was accepted in this run." 
+           printf,66,linenumber()+"Tirific ran through "+strtrim(strcompress(string(loops)))+" loops and produced "+strtrim(strcompress(string(toymodels)))+" models."
+           printf,66,linenumber()+"Disk 1 had "+strtrim(strcompress(string(nopoints[0])))+" point sources and Disk 2 "+strtrim(strcompress(string(nopoints[1])))
         ENDIF ELSE BEGIN
            printf,66,linenumber()+"The First estimate was not accepted."
-           printf,66,linenumber()+"Tirific ran through "+strtrim(strcompress(string(loops)))+" loops and produced "+strtrim(strcompress(string(toymodels)))+" models"
-           printf,66,linenumber()+"Disk 1 had "+strtrim(strcompress(string(nopoints[0])))+"Point sources and Disk 2 "+strtrim(strcompress(string(nopoints[1])))
+           printf,66,linenumber()+"Tirific ran through "+strtrim(strcompress(string(loops)))+" loops and produced "+strtrim(strcompress(string(toymodels)))+" models."
+           printf,66,linenumber()+"Disk 1 had "+strtrim(strcompress(string(nopoints[0])))+" point sources and Disk 2 "+strtrim(strcompress(string(nopoints[1])))
         ENDELSE
         close,66
      ENDIF   
      IF AC1 EQ 1 then begin
-        print,linenumber()+"The first estimate is accepted"      
+        print,linenumber()+"The first estimate is accepted."      
      ENDIF ELSE begin
-        print,linenumber()+"The first estimate is not accepted" 
+        print,linenumber()+"The first estimate is not accepted." 
      ENDELSE     
                                 ;Check the number of points in the models
      check_cflux,nopoints,tirificfirst,tirificfirstvars,cfluxadjusted,log=log
      IF  cfluxadjusted then goto,notacceptedone
-     print,linenumber()+string(AC1)+'This is AC1'
      
      IF testing GE 1 then begin
         maxchangeRA=ABS(0.15*catmajbeam[i])/3600.
@@ -2905,14 +2911,14 @@ noconfig:
      stringvelocities='VROT= 0. '+STRJOIN(VROTarr[1:n_elements(VROTarr)-1],' ')
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+"SBRs before"
+        printf,66,linenumber()+"SBRs before they are checked."
         printf,66,SBRarr,SBRarr2
         close,66
      endif
      sbr_check,tirificfirst, tirificfirstvars,sbrarr,sbrarr2,cutoff
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+"SBRs after"
+        printf,66,linenumber()+"SBRs after they are checked."
         printf,66,SBRarr,SBRarr2
         close,66
      endif
@@ -2993,10 +2999,10 @@ noconfig:
            tirificfirst[tmppos]='VROT_2='+tmp[1]
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"Although the incl hit its boundary we adjusted to"+string(catinc[i])+"due to the small ring size "
+              printf,66,linenumber()+"Although the incl hit its boundary we adjusted to"+string(catinc[i])+"due to the small ring size. "
               close,66
            ENDIF ELSE BEGIN
-              print,linenumber()+"Although the incl hit its boundary we adjusted to"+string(catinc[i])+"due to the small ring size "
+              print,linenumber()+"Although the incl hit its boundary we adjusted to"+string(catinc[i])+"due to the small ring size. "
            ENDELSE
            VROTmax=catmaxrotdev[i]
            INCLmin=catinc[i]-catincdev[i]-20
@@ -3020,7 +3026,7 @@ noconfig:
    
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+"Cutoff values will be adjusted for inclination by multiplying them with"+string(cutoffcorrection)
+        printf,66,linenumber()+"Cutoff values will be adjusted for inclination by multiplying them with "+string(cutoffcorrection)
         close,66
      ENDIF
      cutoff=cutoffor*cutoffcorrection
@@ -3042,10 +3048,10 @@ noconfig:
         tirificfirst[tmppos]='PA_2= '+strtrim(string(catpa[i]))
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"The pa was adjusted to"+string(catpa[i])
+           printf,66,linenumber()+"The pa was adjusted to "+string(catpa[i])
            close,66
         ENDIF ELSE BEGIN
-           print,linenumber()+"The pa was adjusted to"+string(catpa[i])
+           print,linenumber()+"The pa was adjusted to "+string(catpa[i])
         ENDELSE
      ENDIF ELSE begin 
         IF shiftcentercounter EQ 1. then begin
@@ -3076,10 +3082,10 @@ noconfig:
               tirificfirst[tmppos]='PA_2= '+strtrim(string(catpa[i]))
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"Although the pa hit its boundary we adjusted to"+string(catpa[i])+"because the low inclination"
+                 printf,66,linenumber()+"Although the pa hit its boundary we adjusted to"+string(catpa[i])+"because of low inclination."
                  close,66
               ENDIF ELSE BEGIN
-                 print,linenumber()+"Although the pa hit its boundary we adjusted to"+string(catpa[i])+"because the low inclination"
+                 print,linenumber()+"Although the pa hit its boundary we adjusted to"+string(catpa[i])+"because of low inclination."
               ENDELSE
               IF PAest LT 5 then begin
                  PAinput1=['PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
@@ -3096,6 +3102,7 @@ noconfig:
                     ENDIF
                  ENDIF
                  Writefittingvariables,tirificfirst,painput1
+                 PAest++
                  goto,againPAestimate 
               ENDIF else begin
                  PAinput1=['PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
@@ -3155,10 +3162,10 @@ noconfig:
         IF fixedcenter EQ 1 then begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"The center was not fitted"     
+              printf,66,linenumber()+"The center was not fitted."     
               close,66
            ENDIF ELSE BEGIN
-              print,linenumber()+"The center was not fitted"
+              print,linenumber()+"The center was not fitted."
            ENDELSE
            fixedcenter=0
            goto,shiftcenter
@@ -3168,10 +3175,10 @@ noconfig:
            IF    ABS(RADeg-newxpos) GT catmajbeam[i]/1800. OR ABS(DECDeg-newypos) GT catmajbeam[i]/1800. then begin
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"The center shifted more than 2 major beams. Not applying this shift"
+                 printf,66,linenumber()+"The center shifted more than 2 major beams. Not applying this shift."
                  close,66
               ENDIF ELSE BEGIN
-                 print,linenumber()+"The center shifted than 2 major beams. Not applying this shift"
+                 print,linenumber()+"The center shifted than 2 major beams. Not applying this shift."
               ENDELSE
               IF paraised then begin
                  tmppos=where('PA' EQ tirificfirstvars)
@@ -3196,10 +3203,10 @@ noconfig:
                  fixedcenter=0.
                  IF size(log,/TYPE) EQ 7 then begin
                     openu,66,log,/APPEND
-                    printf,66,linenumber()+"The center keeps trying to change unreasonably. Accepting the current center and fixing it"
+                    printf,66,linenumber()+"The center keeps trying to change unreasonably. Accepting the current center and fixing it."
                     close,66
                  ENDIF ELSE BEGIN
-                    print,linenumber()+"The center keeps trying to change unreasonably.  Accepting the current center and fixing it"
+                    print,linenumber()+"The center keeps trying to change unreasonably. Accepting the current center and fixing it."
                  ENDELSE
               ENDIF
               goto,shiftcenter
@@ -3210,10 +3217,10 @@ noconfig:
            IF ABS(oldRA-newxpos) LT maxchangeRA AND ABS(oldDEC-newypos) LT maxchangeDEC AND ABS(oldVSYS-newvsys) LT maxchangevel then begin
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"The center shifted back to the previous fit. Accepting this center and fixing it"
+                 printf,66,linenumber()+"The center shifted back to the previous fit. Accepting this center and fixing it."
                  close,66
               ENDIF ELSE BEGIN
-                 print,linenumber()+"The center shifted back to the previous fit. Accepting this center and fixing it"
+                 print,linenumber()+"The center shifted back to the previous fit. Accepting this center and fixing it."
               ENDELSE
               keepcenter=1.
               goto,shiftback
@@ -3221,7 +3228,7 @@ noconfig:
                                 ;If the shift was to large try again
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"The center shifted too much trying again with new center"
+              printf,66,linenumber()+"The center shifted too much trying again with new center."
               printf,66,linenumber()+"The RA has shifted from "+string(RAdeg)+" to "+string(newxpos)+" which is a difference of"$
                      +string(ABS(RADeg-newxpos))+" needed ="+string(maxchangeRA)
               printf,66,linenumber()+"The DEC has shifted from "+string(DECdeg)+" to "+string(newypos)+" which is a difference of"$
@@ -3230,7 +3237,7 @@ noconfig:
                      +string(ABS(catvsys[i]-newvsys))+" needed ="+string(maxchangevel)
               close,66
            ENDIF ELSE BEGIN
-              print,linenumber()+"The center shifted too much trying again with new center"
+              print,linenumber()+"The center shifted too much trying again with new center."
            ENDELSE
         ENDELSE
         oldRA=RADeg
@@ -3254,7 +3261,7 @@ noconfig:
            if fixedcenter EQ 1. then begin
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"The center was accepted because it was  fixed"
+                 printf,66,linenumber()+"The center was accepted because it was fixed."
                  close,66
               ENDIF
               goto,shiftcenter
@@ -3264,7 +3271,7 @@ noconfig:
            if newrings LT 3 then begin
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"Cause the newrings was "+string(newrings)+" we set it to 3"
+                 printf,66,linenumber()+"Cause the newrings was "+strtrim(string(fix(newrings)),2)+" we set it to 3."
                  close,66
               ENDIF         
               newrings=3
@@ -3273,7 +3280,7 @@ noconfig:
            IF newrings GT maxrings then begin
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"Cause the newrings was "+string(newrings)+" we set it to maxrings"
+                 printf,66,linenumber()+"Cause the newrings was "+strtrim(string(fix(newrings)),2)+" we set it to maxrings."
                  close,66
               ENDIF       
               newrings=maxrings 
@@ -3281,14 +3288,14 @@ noconfig:
            
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"We found this as rings="+string(norings[0])+"  new="+string(newrings)
+              printf,66,linenumber()+"We found this as rings="+strtrim(string(fix(norings[0])),2)+"  new="+strtrim(string(fix(newrings)),2)
               close,66
            ENDIF
            IF NOT sofiafail then begin
               IF newrings GT sofiarings+2 OR newrings LT sofiarings-2 then begin        
                  IF size(log,/TYPE) EQ 7 then begin
                     openu,66,log,/APPEND
-                    printf,66,linenumber()+"The new amount of rings ("+string(newrings)+") deviates too much from the sofia estimate ("+string(sofiarings)+")"
+                    printf,66,linenumber()+"The new amount of rings ("+strtrim(string(fix(newrings)),2)+") deviates too much from the sofia estimate ("+string(sofiarings)+")."
                     close,66
                  ENDIF
                  newrings=norings[0] 
@@ -3303,8 +3310,8 @@ noconfig:
                  ENDIF ELSE BEGIN
                     IF size(log,/TYPE) EQ 7 then begin
                        openu,66,log,/APPEND
-                       printf,66,linenumber()+"As the cut would modify the rings to less than the maximum forced addition of a ring we do not apply the cut"
-                       printf,66,linenumber()+"new rings "+string(newrings)+" old rings "+string(norings[0])+"forcedring="+string(forcedring)
+                       printf,66,linenumber()+"As the cut would modify the rings to less than the maximum forced addition of a ring we do not apply the cut."
+                       printf,66,linenumber()+"new rings "+strtrim(string(fix(newrings)),2)+" old rings "+strtrim(string(fix(norings[0])),2)+"forcedring="+string(forcedring)
                        Close,66
                     ENDIF
                     goto,nocutfirst
@@ -3318,21 +3325,14 @@ noconfig:
                     IF newrings EQ norings[0]-1 then begin
                        IF size(log,/TYPE) EQ 7 then begin
                           openu,66,log,/APPEND
-                          printf,66,linenumber()+"As the last modification was the addition of a ring we will fix this ring number"
-                          printf,66,linenumber()+"new rings "+string(newrings)+" old rings "+string(norings[0])
+                          printf,66,linenumber()+"As the last modification was the addition of a ring we will fix this ring number."
+                          printf,66,linenumber()+"new rings "+strtrim(string(fix(newrings)),2)+" old rings "+strtrim(string(fix(norings[0])),2)
                           Close,66
                        ENDIF
                        constring=1
                        secondtime=1
                        newrings=newrings+1
-                    ENDIF ELSE BEGIN
-                       IF size(log,/TYPE) EQ 7 then begin
-                          openu,66,log,/APPEND
-                          printf,66,linenumber()+"As the last modification was the addition of a ring we will cut one ring less than normally (on temp hold)"
-                          printf,66,linenumber()+"new rings "+string(newrings+1)+" old rings "+string(norings[0])
-                          Close,66
-                       ENDIF
-                    ENDELSE
+                    ENDIF 
                     prevmodification=-2
                 ENDELSE
               ENDIF 
@@ -3344,17 +3344,17 @@ noconfig:
               IF tmp[0] NE -1 AND newrings NE oldrings then begin
                  IF size(log,/TYPE) EQ 7 then begin
                     openu,66,log,/APPEND
-                    printf,66,linenumber()+"Cause the newrings was "+string(newrings)+" which we have fitted before we gonna fix the rings at this value"
+                    printf,66,linenumber()+"Cause the newrings was "+strtrim(string(fix(newrings)),2)+" which we have fitted before we gonna fix the rings at this value."
                     close,66
                  ENDIF     
                  secondtime=1
               ENDIF
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"We cut a ring! lastcut"+string(lastcutrings)+" lastadd "+string(lastaddrings)+" new "+string(newrings)+" old "+string(oldrings)
+                 printf,66,linenumber()+"We cut a ring! lastcut"+string(lastcutrings)+" lastadd "+string(lastaddrings)+" new "+strtrim(string(fix(newrings)),2)+" old "+string(oldrings)
                  Close,66
               ENDIF ELSE begin            
-                 print,linenumber()+"We cut a ring! lastcut"+string(lastcutrings)+" lastadd "+string(lastaddrings)+" new "+string(newrings)+" old "+string(oldrings)
+                 print,linenumber()+"We cut a ring! lastcut"+string(lastcutrings)+" lastadd "+string(lastaddrings)+" new "+strtrim(string(fix(newrings)),2)+" old "+string(oldrings)
               ENDELSE
               lastcutrings=norings[0]
               fluxadjust=0.             
@@ -3377,8 +3377,8 @@ noconfig:
               prevmodification=0.
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"We force added a ring to the profile"
-                 printf,66,linenumber()+"Newrings"+string(newrings)+", Rings"+string(norings[0])
+                 printf,66,linenumber()+"We force added a ring to the profile."
+                 printf,66,linenumber()+"Newrings"+strtrim(string(fix(newrings)),2)+", Rings"+strtrim(string(fix(norings[0])),2)
                  Close,66
               ENDIF
               IF newrings GT forcedring then forcedring=newrings
@@ -3388,7 +3388,7 @@ noconfig:
            IF prevmodification EQ -1 AND overwrite NE 1 AND newrings GT norings[0] then begin
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"We wanted to add a ring to the model but the previous step was a subtraction"
+                 printf,66,linenumber()+"We wanted to add a ring to the model but the previous step was a subtraction."
                  Close,66
               ENDIF
            ENDIF
@@ -3399,7 +3399,7 @@ noconfig:
               IF tmp[0] NE -1 AND newrings NE norings[0] then begin
                  IF size(log,/TYPE) EQ 7 then begin
                     openu,66,log,/APPEND
-                    printf,66,linenumber()+"Cause the newrings was "+string(newrings)+" which we have fitted before we gonna fix the rings at this value"
+                    printf,66,linenumber()+"Cause the newrings was "+strtrim(string(fix(newrings)),2)+" which we have fitted before we gonna fix the rings at this value."
                     close,66
                  ENDIF     
                  secondtime=1
@@ -3408,10 +3408,10 @@ noconfig:
               lastaddrings=norings[0]
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"We added a ring to the model"+string(secondtime)
+                 printf,66,linenumber()+"We added a ring to the model. "+string(secondtime)
                  Close,66
               ENDIF ELSE BEGIN
-                 print,linenumber()+"We added a ring to the model"
+                 print,linenumber()+"We added a ring to the model."
               ENDELSE
               prevmodification=1.
               ringmodifier=ringmodifier+1
@@ -3423,16 +3423,16 @@ noconfig:
            ; If we really go crazy then just end the fitting process
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"The fit diverged out of the boundaries set by the parameterization. That can't be good "
+              printf,66,linenumber()+"The fit diverged out of the boundaries set by the parameterization. That can't be good."
               printf,66,linenumber()+"Boundaries are; DEC current="+string(newypos)+"DEC Boundaries"+string(DECboundeg[0])+","+string(DECboundeg[1])
               printf,66,linenumber()+"RA current="+string(newxpos)+"RA Boundaries"+string(RAboundeg[0])+","+string(RAboundeg[1])
               printf,66,linenumber()+"V_sys current="+string(newvsys)+"V_sys Boundaries"+string(ROTboun[0])+","+string(ROTboun[1])
               close,66
            ENDIF ELSE BEGIN
-              print,linenumber()+"The fit diverged out of the boundaries set by the parameterization. That can't be good "
+              print,linenumber()+"The fit diverged out of the boundaries set by the parameterization. That can't be good."
            ENDELSE  
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,A80)',catDirname[i],'This galaxy diverged out of the set boundaries'
+           printf,1,format='(A60,A80)',catDirname[i],'This galaxy diverged out of the set boundaries.'
            close,1   
            bookkeeping=0
            goto,finishthisgalaxy
@@ -3444,10 +3444,10 @@ noconfig:
         
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"The fit is not accepted trying once more"
+           printf,66,linenumber()+"The fit is not accepted trying once more."
            close,66
         ENDIF ELSE BEGIN
-           print,linenumber()+"The fit is not accepted trying once more"
+           print,linenumber()+"The fit is not accepted trying once more."
         ENDELSE
                                 ;but from the newvalues
         writenewtotemplate,tirificfirst,maindir+'/'+catdirname[i]+'/1stfit.def'
@@ -3480,21 +3480,21 @@ noconfig:
                     string(VROTmax),string(VROTmin),string(channelwidth),string(0.1*channelwidth),string(channelwidth),string(0.1*channelwidth),'3','70','70', ' ']
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"We have smoothed the rotation curve in the first fit"
+           printf,66,linenumber()+"We have smoothed the rotation curve in the first fit."
            close,66
         ENDIF ELSE BEGIN
-           print,linenumber()+"We have smoothed the rotation curve in the first fit"
+           print,linenumber()+"We have smoothed the rotation curve in the first fit."
         ENDELSE
 
         goto,smoothingone
      ENDIF
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+"We finished the first fit of "+catDirname[i]+"  at "+systime()
-        printf,66,linenumber()+"We have rerun "+string(counter)+" times"
-        printf,66,linenumber()+"We have modified the rings "+string(countsbr)+" times"
-        IF AC1 EQ 0 then  printf,66,linenumber()+"The fit was not accepted"
-        IF AC1 EQ 1 then  printf,66,linenumber()+"The fit was accepted"
+        printf,66,linenumber()+"We finished the first fit of "+catDirname[i]+" at "+systime()
+        printf,66,linenumber()+"We have rerun "+string(counter)+" times."
+        printf,66,linenumber()+"We have modified the rings "+string(countsbr)+" times."
+        IF AC1 EQ 0 then  printf,66,linenumber()+"The fit was not accepted."
+        IF AC1 EQ 1 then  printf,66,linenumber()+"The fit was accepted."
         close,66
      ENDIF 
      testing1skip:
@@ -3522,8 +3522,7 @@ noconfig:
            endfor
            close,1                       
            IF testing GE 1 then goto,skiporver        
-           spawn,'rm -f 1stfit_opt.*',isthere
-           spawn,'rename 1stfit. 1stfit_opt. 1stfit.*',isthere
+           rename,'1stfit.','1stfit_opt.'
            gipsyfirst=strarr(1)
            gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
            spawn,gipsyfirst,isthere2
@@ -3552,11 +3551,11 @@ noconfig:
      tmpix=WHERE(tmpcube GT catnoise[i])
      IF tmpix[0] EQ -1 then begin
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A12,A80)', catDirname[i],AC1,'The first fit does not have flux above the noise level, this means a mis fit'
+        printf,1,format='(A60,A12,A80)', catDirname[i],AC1,'The first fit does not have flux above the noise level, this means a mis fit.'
         close,1
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"No flux in final fit, aborting "
+           printf,66,linenumber()+"No flux in final fit, aborting."
            close,66
         ENDIF 
         bookkeeping=0
@@ -3680,11 +3679,11 @@ noconfig:
           
         endif else begin
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,A12,A80)',catDirname[i],AC1,'The first fit model is too small to fit variations'
+           printf,1,format='(A60,A12,A80)',catDirname[i],AC1,'The first fit model is too small to fit variations.'
            close,1
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"Finished "+catDirname[i]+"in loop"+string(i)+systime()
+              printf,66,linenumber()+"Finished "+catDirname[i]+" which is galaxy #  "+strtrim(string(fix(i)),2)+" at "+systime()
               close,66
            ENDIF 
            bookkeeping=0
@@ -3723,10 +3722,10 @@ noconfig:
         changeradii,tirificsecond,norings[0]
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"We added a ring to the model cause there were too few the new number of rings = "+string(norings[0])
+           printf,66,linenumber()+"We added a ring to the model cause there were too few the new number of rings = "+strtrim(string(fix(norings[0])),2)
            Close,66
         ENDIF ELSE BEGIN
-           print,linenumber()+"We added a ring to the model cause there were too few the new number of rings = "+string(norings[0])
+           print,linenumber()+"We added a ring to the model cause there were too few the new number of rings = "+strtrim(string(fix(norings[0])),2)
         ENDELSE
      ENDIF
     
@@ -3905,19 +3904,17 @@ noconfig:
      close,1
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+"Starting tirific Second estimate in "+catDirname[i]+systime()
-        printf,66,linenumber()+"We have changed the ring numbers "+string(sbrmodify)+" times"
-        printf,66,linenumber()+"We have changed the fitting paramaters "+string(trytwo)+" times"
+        printf,66,linenumber()+"Starting tirific Second estimate in "+catDirname[i]+" at "+systime()
+        printf,66,linenumber()+"We have changed the ring numbers "+string(sbrmodify)+" times."
+        printf,66,linenumber()+"We have changed the fitting paramaters "+string(trytwo)+" times."
         close,66
      ENDIF 
-     print,linenumber()+"Starting tirific Second estimate in "+catDirname[i]+systime()
+     print,linenumber()+"Starting tirific Second estimate in "+catDirname[i]+" at "+systime()
                                 ;rename the files
      counter++
-     spawn,'rm -f 2ndfitold.*',isthere
-;     spawn,'mv 2ndfit.def 2ndfit_'+strtrim(strcompress(string(fix(counter))),2)+'.def'
-     spawn,'rename 2ndfit. 2ndfitold. 2ndfit.*',isthere
-     spawn,'rm -f 2ndfit.*',isthere
      
+;     spawn,'mv 2ndfit.def 2ndfit_'+strtrim(strcompress(string(fix(counter))),2)+'.def'
+     rename,'2ndfit.','2ndfitold.'
      gipsyfirst=strarr(1)
      gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
      spawn,gipsyfirst,isthere2
@@ -3930,20 +3927,20 @@ noconfig:
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         IF AC2 EQ 1 then begin
-           printf,66,linenumber()+"The Second estimate was accepted in this run" 
+           printf,66,linenumber()+"The Second estimate was accepted in this run." 
            printf,66,linenumber()+"Tirific ran through "+strtrim(strcompress(string(loops)))+" loops and produced "+strtrim(strcompress(string(toymodels)))+" models"
-           printf,66,linenumber()+"Disk 1 had "+strtrim(strcompress(string(nopoints[0])))+"Point sources and Disk 2 "+strtrim(strcompress(string(nopoints[1])))
+           printf,66,linenumber()+"Disk 1 had "+strtrim(strcompress(string(nopoints[0])))+" point sources and Disk 2 "+strtrim(strcompress(string(nopoints[1])))
         ENDIF ELSE BEGIN
            printf,66,linenumber()+"The Second estimate was not accepted."
            printf,66,linenumber()+"Tirific ran through "+strtrim(strcompress(string(loops)))+" loops and produced "+strtrim(strcompress(string(toymodels)))+" models"
-           printf,66,linenumber()+"Disk 1 had "+strtrim(strcompress(string(nopoints[0])))+"Point sources and Disk 2 "+strtrim(strcompress(string(nopoints[1])))
+           printf,66,linenumber()+"Disk 1 had "+strtrim(strcompress(string(nopoints[0])))+" point sources and Disk 2 "+strtrim(strcompress(string(nopoints[1])))
         ENDELSE
         close,66
      ENDIF   
                                 ;let's moderate the cflux to ensure between 1.5 and 3 million points
      check_cflux,nopoints,tirificsecond,tirificsecondvars,cfluxadjusted,log=log
-     IF AC2 EQ 1 then print,linenumber()+"The Second estimate was accepted in this run" $
-     else print,linenumber()+"The Second estimate was not accepted."
+     IF AC2 EQ 1 then print,linenumber()+"The second estimate was accepted in this run." $
+     else print,linenumber()+"The second estimate was not accepted."
      secondfitvaluesnames=0.
      secondfitvalues=0.
      finalsmooth=0.
@@ -3977,7 +3974,7 @@ noconfig:
      IF PAang2[0] NE PAang[0] then begin
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"This is where the inner PA starts to deviate "
+           printf,66,linenumber()+"This is where the inner PA starts to deviate."
            Close,66
         ENDIF        
      ENDIF
@@ -4158,7 +4155,7 @@ noconfig:
         ENDELSE
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"We changed the boundaries. These are the new boundaries "
+           printf,66,linenumber()+"We changed the boundaries. These are the new boundaries: "
            printf,66,linenumber()+"PA upper limits="+PAinput1[1]+" "+PAinput2[1]+" "+PAinput2[1]+" "
            printf,66,linenumber()+"PA lower limits="+PAinput1[2]+" "+PAinput2[2]+" "+PAinput2[2]+" "
            printf,66,linenumber()+"INCL upper limits="+INCLinput1[1]+" "+INCLinput2[1]+" "+INCLinput2[1]+" "
@@ -4217,7 +4214,7 @@ noconfig:
         parameterreguv87,PAang,SBRarror,RADarr,fixedrings=fixedrings,difference=3.5-(ATAN((n_elements(norings[0])-5.)*2.))*5.25/!pi,cutoff=cutoff,arctan=prefunc,order=polorder,max_par=PAinput2[1],min_par=PAinput2[2],accuracy=accuracy/4.,error=sigmapa1
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"We used a polynomial of the   "+string(polorder)+" order to smooth the PA profile "
+           printf,66,linenumber()+"We used a polynomial of the   "+string(polorder)+" order to smooth the PA profile."
            printf,66,linenumber()+"The profile is forced to remain between "+PAinput2[1]+" and "+PAinput2[2]
            printf,66,linenumber()+"The inner" +string(fixedrings)+" rings are fixed."
            Close,66
@@ -4229,7 +4226,7 @@ noconfig:
         parameterreguv87,PAang2,SBRarr2or,RADarr,fixedrings=fixedrings,difference=3.5-(ATAN((n_elements(norings[0])-5.)*2.))*5.25/!pi,cutoff=cutoff,arctan=prefunc,order=polorder,max_par=PAinput3[1],min_par=PAinput3[2],accuracy=accuracy/4.,error=sigmapa2
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"We used a polynomial of the   "+string(polorder)+" order to smooth the PA_2 profile "
+           printf,66,linenumber()+"We used a polynomial of the   "+string(polorder)+" order to smooth the PA_2 profile."
            printf,66,linenumber()+"The profile is forced to remain between "+PAinput3[1]+" and "+PAinput3[2]
            printf,66,linenumber()+"The inner" +string(fixedrings)+" rings  are fixed."
            Close,66
@@ -4254,7 +4251,7 @@ noconfig:
         parameterreguv87,INCLang,SBRarror,RADarr,fixedrings=fixedrings,difference=8.*exp(-catinc[i]^2.5/10^3.5)+2.,cutoff=cutoff,arctan=prefunc,order=polorder1,max_par=INCLinput2[1],min_par=INCLinput2[2],accuracy=accuracy,error=sigmaincl1
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"We used a polynomial of the   "+string(polorder)+" order to smooth the INCL profile "
+           printf,66,linenumber()+"We used a polynomial of the   "+string(polorder)+" order to smooth the INCL profile."
            printf,66,linenumber()+"The profile is forced to remain between "+INCLinput2[1]+" and "+INCLinput2[2]
            printf,66,linenumber()+"The inner" +string(fixedrings)+" rings are fixed."
            Close,66
@@ -4266,7 +4263,7 @@ noconfig:
         parameterreguv87,INCLang2,SBRarr2or,RADarr,fixedrings=fixedrings,difference=8.*exp(-catinc[i]^2.5/10^3.5)+2.,cutoff=cutoff,arctan=prefunc,order=polorder2,max_par=INCLinput3[1],min_par=INCLinput3[2],accuracy=accuracy,error=sigmaincl2
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"We used a polynomial of the   "+string(polorder)+" order to smooth the INCL_2 profile "
+           printf,66,linenumber()+"We used a polynomial of the   "+string(polorder)+" order to smooth the INCL_2 profile."
            printf,66,linenumber()+"The profile is forced to remain between "+INCLinput3[1]+" and "+INCLinput3[2]
            printf,66,linenumber()+"The inner" +string(fixedrings)+" rings are fixed."
            Close,66
@@ -4339,20 +4336,17 @@ noconfig:
                                 ;Perform tirific check with only changes as a whole to the parameters
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"Starting slope adjustment in "+catDirname[i]+systime()
+              printf,66,linenumber()+"Starting slope adjustment in "+catDirname[i]+" at "+systime()
               close,66
            ENDIF 
-           print,linenumber()+"Starting slope adjustment in "+catDirname[i]+systime()
-           spawn,'rm -f 2ndfittmp.*',isthere
-           spawn,'rename 2ndfit. 2ndfittmp. 2ndfit.*',isthere
-           spawn,'rm -f 2ndfit.*',isthere
+           print,linenumber()+"Starting slope adjustment in "+catDirname[i]+" at "+systime()
+           rename,'2ndfit.','2ndfittmp.'
            gipsyfirst=strarr(1)
            gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
            spawn,gipsyfirst,isthere2
            writenewtotemplate,tirificsecond,maindir+'/'+catdirname[i]+'/2ndfit.def',Arrays=secondfitvalues,VariableChange=secondfitvaluesnames,Variables=tirificsecondvars
-           spawn,'rm -f 2ndfitslop.*',isthere
-           spawn,'rename 2ndfit. 2ndfitslop. 2ndfit.*',isthere
-           spawn,'rename 2ndfittmp. 2ndfit. 2ndfittmp.*',isthere
+           rename,'2ndfit.','2ndfitslop.'
+           rename,'2ndfittmp.','2ndfit.'
            tmppos=where('VROT' EQ secondfitvaluesnames)
            VROTarr=secondfitvalues[*,tmppos]
         ENDIF
@@ -4368,12 +4362,14 @@ noconfig:
         verror=MAX([5.,channelwidth*(1.+vresolution)/SQRT(sin(INCLang[0]*!DtoR))])
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"This is vrot "
+           printf,66,linenumber()+"This is VROT."
            printf,66,VROTarr
-           printf,66,linenumber()+"This is SBR "
+           printf,66,linenumber()+"This is SBR."
            printf,66,tmpSBR
-           printf,66,"plus some other input",fix(norings[0]),tmphigh[0],tmplow[0],velfixrings
-           printf,66,"This the error used",verror,INCLang[0],vresolution,channelwidth
+           printf,66,"The number of rings= "+strtrim(string(fix(norings[0])),2)
+           printf,66,"The maximum/minimum= "+strtrim(string(tmphigh[0]),2)+"/"+strtrim(string(tmplow[0]),2)
+           printf,66,"The number of fixed rings= "+strtrim(string(fix(velfixrings)),2)
+           printf,66,"The velocity error = "+strtrim(string(verror),2)
            Close,66
         ENDIF
                                 ;If the central parameters are LT 120
@@ -4388,15 +4384,15 @@ noconfig:
         IF tmp0check[0] NE -1 then VROTarr[tmp0check]=tmplow[0]
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"This is vrot after smoothing "
+           printf,66,linenumber()+"This is VROT after smoothing."
            printf,66,VROTarr
            Close,66
         ENDIF
         VROTarr[0]=0.
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"We used a polynomial of the   "+string(polorder)+" order to smooth the VROT profile "
-           printf,66,linenumber()+"And fixed    "+string(velfixrings)+" rings"
+           printf,66,linenumber()+"We used a polynomial of the "+string(polorder)+" order to smooth the VROT profile."
+           printf,66,linenumber()+"And fixed "+string(velfixrings)+" rings."
            Close,66
         ENDIF
      ENDIF
@@ -4408,13 +4404,13 @@ noconfig:
                                 ;the amount of rings only fitted in a slope
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+"We fit a slope to the rotation curve from ring  "+string(velconstused)+" to ring"+string(norings[0])
+        printf,66,linenumber()+"We fit a slope to the rotation curve from ring "+string(velconstused)+" to ring"+strtrim(string(fix(norings[0])),2)
         for x=0,n_elements(SBRarr)-1 do begin
            printf,66,SBRarr[x],SBRarr2[x],3.5*cutoff[x]
         endfor
         Close,66
      ENDIF ELSE BEGIN
-        print,linenumber()+"We fit a slope to the rotation curve from ring  "+string(velconstused)+" to ring"+string(norings[0])
+        print,linenumber()+"We fit a slope to the rotation curve from ring "+string(velconstused)+" to ring"+strtrim(string(fix(norings[0])),2)
      ENDELSE
      VROTarr[0]=0.
      VROTarr2=VROTarr  
@@ -4456,7 +4452,7 @@ noconfig:
         openu,66,log,/APPEND
         printf,66,linenumber()+"The last SBR ring 1 is "+string(newindrings[0])
         printf,66,linenumber()+"The last SBR ring 2 is "+string(newindrings[1])
-        printf,66,linenumber()+"The amount of rings is "+string(norings[0])     
+        printf,66,linenumber()+"The amount of rings is "+strtrim(string(fix(norings[0])),2)     
         close,66
      ENDIF
                                 ;IF we have not done too many
@@ -4469,7 +4465,7 @@ noconfig:
         get_newringsv8,SBRarr,SBRarr2,cutoff,newrings 
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"Newrings should always be bigger or equal to velconstused "+string(newrings)+" =>"+string(velconstused)
+           printf,66,linenumber()+"Newrings should always be bigger or equal to velconstused "+strtrim(string(fix(newrings)),2)+" =>"+string(velconstused)
            close,66
         ENDIF 
                                 ;Checking the new amount of rings against various criteria
@@ -4477,7 +4473,7 @@ noconfig:
         if newrings LT 4 then begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"Cause the newrings was "+string(newrings)+" we set it to 4"
+              printf,66,linenumber()+"Cause the newrings was "+strtrim(string(fix(newrings)),2)+" we set it to 4."
               close,66
            ENDIF         
            newrings=4
@@ -4486,14 +4482,14 @@ noconfig:
         IF newrings GT maxrings then begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"Cause the newrings was "+string(newrings)+" we set it to maxrings"
+              printf,66,linenumber()+"Cause the newrings was "+strtrim(string(fix(newrings)),2)+" we set it to maxrings."
               close,66
            ENDIF       
            newrings=maxrings 
         ENDIF
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"We found this as rings="+string(norings[0])+"  new="+string(newrings)
+           printf,66,linenumber()+"We found this as rings = "+strtrim(string(fix(norings[0])),2)+"  new="+strtrim(string(fix(newrings)),2)
            close,66
         ENDIF
                                 ;Not previously fitted. If it has been
@@ -4503,14 +4499,14 @@ noconfig:
            IF finalsmooth EQ 2 then begin 
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"Cause the newrings was "+string(newrings)+" which we have fitted before and we are smoothing we are going to fix the rings at "+string(norings[0])
+                 printf,66,linenumber()+"Cause the newrings was "+strtrim(string(fix(newrings)),2)+" which we have fitted before and we are smoothing we are going to fix the rings at "+strtrim(string(fix(norings[0])),2)
                  close,66
               ENDIF  
               newrings=norings[0]
            ENDIF ELSE BEGIN
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"Cause the newrings was "+string(newrings)+" which we have fitted before we gonna fix the rings at this value"
+                 printf,66,linenumber()+"Cause the newrings was "+strtrim(string(fix(newrings)),2)+" which we have fitted before we gonna fix the rings at this value."
                  close,66
               ENDIF     
            ENDELSE
@@ -4528,8 +4524,8 @@ noconfig:
               ENDIF ELSE BEGIN
                  IF size(log,/TYPE) EQ 7 then begin
                     openu,66,log,/APPEND
-                    printf,66,linenumber()+"As the cut would modify the rings to less than the maximum forced addition of a ring we do not apply the cut"
-                    printf,66,linenumber()+"new rings "+string(newrings)+" old rings "+string(norings[0])+"forcedring="+string(forcedring)
+                    printf,66,linenumber()+"As the cut would modify the rings to less than the maximum forced addition of a ring we do not apply the cut."
+                    printf,66,linenumber()+"new rings "+strtrim(string(fix(newrings)),2)+" old rings "+strtrim(string(fix(norings[0])),2)+" forcedring="+string(forcedring)
                     Close,66
                  ENDIF
                  goto,nocut
@@ -4539,12 +4535,6 @@ noconfig:
               IF newrings GE norings[0]-1 then begin
                  prevmodification=-1
               ENDIF else BEGIN
-                 IF size(log,/TYPE) EQ 7 then begin
-                    openu,66,log,/APPEND
-                    printf,66,linenumber()+"As the last modification was the addition of a ring we will cut one ring less than normally (on temp hold)"
-                    printf,66,linenumber()+"new rings "+string(newrings+1)+" old rings "+string(norings[0])
-                    Close,66
-                 ENDIF
                  prevmodification=-2
               ENDELSE
            ENDIF 
@@ -4552,8 +4542,8 @@ noconfig:
               newrings=norings[0]-1
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"As we are smoothing we will only subtract one ring"
-                 printf,66,linenumber()+"new rings "+string(newrings)+" old rings "+string(norings[0])
+                 printf,66,linenumber()+"As we are smoothing we will only subtract one ring."
+                 printf,66,linenumber()+"new rings "+strtrim(string(fix(newrings)),2)+" old rings "+strtrim(string(fix(norings[0])),2)
                  Close,66
               ENDIF
            ENDIF
@@ -4562,10 +4552,10 @@ noconfig:
            
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"We cut a ring! lastcut"+string(lastcutrings)+" lastadd "+string(lastaddrings)+" new "+string(newrings)+" old "+string(oldrings)
+              printf,66,linenumber()+"We cut a ring! lastcut"+string(lastcutrings)+" lastadd "+string(lastaddrings)+" new "+strtrim(string(fix(newrings)),2)+" old "+string(oldrings)
               Close,66
            ENDIF ELSE begin            
-              print,linenumber()+"We cut a ring! lastcut"+string(lastcutrings)+" lastadd "+string(lastaddrings)+" new "+string(newrings)+" old "+string(oldrings)
+              print,linenumber()+"We cut a ring! lastcut"+string(lastcutrings)+" lastadd "+string(lastaddrings)+" new "+strtrim(string(fix(newrings)),2)+" old "+string(oldrings)
            ENDELSE
                                 ;change the template to have a ring less
            changeradii,tirificsecond,norings[0]  
@@ -4637,8 +4627,8 @@ noconfig:
            prevmodification=0.
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"We force added a ring to the profile"
-              printf,66,linenumber()+"Newrings"+string(newrings)+", Rings"+string(norings[0])
+              printf,66,linenumber()+"We force added a ring to the profile."
+              printf,66,linenumber()+"Newrings "+strtrim(string(fix(newrings)),2)+", Rings "+strtrim(string(fix(norings[0])),2)
               Close,66
            ENDIF
            IF newrings GT forcedring then forcedring=newrings
@@ -4650,7 +4640,7 @@ noconfig:
         IF prevmodification EQ -1 AND overwrite NE 1 then begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"We wanted to add a ring to the model but the previous step was a subtraction"
+              printf,66,linenumber()+"We wanted to add a ring to the model but the previous step was a subtraction."
               Close,66
            ENDIF
         ENDIF
@@ -4671,7 +4661,7 @@ noconfig:
            parameterreguv87,tmp,tmpsbr,RADarr,fixedrings=fixedrings,difference=2.,cutoff=cutoff,arctan=prefunc,order=polorder,max_par=PAinput2[1],min_par=PAinput2[2],/EXTENDING
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"We used a polynomial of the   "+string(polorder)+" order to extend the PA profile "
+              printf,66,linenumber()+"We used a polynomial of the   "+string(polorder)+" order to extend the PA profile."
               Close,66
            ENDIF
            tmp2=PAang
@@ -4684,7 +4674,7 @@ noconfig:
            parameterreguv87,tmp,tmpsbr2,RADarr,fixedrings=fixedrings,difference=2.,cutoff=cutoff,arctan=prefunc,order=polorder,max_par=PAinput3[1],min_par=PAinput3[2],/EXTENDING
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"We used a polynomial of the   "+string(polorder)+" order to extend the PA_2 profile "
+              printf,66,linenumber()+"We used a polynomial of the   "+string(polorder)+" order to extend the PA_2 profile."
               Close,66
            ENDIF 
            tmp2=PAang2
@@ -4696,27 +4686,15 @@ noconfig:
            stringPA='PA= '+STRJOIN(string(PAang),' ')
            tmppos=where('PA' EQ tirificsecondvars)
            tirificsecond[tmppos]=stringPA
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+"Were tracinthe PA"
-              printf,66,linenumber()+stringPA
-              close,66
-           ENDIF
            stringPA='PA_2= '+STRJOIN(string(PAang2),' ')
            tmppos=where('PA_2' EQ tirificsecondvars)
            tirificsecond[tmppos]=stringPA
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+"Were tracinthe PA 2"
-              printf,66,linenumber()+stringPA
-              close,66
-           ENDIF
                                 ;inclination
            tmp=[INCLang,INCLang[n_elements(INCLang)-1]]
            parameterreguv87,tmp,tmpsbr,RADarr,fixedrings=fixedrings,difference=6.*exp(-catinc[i]^2.5/10^3.5)+4.,cutoff=cutoff,arctan=prefunc,order=polorder,max_par=INCLinput2[1],min_par=INCLinput2[2],/EXTENDING
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"We used a polynomial of the   "+string(polorder)+" order to extend the INCL profile "
+              printf,66,linenumber()+"We used a polynomial of the   "+string(polorder)+" order to extend the INCL profile."
               Close,66
            ENDIF 
            tmp2=INCLang
@@ -4728,7 +4706,7 @@ noconfig:
            parameterreguv87,tmp,tmpsbr2,RADarr,fixedrings=fixedrings,difference=6.*exp(-catinc[i]^2.5/10^3.5)+4.,cutoff=cutoff,arctan=prefunc,order=polorder,max_par=INCLinput3[1],min_par=INCLinput3[2],/EXTENDING
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"We used a polynomial of the   "+string(polorder)+" order to extend the INCL_2 profile "
+              printf,66,linenumber()+"We used a polynomial of the   "+string(polorder)+" order to extend the INCL_2 profile."
               Close,66
            ENDIF
            tmp2=INCLang2
@@ -4768,10 +4746,10 @@ noconfig:
            lastaddrings=norings[0]
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"We added a ring to the model"
+              printf,66,linenumber()+"We added a ring to the model."
               Close,66
            ENDIF ELSE BEGIN
-              print,linenumber()+"We added a ring to the model"
+              print,linenumber()+"We added a ring to the model."
            ENDELSE
            prevmodification=1.
            INCLinput1[0]='INCL 1:'+strtrim(strcompress(string(innerfix,format='(F7.4)')),1)+' INCL_2 1:'+strtrim(strcompress(string(innerfix,format='(F7.4)')),1)           
@@ -4877,7 +4855,7 @@ noconfig:
               ENDELSE
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"Both the first and the second estimate weren't accepted retrying"
+                 printf,66,linenumber()+"Both the first and the second estimate weren't accepted, retrying."
                  close,66
               ENDIF             
            endif else begin
@@ -4894,7 +4872,7 @@ noconfig:
               ENDELSE
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND                
-                 printf,66,linenumber()+"The second estimate wasn't accepted. Running with fixed center"
+                 printf,66,linenumber()+"The second estimate wasn't accepted. Running with fixed center."
                  close,66
               ENDIF
            endelse
@@ -4909,7 +4887,7 @@ noconfig:
               Writefittingvariables,tirificsecond,xposinput1,yposinput1,vsysinput1  
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"Last try on the second fit"               
+                 printf,66,linenumber()+"Last try on the second fit."               
                  close,66
               ENDIF              
            endif else begin
@@ -4929,7 +4907,7 @@ noconfig:
         IF trytwo EQ 3 and AC2 NE 1 then noacceptbeforesmooth=1
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"We have a succesful model and we will smooth with polynomials now" 
+           printf,66,linenumber()+"We have a succesful model and we will smooth with polynomials now." 
            close,66
         END
         goto,lastadjust
@@ -5004,20 +4982,8 @@ noconfig:
      IF testing GE 2 OR finalsmooth EQ 2. then goto,testing2check
      tmppos=where('PA' EQ tirificsecondvars)
      stringPA=tirificsecond[tmppos]
-     IF size(log,/TYPE) EQ 7 then begin
-        openu,66,log,/APPEND
-        printf,66,linenumber()+"Were tracinthe PA"
-        printf,66,linenumber()+stringPA
-        close,66
-     ENDIF
      tmppos=where('PA_2' EQ tirificsecondvars)
      stringPA=tirificsecond[tmppos]
-     IF size(log,/TYPE) EQ 7 then begin
-        openu,66,log,/APPEND
-        printf,66,linenumber()+"Were tracinthe PA 2"
-        printf,66,linenumber()+stringPA
-        close,66
-     ENDIF
                                 ;Write to file
      openw,1,maindir+'/'+catdirname[i]+'/tirific.def'
      for index=0,n_elements(tirificsecond)-1 do begin
@@ -5027,15 +4993,13 @@ noconfig:
                                 ;Perform tirific check with only changes as a whole to the parameters
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+"Starting tirific check of the smoothed second estimate in "+catDirname[i]+systime()
-        printf,66,linenumber()+"We have changed the ring numbers "+string(sbrmodify)+" times"
-        printf,66,linenumber()+"We have changed the fitting paramaters "+string(trytwo)+" times"
+        printf,66,linenumber()+"Starting tirific check of the smoothed second estimate in "+catDirname[i]+" at "+systime()
+        printf,66,linenumber()+"We have changed the ring numbers "+string(sbrmodify)+" times."
+        printf,66,linenumber()+"We have changed the fitting paramaters "+string(trytwo)+" times."
         close,66
      ENDIF 
-     print,linenumber()+"Starting tirific check of second estimate in "+catDirname[i]+systime()
-     spawn,'rm -f 2ndfitunsmooth.*',isthere
-     spawn,'rename 2ndfit. 2ndfitunsmooth. 2ndfit.*',isthere
-     spawn,'rm -f 2ndfit.*',isthere
+     print,linenumber()+"Starting tirific check of second estimate in "+catDirname[i]+" at "+systime()
+     rename,'2ndfit.','2ndfitunsmooth.'
      gipsyfirst=strarr(1)
      gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
      spawn,gipsyfirst,isthere2
@@ -5045,13 +5009,13 @@ noconfig:
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         IF AC2 EQ 1 then begin
-           printf,66,linenumber()+"The smoothed second estimate was accepted in this run" 
-           printf,66,linenumber()+"Tirific ran through "+strtrim(strcompress(string(loops)))+" loops and produced "+strtrim(strcompress(string(toymodels)))+" models"
-           printf,66,linenumber()+"Disk 1 had "+strtrim(strcompress(string(nopoints[0])))+"Point sources and Disk 2 "+strtrim(strcompress(string(nopoints[1])))
+           printf,66,linenumber()+"The smoothed second estimate was accepted in this run." 
+           printf,66,linenumber()+"Tirific ran through "+strtrim(strcompress(string(loops)))+" loops and produced "+strtrim(strcompress(string(toymodels)))+" models."
+           printf,66,linenumber()+"Disk 1 had "+strtrim(strcompress(string(nopoints[0])))+" point sources and Disk 2 "+strtrim(strcompress(string(nopoints[1])))
         ENDIF ELSE BEGIN
            printf,66,linenumber()+"The smoothed second estimate was not accepted."
-           printf,66,linenumber()+"Tirific ran through "+strtrim(strcompress(string(loops)))+" loops and produced "+strtrim(strcompress(string(toymodels)))+" models"
-           printf,66,linenumber()+"Disk 1 had "+strtrim(strcompress(string(nopoints[0])))+"Point sources and Disk 2 "+strtrim(strcompress(string(nopoints[1])))
+           printf,66,linenumber()+"Tirific ran through "+strtrim(strcompress(string(loops)))+" loops and produced "+strtrim(strcompress(string(toymodels)))+" models."
+           printf,66,linenumber()+"Disk 1 had "+strtrim(strcompress(string(nopoints[0])))+" point sources and Disk 2 "+strtrim(strcompress(string(nopoints[1])))
         ENDELSE
         close,66
      ENDIF  
@@ -5076,9 +5040,7 @@ noconfig:
         IF finishafter EQ 1.1 then begin
            get_newringsv8,tmpSBR,tmpSBR,cutoff,newend
            IF newend LT 4 then newend=4
-           spawn,'rm -f 2ndfituncor.*',isthere
-           spawn,'rename 2ndfit. 2ndfituncor. 2ndfit.*',isthere
-           spawn,'rm -f 2ndfit.*',isthere
+           rename,'2ndfit.','2ndfituncor.'
            tmp=WHERE(firstfitvaluesnames EQ 'NUR')
            rings=firstfitvalues[0,tmp]
            IF newend LT rings then begin
@@ -5174,8 +5136,7 @@ noconfig:
         endfor
         close,1
         if optimized then begin
-           spawn,'rm -f 2ndfit_opt.*',isthere
-           spawn,'rename 2ndfit. 2ndfit_opt. 2ndfit.*',isthere
+           rename,'2ndfit.','2ndfit_opt.'
         endif
         gipsyfirst=strarr(1)
         gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
@@ -5252,31 +5213,67 @@ noconfig:
         IF AC2 EQ 1 then AC2=2
      ENDIF
      IF finishafter EQ 2 OR finishafter EQ 2.1 then begin
-        openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,2A12,A80)',catDirname[i],AC1,AC2,'You have chosen to skip the fitting process after the second fit'
-        close,1   
+                                ;Below 8 beams in diameter FAT is not
+                                ;reliable so if in that range or when
+                                ;the inclination is below 20 the fit
+                                ;is failed
+        case 1 of
+           norings[0] LT 5:begin
+              openu,1,outputcatalogue,/APPEND
+              printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,' The finalmodel is less than 8 beams in diameter. FAT is not reliable in this range.'
+              close,1
+           end
+           Basicinfovalues[0,4] LT 20:begin
+              openu,1,outputcatalogue,/APPEND
+              printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,' The final inclination is below 20 degrees. FAT is not reliable in this range.'
+              close,1
+           end
+           else:begin
+              openu,1,outputcatalogue,/APPEND
+              printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,AC2,' You have chosen to skip the fitting process after the second fit'
+              close,1  
+           end
+        endcase
         goto,finishthisgalaxy
      ENDIF ELSE begin
         IF finishafter EQ 1.1 then begin
-           openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,2A12,A80)',catDirname[i],AC1,AC2,'As the galaxy radius is already halved we stop here'
-           close,1   
+                                ;Below 8 beams in diameter FAT is not
+                                ;reliable so if in that range or when
+                                ;the inclination is below 20 the fit
+                                ;is failed
+           case 1 of
+              norings[0] LT 9:begin
+                 openu,1,outputcatalogue,/APPEND
+                 printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,'The finalmodel is less than 8 beams in diameter. FAT is not reliable in this range.'
+                 close,1
+              end
+              Basicinfovalues[0,4] LT 20:begin
+                 openu,1,outputcatalogue,/APPEND
+                 printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,'The final inclination is below 20 degrees. FAT is not reliable in this range.'
+                 close,1
+              end
+              else:begin
+                 openu,1,outputcatalogue,/APPEND
+                 printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,AC2,'As the galaxy radius is already halved we stop here'
+                 close,1
+              end
+           endcase
            goto,finishthisgalaxy
         ENDIF ELSE BEGIN
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              IF AC2 EQ 1 then printf,66,linenumber()+"The Second estimate was accepted" $
-              else printf,66,linenumber()+"The Second estimate was not accepted"
+              IF AC2 EQ 1 then printf,66,linenumber()+"The Second estimate was accepted." $
+              else printf,66,linenumber()+"The Second estimate was not accepted."
               close,66
            ENDIF ELSE BEGIN
-              IF AC2 EQ 1 then print,linenumber()+"The Second estimate was accepted" $
-              else print,linenumber()+"The Second estimate was not accepted"
+              IF AC2 EQ 1 then print,linenumber()+"The Second estimate was accepted." $
+              else print,linenumber()+"The Second estimate was not accepted."
            ENDELSE
         ENDELSE
      ENDELSE
      IF AC1 EQ 0 AND AC2 EQ 0 then begin
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,2A12,A80)',catDirname[i],AC1,AC2,'Both AC1 and AC2 could not get accepted. Aborting the fit'
+        printf,1,format='(A60,2A12,A80)',catDirname[i],AC1,AC2,'Both AC1 and AC2 could not get accepted. Aborting the fit.'
         close,1
         goto,finishthisgalaxy
      ENDIF
@@ -5301,7 +5298,7 @@ noconfig:
      
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+"Finished "+catDirname[i]+"in loop"+string(i)+systime()
+        printf,66,linenumber()+"Finished "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
         close,66
      ENDIF
      CD,old_dir 
