@@ -1,4 +1,4 @@
-Pro FAT_exp,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
+Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
 
 ;+
 ; NAME:
