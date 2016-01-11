@@ -48,7 +48,7 @@ Pro Interpolate,Values,radii,output=output,newradii=newradii
   COMPILE_OPT IDL2 
 
   IF  n_elements(radii) LT 2 OR n_elements(radii) NE n_elements(Values) then begin
-     print,'Please provide at least two values and make sure that x and y values have the same amount of elements'
+     print,'INTERPOLATE: Please provide at least two values and make sure that x and y values have the same amount of elements'
      goto,breakthis
   ENDIF
                                 ;let's make the new radii half the old if not given

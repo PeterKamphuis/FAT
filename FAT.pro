@@ -1,4 +1,4 @@
-Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
+Pro FAT_exp,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
 
 ;+
 ; NAME:
@@ -31,16 +31,18 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
 ;     IDL> FAT,CONFIGURATION_FILE='~/Myfittingdirectory/FAT.config'
 ;
 ; PROCEDURES CALLED
-;  BOOK_KEEPING, BUILDAXII, CALC_EDGE, CHANGERADII, CHECK_CFLUX, CLEANUP, COLUMNDENSITY,
+;  BOOK_KEEPING, BUILDAXII, CALC_EDGE, CHANGERADII, CHECK_CFLUX, CLEAN_HEADER, CLEANUP, COLUMNDENSITY,
 ;  CONVERTRADEC, CONVERTSKYANGLEFUNCTION(), EXTRACT_PV, FIT_ELLIPSE(),FAT_SMOOTH()
 ;  GETDHI, GET_FIXEDRINGSV8, GET_NEWRINGSV8, GET_PROGRESS, 
 ;  INT_PROFILEV2, INTERPOLATE, ISNUMERIC(), LINENUMBER(), MOMENTSV2,
 ;  OBTAIN_INCLINATIONV8, OBTAIN_PAV2, OBTAIN_VELPA, OBTAIN_W50, 
-;  PARAMETERREGUV87, READ_TEMPLATE, SBR_CHECK, SET_SBR, SET_VROTV6,
-;  SET_WARP_SLOPEV2, WRITEFITTINGVARIABLES, WRITENEWTOTEMPLATE,
+;  PARAMETERREGUV87, PREPROCESSING, READ_TEMPLATE, SBR_CHECK, SET_SBR, SET_VROTV6,
+;  SET_WARP_SLOPEV2, TOTAL(), WRITEFITTINGVARIABLES, WRITENEWTOTEMPLATE
 ;  RESOLVE_ROUTINE, STRLOWCASE, and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      05-01-2016 P.Kamphuis; Restructered the whole preprocessing
+;      into a more logical flow.    
 ;      04-01-2016 P.Kamphuis; Added fail conditions when final model
 ;      is outside the boundaries set in Kamphuis et al. 2015. 
 ;      04-01-2016 P.Kamphuis; Removed the usage of the rename command
@@ -117,7 +119,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
                           
   COMPILE_OPT IDL2 
 
-  version='v3.1'
+  version='v3.2'
   if n_elements(supportdir) EQ 0 then supportdir='Support'
   CD,supportdir,CURRENT=old_dir
   spawn,'pwd',supportdir
@@ -142,6 +144,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
   RESOLVE_ROUTINE, 'changeradii'
   RESOLVE_ROUTINE, 'check_cflux'
   RESOLVE_ROUTINE, 'cleanup'
+  RESOLVE_ROUTINE, 'clean_header'
   RESOLVE_ROUTINE, 'columndensity'
   RESOLVE_ROUTINE, 'convertradec'
   RESOLVE_ROUTINE, 'convertskyanglefunction',/IS_FUNCTION
@@ -164,13 +167,13 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
   RESOLVE_ROUTINE, 'obtain_w50'
   RESOLVE_ROUTINE, 'organize_output'
   RESOLVE_ROUTINE, 'parameterreguv87'
+  RESOLVE_ROUTINE, 'preprocessing'
   RESOLVE_ROUTINE, 'read_template'
   RESOLVE_ROUTINE, 'rename'
   RESOLVE_ROUTINE, 'sbr_check'
   RESOLVE_ROUTINE, 'set_sbr'
   RESOLVE_ROUTINE, 'set_vrotv6'
   RESOLVE_ROUTINE, 'set_warp_slopev2'
-  RESOLVE_ROUTINE, 'sum',/IS_FUNCTION
   RESOLVE_ROUTINE, 'writefittingvariables'
   RESOLVE_ROUTINE, 'writenewtotemplate'
   CD,old_dir
@@ -217,7 +220,7 @@ tryconfigagain:
            'testing':testing=double(tmp[1])
                                 ;Remove all previous pre-processing as cutting the cube 0 no 1 yes 2
                                 ;use provided preprocessing
-           'allnew':allnew=double(tmp[1])
+           'allnew':allnewin=double(tmp[1])
                                 ;Parameters for finishing the fitting process early
                                 ;IF set to one the program finishes after this loop (The first 1 it encounters)
            'finishafter':finishafter=double(tmp[1])
@@ -303,7 +306,7 @@ noconfig:
   IF size(newresult,/TYPE) EQ 0 then newresult='y'
   IF n_elements(vresolution) EQ 0 then vresolution=1.
   IF n_elements(optpixelbeam) EQ 0 then optpixelbeam=4.
-  IF n_elements(allnew) EQ 0 then allnew=1
+  IF n_elements(allnewin) EQ 0 then allnewin=1
   IF n_elements(bookkeeping) EQ 0 then bookkeeping=3
  
   IF bookkeeping EQ 5. then bookkeeping=4
@@ -369,7 +372,7 @@ noconfig:
                                 ;If we want to use preprocessed input
                                 ;than we need moment0 moment1 a mask
                                 ;and a catalog
-           IF allnew GT 1 AND (tmpmom1[0] EQ -1 OR tmpmom0[0] EQ -1 OR tmpmask[0] EQ -1 OR tmpcatalog[0] EQ -1) then begin
+           IF allnewin GT 1 AND (tmpmom1[0] EQ -1 OR tmpmom0[0] EQ -1 OR tmpmask[0] EQ -1 OR tmpcatalog[0] EQ -1) then begin
               print,'Your catalog file is not configured properly. Aborting'
               stop
            ENDIF
@@ -378,7 +381,7 @@ noconfig:
                                 ;If we want to use preprocessed input
                                 ;than we need moment0 moment1 a mask
                                 ;and a catalog
-        IF allnew GT 1 then begin
+        IF allnewin GT 1 then begin
            print,'Your catalog file is not configured properly. Aborting'
            stop
         ENDIF
@@ -386,13 +389,18 @@ noconfig:
   ENDIF
                                 ;Then read the actual input from the catalo
   h=' '
+  counter=0
   for i=0,filelength-1 do begin
      readf,1,h
      tmp=str_sep(strtrim(strcompress(h),2),'|')
+     if  n_elements(tmp) LT 3 then begin
+        counter++
+     ENDIF
+        
      IF n_elements(tmp) GE 16 then begin 
                                 ;Old fashioned input of initial
                                 ;estimates from the literature
-                                ;Better to us the Sofia estimates as
+                                ;Better to use the Sofia estimates as
                                 ;the program is fine tuned to them
         catnumber[i]=tmp[0]
         catRA[i]=tmp[1]
@@ -421,52 +429,57 @@ noconfig:
            catMom0name[i]='youshouldnotnameyourfilesthisway'
            catMom1name[i]='youshouldnotnameyourfilesthisway'
         ENDELSE
+        counter=0
      ENDIF ELSE BEGIN
-                                ;IF we have a new catalog we use the determined order
-        catnumber[i]=tmp[tmpnumber]
-        catDirname[i]=tmp[tmpdir]
-        tmpagain=str_sep(tmp[tmpcube],'.')
-        IF n_elements(tmpagain) GT 1 and STRLOWCASE(tmpagain[n_elements(tmpagain)-1]) EQ 'fits' then begin
-           IF n_elements(tmpagain) GT 2 then catCubename[i]=STRJOIN(tmpagain[0:n_elements(tmpagain)-2],'.') else catCubename[i]=tmpagain[0]
-        endif else catCubename[i]=tmp[tmpcube]
-        catDistance[i]=double(tmp[tmpdistance])
+        IF n_elements(tmp) GT 3 then begin
+           counter=0            ;IF we have a new catalog we use the determined order
+           catnumber[i]=tmp[tmpnumber]
+           catDirname[i]=tmp[tmpdir]
+           tmpagain=str_sep(tmp[tmpcube],'.')
+           IF n_elements(tmpagain) GT 1 and STRLOWCASE(tmpagain[n_elements(tmpagain)-1]) EQ 'fits' then begin
+              IF n_elements(tmpagain) GT 2 then catCubename[i]=STRJOIN(tmpagain[0:n_elements(tmpagain)-2],'.') else catCubename[i]=tmpagain[0]
+           endif else catCubename[i]=tmp[tmpcube]
+           catDistance[i]=double(tmp[tmpdistance])
                                 ;IF we have preprocessed data we read the file names
-        IF allnew GT 1 then begin
-           IF test[0] EQ -1 then begin
-              catMom0name[i]=tmp[tmpmom0]
-              catMom1name[i]=tmp[tmpmom1]
-              catMaskname[i]=tmp[tmpmask]
-              catCatalogname[i]=tmp[tmpcatalog]
-              tmpagain=str_sep(tmp[tmpcatalog],'.')
-              IF n_elements(tmpagain) GT 1 and STRLOWCASE(tmpagain[n_elements(tmpagain)-1]) NE 'ascii' then catCatalogname[i]=tmp[tmpcatalog]+'.ascii'
-           ENDIF ELSE BEGIN
-              catMom0name[i]=tmp[test]+'_mom0'
-              catMom1name[i]=tmp[test]+'_mom1'
-              catMaskname[i]=tmp[test]+'_mask'
-              catCatalogname[i]=tmp[test]+'_cat.ascii'
-           ENDELSE
+           IF allnewin GT 1 then begin
+              IF test[0] EQ -1 then begin
+                 catMom0name[i]=tmp[tmpmom0]
+                 catMom1name[i]=tmp[tmpmom1]
+                 catMaskname[i]=tmp[tmpmask]
+                 catCatalogname[i]=tmp[tmpcatalog]
+                 tmpagain=str_sep(tmp[tmpcatalog],'.')
+                 IF n_elements(tmpagain) GT 1 and STRLOWCASE(tmpagain[n_elements(tmpagain)-1]) NE 'ascii' then catCatalogname[i]=tmp[tmpcatalog]+'.ascii'
+              ENDIF ELSE BEGIN
+                 catMom0name[i]=tmp[test]+'_mom0'
+                 catMom1name[i]=tmp[test]+'_mom1'
+                 catMaskname[i]=tmp[test]+'_mask'
+                 catCatalogname[i]=tmp[test]+'_cat.ascii'
+              ENDELSE
                                 ; else we make sure they have a
                                 ; silly name so they don't
                                 ; exist in the directory
-        ENDIF ELSE BEGIN
-           catMom0name[i]='youshouldnotnameyourfilesthisway'
-           catMom1name[i]='youshouldnotnameyourfilesthisway'
-        ENDELSE
+           ENDIF ELSE BEGIN
+              catMom0name[i]='youshouldnotnameyourfilesthisway'
+              catMom1name[i]='youshouldnotnameyourfilesthisway'
+           ENDELSE
+        ENDIF
      ENDELSE
 
   endfor
   close,1
                                 ;if our end galaxy is -1 then we want to fit the full catalog
   IF endgalaxy EQ -1 then begin
-     endgalaxy=filelength-1
+     endgalaxy=filelength-1-counter
   ENDIF
                                 ;start the main galaxy fitting loop
   for i=startgalaxy,endgalaxy do begin 
                                 ;To ensure using the right template we
                                 ;read them everytime we start a new galaxy
      finishafter=finishafterold
+     allnew=allnewin
      bookkeeping=bookkeepingin
-     noisemapname=catCubename[i]+'_6.0_noisemap'
+     currentfitcube=catcubename[i]
+     noisemapname=currentfitcube+'_6.0_noisemap'
      close,1
                                 ;Start a galaxy specific fitting log
      IF size(olog,/TYPE) EQ 7 then begin
@@ -500,11 +513,8 @@ noconfig:
         printf,66,linenumber()+"We're at galaxy number "+strtrim(string(i,format='(I10)'),2)+". Which is catalogue id number "+catnumber[i]
         close,66
      ENDIF
-                                ;set the name of the cube to be fitted
-     currentfitcube=catcubename[i]
-                                ;first some extension detection In
-                                ;case somebody is still using gipsy file
-     cubeext=' '
+                      
+                                ; And the directory
      new_dir=maindir+'/'+catdirname[i]+'/'
    
      CD,new_dir,CURRENT=old_dir
@@ -512,67 +522,12 @@ noconfig:
                                 ;initial fits and subsequent fits that
                                 ;are present if we want to start all
                                 ;over again
-     IF allnew EQ 1 then begin
-        IF testing LT 1 then cleanup,catcubename[i]               
-     ENDIF
-     IF testing LT 1 then spawn,'rm -f 1stfit*',isthere
-     IF testing LT 2 then spawn,'rm -f 2ndfit*',isthere
-     IF testing LT 3 then spawn,'rm -f 3rdfit*',isthere
-                                ;Let's see what kind of input cube we have
-     spawn,'ls '+catcubename[i]+'.*',filenameext
+     IF allnewin EQ 1 then begin
+        IF testing LT 1 then cleanup,currentfitcube               
+     ENDIF                                
      CD,OLD_DIR
-     IF (filenameext[0]) then begin
-        for j=0,n_elements(filenameext)-1 do begin
-           tmp=str_sep(strtrim(strcompress(filenameext[j]),2),'.')
-           IF n_elements(tmp) LT 3 then begin
-              cubeext='.fits'
-              goto,extset
-           ENDIF
-           for g=n_elements(tmp)-1,n_elements(tmp)-3,-1 do begin
-              IF STRUPCASE(tmp[g]) EQ 'FITS' then begin
-                 case g of
-                    n_elements(tmp)-1:begin
-                       nametmp=tmp[0]
-                       for z=1,n_elements(tmp)-2 do begin
-                          nametmp=nametmp+'.'+tmp[z]
-                       endfor
-                       IF nametmp EQ catcubename[i] then begin
-                          cubeext='.'+tmp[g]
-                          goto,extset
-                       ENDIF
-                    end
-                    n_elements(tmp)-2:begin
-                       IF STRUPCASE(tmp[g+1]) EQ 'GZ' then begin
-                          nametmp=tmp[0]
-                          for z=1,n_elements(tmp)-3 do begin
-                             nametmp=nametmp+'.'+tmp[z]
-                          endfor
-                          IF nametmp EQ catcubename[i] then begin
-                             cubeext='.'+tmp[g]+'.'+tmp[g+1]
-                             goto,extset
-                          ENDIF
-                          
-                       ENDIF
-                    END
-                 endcase
-              endif
-           endfor
-        endfor
-        extset:
-     endif
-
                                 ;See if we already cut the initial cube to something more accesible
-     smallexists=FILE_TEST(maindir+'/'+catdirname[i]+'/'+catCubename[i]+'_small.fits')
-     IF smallexists then begin
-        cubeext='.fits'
-        currentfitcube=catcubename[i]+'_small'
-        catcubename[i]=catcubename[i]+'_small'
-     ENDIF
-                                ;and we make sure that all the naming
-                                ;stuff adds up
-     fitsexists=FILE_TEST(maindir+'/'+catdirname[i]+'/'+catcubename[i]+cubeext)
-
-
+   
                                 ;Let's go to the right directory
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
@@ -582,6 +537,12 @@ noconfig:
         print,linenumber()+"Working in Directory "+new_dir
      ENDELSE
                                 ;Break if the cube cannot be found
+     cubeext='.fits'
+     fitsexists=FILE_TEST(maindir+'/'+catdirname[i]+'/'+currentfitcube+cubeext)
+     IF fitsexists EQ 0 then begin
+        cubext='.FITS'
+        fitsexists=FILE_TEST(maindir+'/'+catdirname[i]+'/'+currentfitcube+cubeext)
+     ENDIF
      if fitsexists EQ 0 then begin
         openu,1,outputcatalogue,/APPEND
         printf,1,format='(A60,A100)',catDirname[i],' This galaxy has no fits cube to work with, it is skipped.'
@@ -601,213 +562,66 @@ noconfig:
      maxrings=0.
      propermom0=0
      propermom1=0
+     propermomnoise=0
      optimized=0
      sofiacount=0
      sofiafail=0
      wroteblank=0
-                                ;read in the cube and check it's header
-     dummy=readfits(maindir+'/'+catdirname[i]+'/'+catcubename[i]+cubeext,hed,/NOSCALE)
-     howmanyaxis=sxpar(hed,'NAXIS')
-     writecube=0
-     IF howmanyaxis GT 3 then begin
-        sxaddpar,hed,'NAXIS',3
-                                ;whenever we change something we want to rewrite the cube
-        writecube=1
-     ENDIF
-     IF sxpar(hed,'NAXIS4') then begin
-        sxdelpar,hed,'NAXIS4'
-        writecube=1
-     ENDIF
-     cubecrvalRA=sxpar(hed,'CRVAL1')
-     cubecdelt=(ABS(sxpar(hed,'CDELT1'))+ABS(sxpar(hed,'CDELT2')))/2.
-     cubecrvalDEC=sxpar(hed,'CRVAL2')
-     channelwidth=ABS(sxpar(hed,'CDELT3'))   
-     veltype=strtrim(strcompress(sxpar(hed,'CUNIT3')))
-     IF STRUPCASE(veltype) EQ 'HZ' then begin
-        IF size(log,/TYPE) EQ 7 then begin
-           openu,66,log,/APPEND
-           printf,66,linenumber()+'FREQUENCY IS NOT A SUPPORTED VELOCITY AXIS.'          
-           close,66
-        ENDIF ELSE BEGIN
-           print,linenumber()+'FREQUENCY IS NOT A SUPPORTED VELOCITY AXIS.'    
-        ENDELSE
-        bookkeeping=5
-        GOTO,FINISHTHISGALAXY
-     ENDIF
-     IF isnumeric(veltype) then begin
-        IF channelwidth GT 100. then begin
-           veltype='M/S'
-           sxaddpar,hed,'CUNIT3','M/S',after='CDELT3'
-           writecube=1
-        endif else begin 
-           veltype='KM/S'
-           sxaddpar,hed,'CUNIT3','KM/S',after='CDELT3'
-           writecube=1
-        endelse
-        IF size(log,/TYPE) EQ 7 then begin
-           openu,66,log,/APPEND
-           printf,66,linenumber()+'Your header did not have a unit for the third axis, that is bad policy.'          
-           printf,66,linenumber()+'We have set it to '+veltype+'. Please ensure that is correct.'          
-           close,66
-        ENDIF ELSE BEGIN
-           print,linenumber()+'Your header did not have a unit for the third axis, that is bad policy.'          
-           print,linenumber()+'We have set it to '+veltype+'. Please ensure that is correct.'     
-        ENDELSE
-     ENDIF
-     velproj=sxpar(hed,'CTYPE3')
-     IF STRUPCASE(strtrim(velproj,2)) NE 'VELO-HEL' AND $
-        STRUPCASE(strtrim(velproj,2)) NE 'VELO-LSR' AND $
-        STRUPCASE(strtrim(velproj,2)) NE 'FELO-HEL' AND $
-        STRUPCASE(strtrim(velproj,2)) NE 'FELO-LSR' AND $
-        STRUPCASE(strtrim(velproj,2)) NE 'VELO' AND $
-        STRUPCASE(strtrim(velproj,2)) NE 'FREQ' then begin
-        sxaddpar,hed,'CTYPE3','VELO',after='CUNIT3'
-        writecube=1
-        IF size(log,/TYPE) EQ 7 then begin
-           openu,66,log,/APPEND
-           printf,66,linenumber()+'Your velocity projection is not standard. The keyword is changed to VELO (relativistic definition). This might be dangerous.'          
-           close,66
-        ENDIF ELSE BEGIN
-           print,linenumber()+'Your velocity projection is not standard. The keyword is changed to VELO (relativistic definition). This might be dangerous.'   
-        ENDELSE
-     ENDIF
-     IF STRUPCASE(veltype) EQ 'KM/S' then begin
-         IF size(log,/TYPE) EQ 7 then begin
-           openu,66,log,/APPEND
-           printf,66,linenumber()+'The channels in your input cube are in km/s. This sometimes leads to problems with wcs lib, hence we change it to m/s.'          
-           close,66
-        ENDIF ELSE BEGIN
-           printf,66,linenumber()+'The channels in your input cube are in km/s. This sometimes leads to problems with wcs lib, hence we change it to m/s.'   
-        ENDELSE
-        sxaddpar,hed,'CDELT3',sxpar(hed,'CDELT3')*1000.
-        sxaddpar,hed,'CRVAL3',sxpar(hed,'CRVAL3')*1000.
-        sxaddpar,hed,'CUNIT3','M/S'
-        channelwidth=ABS(sxpar(hed,'CDELT3'))   
-        veltype=strtrim(strcompress(sxpar(hed,'CUNIT3')))
-     ENDIF
-        
-     sizex=sxpar(hed,'NAXIS1')
-     sizey=sxpar(hed,'NAXIS2')
-                                ;Let's check for presence of the beam in the header. IF present
-                                ;supersede the input. !!!!Be careful with smoothed data. If not let's add
-                                ;it from the file; This is important if you do it incorrectly the
-                                ;pipeline will use a incorrect pixels size.
-                                ;   writecube=0
-     IF NOT sxpar(hed,'BMAJ') then begin
-        IF sxpar(hed,'BMMAJ') then begin
-           sxaddpar,hed,'BMAJ',sxpar(hed,'BMMAJ')/3600. 
-           catmajbeam[i]=sxpar(hed,'BMMAJ')
-        endif  else sxaddpar,hed,'BMAJ',double(catmajbeam[i]/3600.)
-        writecube=1
-     ENDIF else catmajbeam[i]=sxpar(hed,'BMAJ')*3600.
-     IF NOT sxpar(hed,'BMIN') then begin
-        IF sxpar(hed,'BMMIN') then begin
-           sxaddpar,hed,'BMIN',sxpar(hed,'BMMIN')/3600. 
-           catminbeam[i]=sxpar(hed,'BMMIN')
-        endif else sxaddpar,hed,'BMIN',double(catminbeam[i]/3600.)
-        writecube=1
-     ENDIF else catminbeam[i]=sxpar(hed,'BMIN')*3600.
-                                ; check for 0 values, they
-                                ; shouldn't be present and mess
-                                ; things up
-                                ;IF present assume they are blanks and
-                                ;add warning
-  
-     tmp=WHERE(dummy EQ 0.d)
-     IF tmp[0] NE -1 then begin
-        IF size(log,/TYPE) EQ 7 then begin
-           openu,66,log,/APPEND
-           printf,66,linenumber()+'Your cube contains values exactly 0. If this is padding these should be blanks.'
-           printf,66,linenumber()+'We have changed them to blanks.'
-           close,66
-        ENDIF ELSE BEGIN
-           print,linenumber()+'Your cube contains values exactly 0. If this is padding these should be blanks.'
-           print,linenumber()+'We have changed them to blanks.'
-        ENDELSE
-        dummy[tmp]=!values.f_nan
-        writecube=1
-     ENDIF
+    
+                                ;Let's see if a pre-processed
+                                ;cube exists and if we want to
+                                ;use that
+     precube=FILE_TEST(maindir+'/'+catdirname[i]+'/'+currentfitcube+'_preprocessed'+cubeext)
+     IF NOT precube OR allnew EQ -1 then begin
+                                ;read in the cube and check
+                                ;it's header
+        dummy=readfits(maindir+'/'+catdirname[i]+'/'+currentfitcube+cubeext,header,/NOSCALE,/SILENT)
+        beam=[1,1]
+        noise=1
+        clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directory=catdirname[i]
+        preprocessing,dummy,header,writecube,catalogue=outputcatalogue,noise=noise,name=currentfitcube,directory=catdirname[i]
+        Case 1 of
+           writecube EQ 0:begin
+              IF size(log,/TYPE) EQ 7 then begin
+                 openu,66,log,/APPEND
+                 printf,66,linenumber()+"The input cube is correctly organized and does not need to be modified."
+                 close,66
+              ENDIF
+           end
+           writecube EQ 1:begin
                                 ;If we changed something we rewrite the cube
-     IF writecube EQ 1 then writefits,maindir+'/'+catdirname[i]+'/'+catcubename[i]+cubeext,dummy,hed
-     writecube=0.
-     IF sxpar(hed,'BPA') then catbpa[i]=sxpar(hed,'BPA')
-                                ;We will now optimize the cube for speed such that there are n pixels
-                                ;per FWHM on the minor axis
-     
-                                ;first we check wether the cube has some proper noise statistics by
-                                ;comparing the last and first channel, if they differ to much we cut
-                                ;off the high noise channel
-     difference = 10.
-     changedcube=0.
-     WHILE difference GT 1 do begin
-       
-        tmpnoblank=dummy[*,*,0]
-        wherefinite=WHERE(FINITE(tmpnoblank))
-        WHILE wherefinite[0] EQ -1 DO begin
-           tmp=fltarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*])-1)
-           tmp[*,*,0:n_elements(tmp[0,0,*])-1]=dummy[*,*,1:n_elements(dummy[0,0,*])-1]
-           sxaddpar,hed,'CRPIX3',sxpar(hed,'CRPIX3')-1.
-           dummy=fltarr(n_elements(tmp[*,0,0]),n_elements(tmp[0,*,0]),n_elements(tmp[0,0,*]))
-           IF n_elements(dummy[0,0,*]) LT 5 then begin
+              writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_preprocessed'+cubeext,float(dummy),header
+              currentfitcube=currentfitcube+'_preprocessed'
+              if allnew EQ 0 then allnew=1
+           end
+           writecube EQ 2:begin
+                                ;If we encountered a problem we abort
+              bookkeeping=5
+              GOTO,FINISHTHISGALAXY
+           end
+           writecube EQ 3:begin
+                                ;If we have changed more than just the
+                                ;header we need new moment maps even
+                                ;if they already exists and user does
+                                ;not ask for them. Only not when sofia
+                                ;pre-prepared output is used.
+              writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_preprocessed'+cubeext,float(dummy),header
+              currentfitcube=currentfitcube+'_preprocessed'
+              if allnew EQ 0 then allnew=1
+           end
+           else:begin
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+catdirname[i]+'/'+catcubename[i]+' has too many blanked channels.'
+                 printf,66,linenumber()+"This should never happen."
                  close,66
-              ENDIF ELSE BEGIN
-                 printf,linenumber()+catdirname[i]+'/'+catcubename[i]+'has too many blanked channels.'
-              ENDELSE         
-              openu,1,outputcatalogue,/APPEND
-              printf,1,format='(A60,A90)', catDirname[i],'The Cube has too many blanked channels'
-              close,1    
-              bookkeeping=5
-              goto,finishthisgalaxy
-           ENDIF
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+' We are cutting the cube as the first channel is completely blank.'
-              close,66
-           ENDIF
-           sxaddpar,hed,'NAXIS3',fix(sxpar(hed,'NAXIS3')-1)
-           changedcube=1
-           dummy=tmp
-           tmpnoblank=dummy[*,*,0]
-           wherefinite=WHERE(FINITE(tmpnoblank))
-        ENDWHILE
-        rmsfirstchannel=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])          
-        tmpnoblank=dummy[*,*,n_elements(dummy[0,0,*])-1]
-        wherefinite=WHERE(FINITE(tmpnoblank))
-        WHILE wherefinite[0] EQ -1 DO begin
-           tmp=fltarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*])-1)
-           tmp[*,*,0:n_elements(tmp[0,0,*])-1]=dummy[*,*,0:n_elements(dummy[0,0,*])-2]
-           dummy=fltarr(n_elements(tmp[*,0,0]),n_elements(tmp[0,*,0]),n_elements(tmp[0,0,*]))
-           IF n_elements(dummy[0,0,*]) LT 5 then begin
-              IF size(log,/TYPE) EQ 7 then begin
-                 openu,66,log,/APPEND
-                 printf,66,linenumber()+catdirname[i]+'/'+catcubename[i]+' has too many blanked channels.'
-                 close,66
-              ENDIF ELSE BEGIN
-                 printf,linenumber()+catdirname[i]+'/'+catcubename[i]+'has too many blanked channels.'
-              ENDELSE         
-              openu,1,outputcatalogue,/APPEND
-              printf,1,format='(A60,A90)', catDirname[i],'The cube has too many blanked channels'
-              close,1    
-              bookkeeping=5
-              goto,finishthisgalaxy
-           ENDIF
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+'We are cutting the cube as the last channel is completely blank.'
-              close,66
-           ENDIF
-           sxaddpar,hed,'NAXIS3',fix(sxpar(hed,'NAXIS3')-1)
-           changedcube=1
-           dummy=tmp
-           tmpnoblank=dummy[*,*,n_elements(dummy[0,0,*])-1]
-           wherefinite=WHERE(FINITE(tmpnoblank))
-        ENDWHILE
-        rmslastchannel=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
-        IF rmsfirstchannel EQ 0. then rmsfirstchannel=2.*rmslastchannel
-        IF rmslastchannel EQ 0. then rmslastchannel=2.*rmsfirstchannel
+              ENDIF
+              print,linenumber()+"This should never happen."
+              stop
+           end
+        endcase
+     ENDIF ELSE BEGIN
+        currentfitcube=currentfitcube+'_preprocessed'
+        dummy=readfits(maindir+'/'+catdirname[i]+'/'+currentfitcube+cubeext,header,/NOSCALE,/SILENT)
         tmpnoblank=dummy[0:5,0:5,*]
         rmsbottoml=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
         tmpnoblank=dummy[n_elements(dummy[*,0,0])-6:n_elements(dummy[*,0,0])-1,0:5,*]
@@ -816,132 +630,119 @@ noconfig:
         rmstopr=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
         tmpnoblank=dummy[0:5,n_elements(dummy[0,*,0])-6:n_elements(dummy[0,*,0])-1,*]
         rmstopl=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
-        rmschan=(rmsfirstchannel+rmslastchannel)/2.
-        rmscorn=(rmsbottoml+rmsbottomr+rmstopl+rmstopr)/4.
-        diff=ABS((rmsfirstchannel-rmslastchannel)/rmsfirstchannel)
-        diff2=ABS((rmschan-rmscorn)/rmschan)
-        IF diff LT 0.2 AND FINITE(diff) AND diff2 LT 0.2 then difference=0. else begin
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+'We are cutting the cube as clearly the noise statistics are off.'
-              printf,66,linenumber()+'Noise in the first channel is '+string(rmsfirstchannel)
-              printf,66,linenumber()+'Noise in the last channel is '+string(rmslastchannel)
-              printf,66,linenumber()+'Noise in the corners is '+string(rmscorn)
-              close,66
-           ENDIF ELSE BEGIN
-              print,linenumber()+'We are cutting the cube as clearly the noise statistics are off.'
-              print,linenumber()+'Noise in the first channel is '+string(rmsfirstchannel)
-              print,linenumber()+'Noise in the last channel is '+string(rmslastchannel)       
-           ENDELSE
-           changedcube=1.
-           tmp=fltarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*])-1)
-           firstcomp=ABS((rmsfirstchannel-rmscorn)/rmscorn)
-           secondcomp=ABS((rmslastchannel-rmscorn)/rmscorn)
-           IF firstcomp GT secondcomp OR NOT FINITE(rmsfirstchannel) then begin
-              tmp[*,*,0:n_elements(tmp[0,0,*])-1]=dummy[*,*,1:n_elements(dummy[0,0,*])-1]
-              sxaddpar,hed,'CRPIX3',sxpar(hed,'CRPIX3')-1.
-           ENDIF ELSE BEGIN
-              tmp[*,*,0:n_elements(tmp[0,0,*])-1]=dummy[*,*,0:n_elements(dummy[0,0,*])-2]
-           endelse
-           sxaddpar,hed,'NAXIS3',fix(sxpar(hed,'NAXIS3')-1)
-           dummy=fltarr(n_elements(tmp[*,0,0]),n_elements(tmp[0,*,0]),n_elements(tmp[0,0,*]))
-           dummy=tmp
-           IF n_elements(dummy[0,0,*]) LT 5 then begin
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+catdirname[i]+'/'+catcubename[i]+' has noise statistics that cannot be dealt with.'
-              close,66
-           ENDIF ELSE BEGIN
-              printf,linenumber()+catdirname[i]+'/'+catcubename[i]+' has noise statistics that cannot be dealt with.'
-           ENDELSE         
-           openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,A90)', catDirname[i],'The Cube has noise statistics that cannot be dealt with'
-           close,1    
-           bookkeeping=5
-           goto,finishthisgalaxy
-        ENDIF
-        ENDELSE
-     ENDWHILE
-     catnoise[i]=rmscorn
-     IF changedcube EQ 1. then begin        
-        currentfitcube=catcubename[i]+'_cut'
-        catcubename[i]=catcubename[i]+'_cut'      
-        writefits,maindir+'/'+catdirname[i]+'/'+catcubename[i]+cubeext,dummy,hed
-        IF size(log,/TYPE) EQ 7 then begin
-           openu,66,log,/APPEND
-           printf,66,linenumber()+'The cube was cut due to incorrect noise statistics.'
-           printf,66,linenumber()+'The new cube is '+catcubename[i]+cubeext
-           close,66
-        ENDIF ELSE BEGIN
-           print,linenumber()+'The cube was cut due to incorrect noise statistics.'
-           print,linenumber()+'The new cube is '+catcubename[i]+cubeext      
-        ENDELSE
-        propermom0=-1
-        propermom1=-1
-     ENDIF
-                                ; And last we want to cut out central absorption parts. We will cut
-                                ; below negative 5 sigma. If this messes up the process there is
-                                ; something seriously wrong with the cube                            
-     tmp=WHERE(dummy LT -10.*catnoise[i])
-     pythoncube=catcubename[i]
-     possiblecentral=0
-     IF tmp[0] NE -1 then begin
-        extbl=fltarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*]))
-        extbl=dummy
-        extbl[tmp]=!values.f_nan
-        pythoncube=catcubename[i]+'_extbl'
-        writefits,maindir+'/'+catdirname[i]+'/'+pythoncube+cubeext,extbl,hed
-        tmp=WHERE(dummy LT -50.*catnoise[i])
-        IF tmp[0] NE -1 and wroteblank ne 1 then begin
-           dummy[tmp]=!values.f_nan
-           currentfitcube=catcubename[i]+'_bl'
-           catcubename[i]=catcubename[i]+'_bl'      
-           writefits,maindir+'/'+catdirname[i]+'/'+catcubename[i]+cubeext,dummy,hed
-           wroteblank=1
-        ENDIF   
-        possiblecentral=1
-        IF size(log,/TYPE) EQ 7 then begin
-           openu,66,log,/APPEND
-           printf,66,linenumber()+'Your cube had values below -10*sigma. If you do not have a central absorption source there is something seriously wrong with the cube.'
-           
-           close,66
-        ENDIF ELSE BEGIN
-           print,linenumber()+'Your cube had values below -10.*sigma. If you do not have a central absorption source there is something seriously wrong with the cube.'
-           
-           
-        ENDELSE
-     ENDIF
-                                ;if the moment maps or the proper binmask do not yet exist we create
-                                ;them here
-     IF size(log,/TYPE) EQ 7 then begin
-        openu,66,log,/APPEND
-        printf,66,linenumber()+'The noise in the cube is '+string(catnoise[i])
-        close,66
-     ENDIF ELSE BEGIN
-        print,linenumber()+'The noise in the cube is '+string(catnoise[i])
-     ENDELSE   
+        noise=(rmsbottoml+rmsbottomr+rmstopl+rmstopr)/4.
+        beam=[sxpar(header,'BMAJ')*3600,sxpar(header,'BMIN')*3600]
+     ENDELSE
+     cubecrvalRA=sxpar(header,'CRVAL1')
+     cubecdelt=(ABS(sxpar(header,'CDELT1'))+ABS(sxpar(header,'CDELT2')))/2.
+     cubecrvalDEC=sxpar(header,'CRVAL2')
+     channelwidth=ABS(sxpar(header,'CDELT3'))   
+     veltype=strtrim(strcompress(sxpar(header,'CUNIT3')))
+     catmajbeam[i]=beam[0]
+     catminbeam[i]=beam[1]
+     catnoise[i]=noise
+     sizex=sxpar(header,'NAXIS1')
+     sizey=sxpar(header,'NAXIS2')                            
+     writecube=0.
+     IF sxpar(header,'BPA') then catbpa[i]=sxpar(header,'BPA')
+ 
      createmoment=0
+     smallexists=0
+     propermask=0
+     propercat=0
                                 ;if we have preprepared sofia files we will skip all the sofia steps
-     IF allnew EQ 2 then goto,skipallsofia
-     CD,new_dir,CURRENT=old_dir
-     IF propermom0 NE -1 then propermom0=FILE_TEST(catMom0name[i]+'.fits')
-     IF propermom0 EQ 0 AND FILE_TEST(catcubename[i]+'_6.0_mom0.fits') then begin
-        propermom0=1
-        catMom0name[i]=catcubename[i]+'_6.0_mom0'
-        mom0ext='.fits'
-        createmoment=1
-     ENDIF
-     IF propermom1 NE -1 then propermom1=FILE_TEST(catMom1name[i]+'.fits')
-     IF propermom1 EQ 0 AND FILE_TEST(catcubename[i]+'_6.0_mom1.fits') then begin
-        propermom1=1
-        catMom1name[i]=catcubename[i]+'_6.0_mom1'
-        mom1ext='.fits'
-     ENDIF
-     CD,old_dir
+     case allnew of
+        2:begin
+           CD,new_dir,CURRENT=old_dir
+           goto,skipallsofia
+        end
+        1:begin
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"We have started from the preprocesssed or original cube."
+              close,66
+           ENDIF
+           print,linenumber()+"We have started from the preprocesssed or original cube."
+        end
+        0:begin
+                                ;if we want to use the existing output
+                                ;then we need to make sure that moment
+                                ;maps and the sofia catalogue exist
+           smallexists=FILE_TEST(maindir+'/'+catdirname[i]+'/'+currentfitcube+'_small.fits')
+           IF smallexists then begin
+              propermask=FILE_TEST(maindir+'/'+catdirname[i]+'/Sofia_Output/'+currentfitcube+'_6.0_binmask_small.fits')
+              IF propermask then begin
+                                ;If we have a mask we also need the catalogue
+                 propercat=FILE_TEST(maindir+'/'+catdirname[i]+'/Sofia_Output/'+currentfitcube+'_cat.ascii')
+                 IF propercat then begin
+                   
+                    catCatalogname[i]='Sofia_Output/'+currentfitcube+'_cat.ascii'
+                    catmaskname[i]='Sofia_Output/'+currentfitcube+'_6.0_binmask_small'
+                                ;let's check the existence of the moment maps
+                    propermom0=FILE_TEST(maindir+'/'+catdirname[i]+'/Moments/'+currentfitcube+'_6.0_mom0_small.fits')
+                    catMom0name[i]='Moments/'+currentfitcube+'_6.0_mom0_small' ;reset the mom0 map to the one just found
+                    propermom1=FILE_TEST(maindir+'/'+catdirname[i]+'/Moments/'+currentfitcube+'_6.0_mom1_small.fits')
+                    catMom1name[i]='Moments/'+currentfitcube+'_6.0_mom1_small' ;reset the mom0 map to the one just found
+                    propermomnoise=FILE_TEST(maindir+'/'+catdirname[i]+'/Moments/'+currentfitcube+'_6.0_noisemap_small.fits')
+                    noisemapname='Moments/'+currentfitcube+'_6.0_noisemap_small'
+                    currentfitcube=currentfitcube+'_small'
+                    dummy=readfits(maindir+'/'+catdirname[i]+'/'+currentfitcube+cubeext,header,/NOSCALE,/SILENT)
+                    sizex=sxpar(header,'NAXIS1')
+                    sizey=sxpar(header,'NAXIS2')      
+                    allnew=3
+                    CD,new_dir,CURRENT=old_dir
+                    goto,skipallsofia
+                 ENDIF
+              ENDIF ELSE BEGIN
+                 allnew=1
+                 goto,mismatchedmoments
+              ENDELSE
+           ENDIF ELSE BEGIN
+                                ;Maybe no cutting was required so let's check for a mask
+              propermask=FILE_TEST(maindir+'/'+catdirname[i]+'/Sofia_Output/'+currentfitcube+'_6.0_binmask.fits')
+              IF propermask then begin
+                                ;If we have a mask we also need the catalogue
+                 propercat=FILE_TEST(maindir+'/'+catdirname[i]+'/Sofia_Output/'+currentfitcube+'_cat.ascii')
+                 IF propercat then begin
+                    catCatalogname[i]='Sofia_Output/'+currentfitcube+'_cat.ascii'
+                    catmaskname[i]='Sofia_Output/'+currentfitcube+'_6.0_binmask'
+                    propermom0=FILE_TEST(maindir+'/'+catdirname[i]+'/Moments/'+currentfitcube+'_6.0_mom0.fits')
+                    catMom0name[i]='Moments/'+currentfitcube+'_6.0_mom0' ;reset the mom0 map to the one just found
+                    propermom1=FILE_TEST(maindir+'/'+catdirname[i]+'/Moments/'+currentfitcube+'_6.0_mom1.fits')
+                    catMom1name[i]='Moments/'+currentfitcube+'_6.0_mom1' ;reset the mom0 map to the one just found
+                    propermomnoise=FILE_TEST(maindir+'/'+catdirname[i]+'/Moments/'+currentfitcube+'_6.0_noisemap.fits')
+                    noisemapname='Moments/'+currentfitcube+'_6.0_noisemap'
+                    allnew=2
+                    CD,new_dir,CURRENT=old_dir
+                    goto,skipallsofia
+                 ENDIF
+              ENDIF ELSE BEGIN
+                 allnew=1
+                 goto,mismatchedmoments
+              ENDELSE
+           ENDELSE
+        end
+        -1:begin
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"We have started from the original cube."
+              close,66
+           ENDIF
+           print,linenumber()+"We have started from the original cube."
+        end
+        else:begin
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"This should never happen."
+              close,66
+           ENDIF
+           print,linenumber()+"This should never happen."
+           stop
+        end
+     endcase
      mismatchedmoments:
      CD,new_dir,CURRENT=old_dir
-     propermask=FILE_TEST(catcubename[i]+'_6.0_binmask.fits')
-     sofia[sofiatriggers[0]]='import.inFile = '+pythoncube+'.fits'
+     sofia[sofiatriggers[0]]='import.inFile = '+currentfitcube+'.fits'
      sofia[sofiatriggers[1]]='steps.doReliability             =       false'
                                 ;We run sofia to get a bunch of initial estimates
      openw,1,'sofia_input.txt'
@@ -949,9 +750,12 @@ noconfig:
         printf,1,sofia[index]
      endfor
      close,1
-     spawn,'rm -f '+pythoncube+'_cat.ascii '+pythoncube+'_cont.png '+pythoncube+'_mask.fits '+pythoncube+'_scat.png',isthere
+     IF FILE_TEST(currentfitcube+'_cat.ascii') then spawn,'rm -f '+currentfitcube+'_cat.ascii'
+     IF FILE_TEST(currentfitcube+'_cont.png') then spawn,'rm -f '+currentfitcube+'_cont.png'
+     IF FILE_TEST(currentfitcube+'_mask.fits') then spawn,'rm -f '+currentfitcube+'_mask.fits'
+     IF FILE_TEST(currentfitcube+'_scat.png') then spawn,'rm -f '+currentfitcube+'_scat.png'     
      spawn,'python '+supportdirchecked+'/sofia_pipeline.py sofia_input.txt '
-     IF not FILE_TEST(pythoncube+'_cat.ascii') then begin
+     IF not FILE_TEST(currentfitcube+'_cat.ascii') then begin
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+"Can't make a mask, aborting."
@@ -964,10 +768,9 @@ noconfig:
         bookkeeping=5
         goto,finishthisgalaxy
      endif
-     catCatalogname[i]=pythoncube+'_cat.ascii'
-     catmaskname[i]=pythoncube+'_mask' ;first clean up the cat
+     catCatalogname[i]=currentfitcube+'_cat.ascii'
+     catmaskname[i]=currentfitcube+'_mask' ;first clean up the cat
      skipallsofia:
-     IF allnew EQ 2 then CD,new_dir,CURRENT=old_dir
                                 ;We need to read the sofia output file     
      openr,1,catCatalogname[i]
                                 ;get the number of lines
@@ -990,9 +793,11 @@ noconfig:
         sofia_locations[j]=WHERE(sofia_parameters[j] EQ sofia_column_ids)-1
         IF sofia_locations[j] EQ -2 then begin
            print,'We cannot find the required column for '+sofia_parameters[i]+' in the sofia catalogue'
-           print,'This can happen because a) you have tampered with the sofiainput.txt file in the directory '+supportdirchecked
-           print,'or b) you are using an updated version of SoFiA where the names have changed and FAT is not yet updated.'
-           print,'In this case please file a bug report at https://github.com/PeterKamphuis/FAT/issues/'
+           print,'This can happen because a) you have tampered with the sofiainput.txt file in the directory, '+supportdirchecked
+           print,'b) you are using an updated version of SoFiA where the names have changed and FAT is not yet updated.'
+           print,'   In this case please file a bug report at https://github.com/PeterKamphuis/FAT/issues/'
+           print,'c) You are using pre processed SoFiA output of your own and do not have all the output'
+           print,'   Required output is '+STRJOIN(sofia_parameters,',')
            stop
         ENDIF
      endfor
@@ -1051,14 +856,14 @@ noconfig:
         ENDIF ELSE BEGIN        
            diff=dblarr(n_elements(rmp))
            for j=0,n_elements(rmp)-1 do begin
-              diff[j]=SQRT((sxpar(hed,'CRPIX1')-catvals[sofia_locations[1],rmp[j]])^2+(sxpar(hed,'CRPIX2')-catvals[sofia_locations[4],rmp[j]])^2)
+              diff[j]=SQRT((sxpar(header,'CRPIX1')-catvals[sofia_locations[1],rmp[j]])^2+(sxpar(header,'CRPIX2')-catvals[sofia_locations[4],rmp[j]])^2)
            endfor
            maxdiff=MAX(diff,MIN=whatwelookfor)
            vals=catvals[*,rmp[WHERE(diff EQ whatwelookfor)]]
         ENDELSE
      ENDIF ELSE vals=catvals
                                 ;If sofia didn't work and there is no preprocessed stuff then abort
-     IF double(vals[sofia_locations[0]]) EQ 0. AND allnew NE 2 then begin
+     IF double(vals[sofia_locations[0]]) EQ 0. AND NOT allnew GE 2 then begin
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+"Sofia failed, the original cube is too small."
@@ -1077,8 +882,8 @@ noconfig:
         close,66
      ENDIF
                                 ;If not using preprocessed stuff then we make logical names 
-     IF allnew NE 2 then begin
-        nummask=readfits(catmaskname[i]+'.fits',hedmasknotproper)
+     IF allnew LT 2 then begin
+        nummask=readfits(catmaskname[i]+'.fits',hedmasknotproper,/SILENT,/NOSCALE)
         tmp=where(nummask NE double(vals[sofia_locations[0]])) 
         IF tmp[0] NE -1 then begin
            nummask[tmp]=0.
@@ -1088,29 +893,49 @@ noconfig:
            tmp=where(nummask EQ double(vals[sofia_locations[0]]))
            nummask[tmp]=1.
         ENDIF
-        writefits,pythoncube+'_6.0_binmask.fits',nummask,hed
-        catmaskname[i]=pythoncube+'_6.0_binmask'
-        spawn,'rm -f '+pythoncube+'_cont.png '+pythoncube+'_mask.fits '+pythoncube+'_scat.png',isthere
+        sxaddpar,header,'BITPIX',-32
+        writefits,currentfitcube+'_6.0_binmask.fits',float(nummask),header
+        catmaskname[i]=currentfitcube+'_6.0_binmask'
+        IF FILE_TEST(currentfitcube+'_cont.png') then spawn,'rm -f '+currentfitcube+'_cont.png'
+        IF FILE_TEST(currentfitcube+'_mask.fits') then spawn,'rm -f '+currentfitcube+'_mask.fits'
+        IF FILE_TEST(currentfitcube+'_scat.png') then spawn,'rm -f '+currentfitcube+'_scat.png'  
      ENDIF
                                 ;Read the centre values and make sure
                                 ;they fall inside the cube
+     
      RApix=double(vals[sofia_locations[1]])
-     RApixboun=[double(vals[sofia_locations[2]]),double(vals[sofia_locations[3]])]   
-     IF RApix GT sxpar(hed,'NAXIS1')-10 then BEGIN
-        RApix=double(sxpar(hed,'NAXIS1')/2.)
-        RApixboun=[double(sxpar(hed,'NAXIS1')/4.),double(sxpar(hed,'NAXIS1')/4.)*3.]
+                                ;IF we read the small cube this needs to be corrected
+       
+     RApixboun=[double(vals[sofia_locations[2]]),double(vals[sofia_locations[3]])]
+     IF allnew EQ 3 then begin
+        newsize=sxpar(header,'NAXIS1')-1
+        Old=RApix
+        RApix=floor(newsize/2.)+(Rapix-floor(RApix))
+        pixshift=Old-RApix
+        RApixboun=RApixboun-pixshift
+     ENDIF    
+     IF RApix GT sxpar(header,'NAXIS1')-10 then BEGIN
+        RApix=double(sxpar(header,'NAXIS1')/2.)
+        RApixboun=[double(sxpar(header,'NAXIS1')/4.),double(sxpar(header,'NAXIS1')/4.)*3.]
      ENDIF
      DECpix=double(vals[sofia_locations[4]])
      DECpixboun=[double(vals[sofia_locations[5]]),double(vals[sofia_locations[6]])]
-     IF DECpix GT sxpar(hed,'NAXIS2')-10 then begin
-        DECpix=fix( sxpar(hed,'NAXIS2')/2.)
-        DECpixboun=[double(sxpar(hed,'NAXIS2')/4.),double(sxpar(hed,'NAXIS2')/4.)*3.]
+     IF allnew EQ 3 then begin
+        newsize=sxpar(header,'NAXIS1')-1
+        Old=DECpix
+        DECpix=floor(newsize/2.)+(DECpix-floor(DECpix))
+        pixshift=Old-DECpix
+        DECpixboun=DECpixboun-pixshift
+     ENDIF    
+     IF DECpix GT sxpar(header,'NAXIS2')-10 then begin
+        DECpix=fix( sxpar(header,'NAXIS2')/2.)
+        DECpixboun=[double(sxpar(header,'NAXIS2')/4.),double(sxpar(header,'NAXIS2')/4.)*3.]
      ENDIF
      VSYSpix=double(vals[sofia_locations[7]])
      ROTpixboun=[double(vals[sofia_locations[8]]),double(vals[sofia_locations[9]])]
-     IF VSYSpix GT sxpar(hed,'NAXIS3')-5 then BEGIN
-        VSYSpix=fix( sxpar(hed,'NAXIS3')/2.)
-        ROTpixboun=[double(sxpar(hed,'NAXIS3')/4.),double(sxpar(hed,'NAXIS3')/4.)*3.]
+     IF VSYSpix GT sxpar(header,'NAXIS3')-5 then BEGIN
+        VSYSpix=fix( sxpar(header,'NAXIS3')/2.)
+        ROTpixboun=[double(sxpar(header,'NAXIS3')/4.),double(sxpar(header,'NAXIS3')/4.)*3.]
      ENDIF
      IF RApix LT RApixboun[0] OR RApix GT RApixboun[1] $
         OR DECpix LT DECpixboun[0] OR DECpix GT DECpixboun[1] $
@@ -1124,101 +949,178 @@ noconfig:
    
 
                                 ;Convert pixel coordinates to Degrees
-     DECdeg=sxpar(hed,'CRVAL2')+(DECpix-sxpar(hed,'CRPIX2'))*sxpar(hed,'CDELT2')
-     RAdeg=sxpar(hed,'CRVAL1')+(RApix-sxpar(hed,'CRPIX1'))*sxpar(hed,'CDELT1')/COS(DECdeg*(!pi/180.))
-     DECboundeg=sxpar(hed,'CRVAL2')+(DECpixboun-sxpar(hed,'CRPIX2'))*sxpar(hed,'CDELT2')
-     RAboundeg=sxpar(hed,'CRVAL1')+((RApixboun-sxpar(hed,'CRPIX1'))*sxpar(hed,'CDELT1'))/COS(DECboundeg*(!pi/180.))
+     DECdeg=sxpar(header,'CRVAL2')+(DECpix-sxpar(header,'CRPIX2'))*sxpar(header,'CDELT2')
+     RAdeg=sxpar(header,'CRVAL1')+(RApix-sxpar(header,'CRPIX1'))*sxpar(header,'CDELT1')/COS(DECdeg*(!pi/180.))
+     DECboundeg=sxpar(header,'CRVAL2')+(DECpixboun-sxpar(header,'CRPIX2'))*sxpar(header,'CDELT2')
+     RAboundeg=sxpar(header,'CRVAL1')+((RApixboun-sxpar(header,'CRPIX1'))*sxpar(header,'CDELT1'))/COS(DECboundeg*(!pi/180.))
      RAboundeg=RAboundeg[SORT(RAboundeg)]
      DECboundeg=DECboundeg[SORT(DECboundeg)]
      IF strupcase(veltype) EQ 'M/S' then begin
-        catVSYS[i]=sxpar(hed,'CRVAL3')/1000.+(VSYSpix-sxpar(hed,'CRPIX3'))*sxpar(hed,'CDELT3')/1000.
-        ROTboun=sxpar(hed,'CRVAL3')/1000.+(ROTpixboun-sxpar(hed,'CRPIX3'))*sxpar(hed,'CDELT3')/1000.
+        catVSYS[i]=sxpar(header,'CRVAL3')/1000.+(VSYSpix-sxpar(header,'CRPIX3'))*sxpar(header,'CDELT3')/1000.
+        ROTboun=sxpar(header,'CRVAL3')/1000.+(ROTpixboun-sxpar(header,'CRPIX3'))*sxpar(header,'CDELT3')/1000.
         ROTboun=ROTboun[SORT(ROTboun)]
      ENDIF else begin
-        catVSYS[i]=sxpar(hed,'CRVAL3')+(VSYSpix-sxpar(hed,'CRPIX3'))*sxpar(hed,'CDELT3')
-        ROTboun=sxpar(hed,'CRVAL3')+(ROTpixboun-sxpar(hed,'CRPIX3'))*sxpar(hed,'CDELT3')
+        catVSYS[i]=sxpar(header,'CRVAL3')+(VSYSpix-sxpar(header,'CRPIX3'))*sxpar(header,'CDELT3')
+        ROTboun=sxpar(header,'CRVAL3')+(ROTpixboun-sxpar(header,'CRPIX3'))*sxpar(header,'CDELT3')
         ROTboun=ROTboun[SORT(ROTboun)]
      ENDELSE
-                                ;if we do not have a moment 0 map and
-                                ;a moment one map then we are going to
-                                ;make them now
-     IF propermom0 LE 0 OR propermom1 LE 0 and allnew NE 2 THEN BEGIN
-        print,linenumber()+'We are removing the moment maps.'
-                                ;We are not remake merely one as the
-                                ;velocity field and the moment 0 map
-                                ;should be consistent
-        spawn,'rm -f '+catcubename[i]+'_6.0_mom0.fits',isthere
-        spawn,'rm -f '+catcubename[i]+'_6.0_mom1.fits',isthere
-                                ;read the mask 
-        mask=readfits(maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'.fits',hedmask,/NOSCALE)        
-                                ;mask the data cube
-        tmpmask=fltarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*]))
-        tmpmask[WHERE(mask GT 0.)]=dummy[WHERE(mask GT 0.)]
-        hedmap=hed
-                                ;Same as in gipsy
-        momentsv2,tmpmask,moment0map,hedmap,0.
-        writefits,catcubename[i]+'_6.0_mom0.fits',moment0map,hedmap
-        hedvel=hed
-        momentsv2,tmpmask,moment1map,hedvel,1.
-        writefits,catcubename[i]+'_6.0_mom1.fits',moment1map,hedvel
-        createmoment=1
-                                ;reset the mom0 map to the one just created
-        catMom0name[i]=catcubename[i]+'_6.0_mom0'
-                                ;reset the mom1 map to the one just created
-        catMom1name[i]=catcubename[i]+'_6.0_mom1'
-                                ;the extension is fits
-        mom0ext='.fits'
-        mom1ext='.fits'
-                                ;Make a noisemap as well
+     mask=readfits(maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'.fits',headermask,/NOSCALE,/SILENT)
+                                ;let's make sure our cube and mask have the same size
+     IF sxpar(header,'NAXIS1') NE sxpar(headermask,'NAXIS1') OR  sxpar(header,'NAXIS2') NE sxpar(headermask,'NAXIS2') $
+        OR  sxpar(header,'NAXIS3') NE sxpar(headermask,'NAXIS3') then begin
+        allnew=1
+        currentfitcube=catcubename[i]
+        propermomnoise=0
+        propermom0=0
+        propermom1=0
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"The size of the mask and the cube is not the same. Remaking all derived maps and masks."
+           close,66
+        ENDIF ELSE BEGIN
+           print,linenumber()+"The size of the mask and the cube is not the same. Remaking all derived maps and masks."
+        Endelse 
+        goto,mismatchedmoments
+     ENDIF
+        
+     tmp=WHERE(mask GT 1)
+     IF tmp[0] NE -1 then begin
+        tmp=WHERE(mask NE 0.)
+        mask[tmp]=1.
+     ENDIF
+     if not propermomnoise then begin
+                                ;If we do not have a noise map we make
+                                ;one
         IF veltype EQ 'M/S' then channelwidthkm=channelwidth/1000. else channelwidthkm=channelwidth
         noisemap=fltarr(n_elements(mask[*,0,0]),n_elements(mask[*,0,0]))
         for j=0,n_elements(mask[0,0,*])-1 do begin
            noisemap=noisemap+(mask[*,*,j]*catnoise[i]*channelwidthkm)^2
         endfor
         noisemap=SQRT(noisemap)
-        writefits,catcubename[i]+'_6.0_noisemap.fits',noisemap,hedmap
-        noisemapname=catCubename[i]+'_6.0_noisemap'
+        headernoisemap=header
+        sxdelpar,headernoisemap,'CUNIT3'
+        sxdelpar,headernoisemap,'CTYPE3'
+        sxdelpar,headernoisemap,'CRVAL3'
+        sxdelpar,headernoisemap,'CDELT3'
+        sxdelpar,headernoisemap,'NAXIS3'
+        sxdelpar,headernoisemap,'CRPIX3'
+        sxaddpar,headernoisemap,'NAXIS',2
+        writefits,currentfitcube+'_6.0_noisemap.fits',float(noisemap),headernoisemap
+        noisemapname=currentfitcube+'_6.0_noisemap'
         tmp=WHERE(noisemap NE 0.)
         momnoise=TOTAL(noisemap[tmp])/n_elements(tmp)
-        
-                                ;Print the log what we have done
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"We have created the moment maps."
+           printf,66,linenumber()+"We have created the noise moment  map."
            close,66
         ENDIF ELSE BEGIN
-           print,linenumber()+"We have created the moment maps."
-        Endelse    
+           print,linenumber()+"We have created the noise moment map."
+        Endelse 
      ENDIF ELSE BEGIN
-                                ; if we are using preprocessed stuff then read and adapt them
-        IF allnew EQ 2 then begin
-           mask=readfits(maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'.fits',hedmask,/NOSCALE)
-           tmp=WHERE(mask GT 1)
-           IF tmp[0] NE -1 then begin
-              tmp=WHERE(mask NE 0.)
-              mask[tmp]=1.
+                                ;Else we read it in
+        noisemap=readfits(noisemapname+'.fits',headernoisemap,/NOSCALE,/SILENT)
+        tmp=WHERE(noisemap NE 0.)
+        momnoise=TOTAL(noisemap[tmp])/n_elements(tmp)
+     ENDELSE
+     mom0ext='.fits'
+     mom1ext='.fits'
+     if not propermom0 then begin
+                                ;if we have no proper moment0 we make it
+        tmpmask=fltarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*]))
+        tmpmask[WHERE(mask GT 0.)]=dummy[WHERE(mask GT 0.)]
+        headermap=header
+                                ;Same as in gipsy
+        momentsv2,tmpmask,moment0map,headermap,0.
+        writefits,currentfitcube+'_6.0_mom0.fits',float(moment0map),headermap
+                                ;reset the mom0 map to the one just created
+        catMom0name[i]=currentfitcube+'_6.0_mom0'
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"We have created the moment 0 map."
+           close,66
+        ENDIF ELSE BEGIN
+           print,linenumber()+"We have created the moment 0 map."
+        Endelse 
+     ENDIF ELSE BEGIN
+        moment0map=readfits(maindir+'/'+catdirname[i]+'/'+catMom0name[i]+mom0ext,headermap,/NOSCALE,/SILENT) 
+        IF sxpar(headermap,'CDELT1') NE sxpar(header,'CDELT1') OR sxpar(headermap,'CDELT2') NE sxpar(header,'CDELT2') then begin
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"the pixel scale in your cube and moment 0 map do not correspond."
+              printf,66,linenumber()+"recreating the moment maps."
+              close,66
+           ENDIF 
+           propermom0=0.
+           propermom1=0.
+           propermomnoise=0.
+           allnew=1
+           goto,mismatchedmoments
+        ENDIF
+        IF NOT sxpar(headermap,'BMAJ') then sxaddpar,headermap,'BMAJ',catmajbeam[i]
+        IF NOT sxpar(headermap,'BMIN') then sxaddpar,headermap,'BMIN',catminbeam[i]
+     ENDELSE
+     if not propermom1 then begin
+                                ;if we have no proper moment 1 we make it
+        tmpmask=fltarr(n_elements(dummy[*,0,0]),n_elements(dummy[0,*,0]),n_elements(dummy[0,0,*]))
+        tmpmask[WHERE(mask GT 0.)]=dummy[WHERE(mask GT 0.)]
+        headervel=header
+                                ;Same as in gipsy
+        momentsv2,tmpmask,moment1map,headervel,1.
+        writefits,currentfitcube+'_6.0_mom1.fits',float(moment1map),headervel
+                                ;reset the mom 1 map to the one just created
+        catMom1name[i]=currentfitcube+'_6.0_mom1'
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"We have created the moment 1 map."
+           close,66
+        ENDIF ELSE BEGIN
+           print,linenumber()+"We have created the moment 1 map."
+        Endelse 
+     ENDIF ELSE BEGIN
+        moment1map=readfits(maindir+'/'+catdirname[i]+'/'+catMom1name[i]+mom1ext,headervel,/NOSCALE,/SILENT) 
+        IF sxpar(headervel,'CDELT1') NE sxpar(header,'CDELT1') OR sxpar(headervel,'CDELT2') NE sxpar(header,'CDELT2') then begin
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"the pixel scale in your cube and moment 1 map do not correspond."
+              printf,66,linenumber()+"recreating the moment maps."
+              close,66
            ENDIF
-           noisemap=fltarr(n_elements(mask[*,0,0]),n_elements(mask[*,0,0]))
-           IF veltype EQ 'M/S' then channelwidthkm=channelwidth/1000. else channelwidthkm=channelwidth
-           for j=0,n_elements(mask[0,0,*])-1 do begin
-              noisemap=noisemap+(mask[*,*,j]*catnoise[i]*channelwidthkm)^2
-           endfor
-           writefits,maindir+'/'+catdirname[i]+'/'+catcubename[i]+'_noisemap.fits',noisemap,hedmap
-           noisemapname=catCubename[i]+'_noisemap'
-        endif else begin
-           noisemap=readfits(catcubename[i]+'_6.0_noisemap.fits',hednoisemap)
-           noisemapname=catCubename[i]+'_6.0_noisemap'
-           tmp=WHERE(noisemap NE 0.)
-           momnoise=TOTAL(noisemap[tmp])/n_elements(tmp)
-        ENDELSE
+           allnew=1
+           propermom0=0.
+           propermom1=0.
+           propermomnoise=0.
+           goto,mismatchedmoments
+        ENDIF
+        IF NOT sxpar(headermap,'BMAJ') then sxaddpar,headervel,'BMAJ',catmajbeam[i]
+        IF NOT sxpar(headermap,'BMIN') then sxaddpar,headervel,'BMIN',catminbeam[i]
      ENDELSE
      CD,old_dir
+                                ;Check that all our maps and cube line up in size
+     IF  sxpar(header,'NAXIS1') NE sxpar(headermap,'NAXIS1') OR  sxpar(header,'NAXIS2') NE sxpar(headermap,'NAXIS2') $
+        OR  sxpar(header,'NAXIS1') NE sxpar(headervel,'NAXIS1') OR  sxpar(header,'NAXIS2') NE sxpar(headervel,'NAXIS2') $
+        OR  sxpar(header,'NAXIS1') NE sxpar(headernoisemap,'NAXIS1') OR  sxpar(header,'NAXIS2') NE sxpar(headernoisemap,'NAXIS2') then begin
+        allnew=1
+        currentfitcube=catcubename[i]
+        propermomnoise=0
+        propermom0=0
+        propermom1=0
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"The size of the moment maps and the cube is not the same. Remaking all derived maps and masks."
+           close,66
+        ENDIF ELSE BEGIN
+           print,linenumber()+"The size of the moment maps and the cube is not the same. Remaking all derived maps and masks."
+        Endelse 
+        goto,mismatchedmoments
+     ENDIF
+
+     
+     
                                 ;let's check the size of this cube to see whether it is reasonable 
      IF maxrings EQ 0. then begin
-        mask=readfits(maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'.fits',hedmask,/NOSCALE)
         foundmin=0.
-        minx=intarr(sxpar(hedmask,'NAXIS1'))
-        maxx=intarr(sxpar(hedmask,'NAXIS1'))
+        minx=intarr(sxpar(headermask,'NAXIS1'))
+        maxx=intarr(sxpar(headermask,'NAXIS1'))
         countmin=-1
         for pix=0,n_elements(mask[*,0,0])-1 do begin
            tmp=WHERE(mask[pix,*,*] GT 0.)
@@ -1235,8 +1137,8 @@ noconfig:
         IF maxx[countmin] EQ 0 then maxx[countmin]=n_elements(mask[*,0,0])-1
         foundmin=0.
         countmin=-1
-        miny=intarr(sxpar(hedmask,'NAXIS2'))
-        maxy=intarr(sxpar(hedmask,'NAXIS2'))
+        miny=intarr(sxpar(headermask,'NAXIS2'))
+        maxy=intarr(sxpar(headermask,'NAXIS2'))
         for pix=0,n_elements(mask[0,*,0])-1 do begin
            tmp=WHERE(mask[*,pix,*] GT 0.)
            IF tmp[0] NE -1 AND foundmin EQ 0. then begin
@@ -1252,81 +1154,92 @@ noconfig:
         IF maxy[countmin] EQ 0 then maxy[countmin]=n_elements(mask[0,*,0])-1
         xhandle=MAX(maxx-minx)
         yhandle=MAX(maxy-miny)
-        maxrings=round(SQRT((xhandle/2.)^2+(yhandle/2.)^2)/(catmajbeam[i]/(ABS(sxpar(hed,'cdelt1'))*3600.))+3.)
-        IF xhandle[0] GT yhandle[0] then begin
-           IF xhandle[0]/(catmajbeam[i]/(ABS(sxpar(hed,'cdelt1'))*3600.)) LE 6 then newsize=fix(round(xhandle[0]+(10.+sofiacount)*catmajbeam[i]/(ABS(sxpar(hed,'cdelt1'))*3600.))) else $
-              newsize=fix(round(xhandle[0]+(8.+sofiacount)*catmajbeam[i]/(ABS(sxpar(hed,'cdelt1'))*3600.)))
-        ENDIF ELSE BEGIN
-           IF yhandle[0]/(catmajbeam[i]/(ABS(sxpar(hed,'cdelt2'))*3600.)) LE 6 then newsize=fix(round(yhandle[0]+(10.+sofiacount)*catmajbeam[i]/(ABS(sxpar(hed,'cdelt2'))*3600.))) else $
-              newsize=fix(round(yhandle[0]+(8.+sofiacount)*catmajbeam[i]/(ABS(sxpar(hed,'cdelt2'))*3600.)))
-        ENDELSE
-        IF floor(RApix-newsize/2.) GE 0. AND floor(RApix+newsize/2.) LT  sxpar(hed,'NAXIS1') AND $
-           floor(DECpix-newsize/2.) GE 0. AND floor(DECpix+newsize/2.) LT sxpar(hed,'NAXIS2') AND $
-           not smallexists then begin
-           newdummy=fltarr(newsize+1,newsize+1,n_elements(dummy[0,0,*]))
-           newdummy[*,*,*]=dummy[floor(RApix-newsize/2.):floor(RApix+newsize/2.),floor(DECpix-newsize/2.):floor(DECpix+newsize/2.),*]
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+"In order to speed up the fitting process significantly we cut the cube to "+string(newsize)+ " pixels." 
-              close,66
-           ENDIF          
-           sxaddpar,hed,'NAXIS1',newsize
-           sxaddpar,hed,'NAXIS2',newsize
-           sxaddpar,hed,'CRPIX1',sxpar(hed,'CRPIX1')-floor(RApix-newsize/2.)
-           sxaddpar,hed,'CRPIX2',sxpar(hed,'CRPIX2')-floor(DECpix-newsize/2.)
-           writefits,maindir+'/'+catdirname[i]+'/'+catCubename[i]+'_small.fits',newdummy,hed
-           dummy=newdummy
-           newdummy[*,*,*]=0.
-           newdummy[*,*,*]=mask[floor(RApix-newsize/2.):floor(RApix+newsize/2.),floor(DECpix-newsize/2.):floor(DECpix+newsize/2.),*]
-           writefits,maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'_small.fits',newdummy,hed
-           mask=newdummy
-           moment0map=readfits(maindir+'/'+catdirname[i]+'/'+catMom0Name[i]+'.fits',hedmap,/SILENT)
-           newdummy=fltarr(newsize+1,newsize+1)
-           sxaddpar,hedmap,'NAXIS1',newsize
-           sxaddpar,hedmap,'NAXIS2',newsize
-           sxaddpar,hedmap,'CRPIX1',sxpar(hedmap,'CRPIX1')-floor(RApix-newsize/2.)
-           sxaddpar,hedmap,'CRPIX2',sxpar(hedmap,'CRPIX2')-floor(DECpix-newsize/2.)
-           newdummy[*,*]=moment0map[floor(RApix-newsize/2.):floor(RApix+newsize/2.),floor(DECpix-newsize/2.):floor(DECpix+newsize/2.)]
-           writefits,maindir+'/'+catdirname[i]+'/'+catMom0name[i]+'_small.fits',newdummy,hedmap
-           moment1map=readfits(maindir+'/'+catdirname[i]+'/'+catMom1Name[i]+'.fits',hedvel,/SILENT)
-           newdummy=fltarr(newsize+1,newsize+1)
-           sxaddpar,hedvel,'NAXIS1',newsize
-           sxaddpar,hedvel,'NAXIS2',newsize
-           sxaddpar,hedvel,'CRPIX1',sxpar(hedvel,'CRPIX1')-floor(RApix-newsize/2.)
-           sxaddpar,hedvel,'CRPIX2',sxpar(hedvel,'CRPIX2')-floor(DECpix-newsize/2.)
-           newdummy[*,*]=moment1map[floor(RApix-newsize/2.):floor(RApix+newsize/2.),floor(DECpix-newsize/2.):floor(DECpix+newsize/2.)]
-           writefits,maindir+'/'+catdirname[i]+'/'+catMom1name[i]+'_small.fits',newdummy,hedvel
-           noisemap=readfits(maindir+'/'+catdirname[i]+'/'+catCubename[i]+'_6.0_noisemap.fits',hednoise,/SILENT)
-           newdummy=fltarr(newsize+1,newsize+1)
-           sxaddpar,hednoise,'NAXIS1',newsize
-           sxaddpar,hednoise,'NAXIS2',newsize
-           sxaddpar,hednoise,'CRPIX1',sxpar(hednoise,'CRPIX1')-floor(RApix-newsize/2.)
-           sxaddpar,hednoise,'CRPIX2',sxpar(hednoise,'CRPIX2')-floor(DECpix-newsize/2.)
-           newdummy[*,*]=noisemap[floor(RApix-newsize/2.):floor(RApix+newsize/2.),floor(DECpix-newsize/2.):floor(DECpix+newsize/2.)]
-           writefits,maindir+'/'+catdirname[i]+'/'+catCubename[i]+'_6.0_noisemap_small.fits',newdummy,hednoise
-           noisemapname=catCubename[i]+'_6.0_noisemap_small'
-           cubeext='.fits'
-           CD, new_dir, CURRENT=old_dir
-           spawn,'rm -f '+pythoncube+'_cont.png '+pythoncube+'_scat.png',isthere
-           IF allnew NE 2 then begin
-              spawn,'rm -f '+catmaskname[i]+'.fits '+catMom1name[i]+'.fits '+catMom0name[i]+'.fits '+catCubename[i]+'_6.0_noisemap.fits',isthere
+        maxrings=round(SQRT((xhandle/2.)^2+(yhandle/2.)^2)/(catmajbeam[i]/(ABS(sxpar(header,'cdelt1'))*3600.))+3.)
+        IF NOT smallexists then begin
+           IF xhandle[0] GT yhandle[0] then begin
+              IF xhandle[0]/(catmajbeam[i]/(ABS(sxpar(header,'cdelt1'))*3600.)) LE 6 then newsize=fix(round(xhandle[0]+(10.+sofiacount)*catmajbeam[i]/(ABS(sxpar(header,'cdelt1'))*3600.))) else $
+                 newsize=fix(round(xhandle[0]+(8.+sofiacount)*catmajbeam[i]/(ABS(sxpar(header,'cdelt1'))*3600.)))
+           ENDIF ELSE BEGIN
+              IF yhandle[0]/(catmajbeam[i]/(ABS(sxpar(header,'cdelt2'))*3600.)) LE 6 then newsize=fix(round(yhandle[0]+(10.+sofiacount)*catmajbeam[i]/(ABS(sxpar(header,'cdelt2'))*3600.))) else $
+                 newsize=fix(round(yhandle[0]+(8.+sofiacount)*catmajbeam[i]/(ABS(sxpar(header,'cdelt2'))*3600.)))
+           ENDELSE
+           IF floor(RApix-newsize/2.) GE 0. AND floor(RApix+newsize/2.) LT  sxpar(header,'NAXIS1') AND $
+              floor(DECpix-newsize/2.) GE 0. AND floor(DECpix+newsize/2.) LT sxpar(header,'NAXIS2') AND $
+              not smallexists then begin
+              newdummy=fltarr(newsize+1,newsize+1,n_elements(dummy[0,0,*]))
+              newdummy[*,*,*]=dummy[floor(RApix-newsize/2.):floor(RApix+newsize/2.),floor(DECpix-newsize/2.):floor(DECpix+newsize/2.),*]
+              IF size(log,/TYPE) EQ 7 then begin
+                 openu,66,log,/APPEND
+                 printf,66,linenumber()+"In order to speed up the fitting process significantly we cut the cube to "+string(newsize)+ " pixels." 
+                 close,66
+              ENDIF          
+              sxaddpar,header,'NAXIS1',newsize+1
+              sxaddpar,header,'NAXIS2',newsize+1
+              sxaddpar,header,'CRPIX1',sxpar(header,'CRPIX1')-floor(RApix-newsize/2.)
+              sxaddpar,header,'CRPIX2',sxpar(header,'CRPIX2')-floor(DECpix-newsize/2.)
+              writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_small.fits',float(newdummy),header
+              dummy=newdummy
+              newdummy[*,*,*]=0.
+              newdummy[*,*,*]=mask[floor(RApix-newsize/2.):floor(RApix+newsize/2.),floor(DECpix-newsize/2.):floor(DECpix+newsize/2.),*]
+              writefits,maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'_small.fits',float(newdummy),header
+              mask=newdummy
+              moment0map=readfits(maindir+'/'+catdirname[i]+'/'+catMom0Name[i]+'.fits',headermap,/SILENT)
+              newdummy=fltarr(newsize+1,newsize+1)
+              sxaddpar,headermap,'NAXIS1',newsize+1
+              sxaddpar,headermap,'NAXIS2',newsize+1
+              sxaddpar,headermap,'CRPIX1',sxpar(headermap,'CRPIX1')-floor(RApix-newsize/2.)
+              sxaddpar,headermap,'CRPIX2',sxpar(headermap,'CRPIX2')-floor(DECpix-newsize/2.)
+              newdummy[*,*]=moment0map[floor(RApix-newsize/2.):floor(RApix+newsize/2.),floor(DECpix-newsize/2.):floor(DECpix+newsize/2.)]
+              writefits,maindir+'/'+catdirname[i]+'/'+catMom0name[i]+'_small.fits',float(newdummy),headermap
+              moment0map=newdummy
+              moment1map=readfits(maindir+'/'+catdirname[i]+'/'+catMom1Name[i]+'.fits',headervel,/SILENT)
+              newdummy=fltarr(newsize+1,newsize+1)
+              sxaddpar,headervel,'NAXIS1',newsize+1
+              sxaddpar,headervel,'NAXIS2',newsize+1
+              sxaddpar,headervel,'CRPIX1',sxpar(headervel,'CRPIX1')-floor(RApix-newsize/2.)
+              sxaddpar,headervel,'CRPIX2',sxpar(headervel,'CRPIX2')-floor(DECpix-newsize/2.)
+              newdummy[*,*]=moment1map[floor(RApix-newsize/2.):floor(RApix+newsize/2.),floor(DECpix-newsize/2.):floor(DECpix+newsize/2.)]
+              writefits,maindir+'/'+catdirname[i]+'/'+catMom1name[i]+'_small.fits',float(newdummy),headervel
+              moment1map=newdummy
+              noisemap=readfits(maindir+'/'+catdirname[i]+'/'+currentfitcube+'_6.0_noisemap.fits',headernoise,/SILENT)
+              newdummy=fltarr(newsize+1,newsize+1)
+              sxaddpar,headernoise,'NAXIS1',newsize+1
+              sxaddpar,headernoise,'NAXIS2',newsize+1
+              sxaddpar,headernoise,'CRPIX1',sxpar(headernoise,'CRPIX1')-floor(RApix-newsize/2.)
+              sxaddpar,headernoise,'CRPIX2',sxpar(headernoise,'CRPIX2')-floor(DECpix-newsize/2.)
+              newdummy[*,*]=noisemap[floor(RApix-newsize/2.):floor(RApix+newsize/2.),floor(DECpix-newsize/2.):floor(DECpix+newsize/2.)]
+              writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_6.0_noisemap_small.fits',float(newdummy),headernoise
+              noisemap=newdummy
+              noisemapname=currentfitcube+'_6.0_noisemap_small'
+              cubeext='.fits'
+              CD, new_dir, CURRENT=old_dir
+              spawn,'rm -f '+currentfitcube+'_cont.png '+currentfitcube+'_scat.png',isthere
+              IF allnew LT 2 then begin
+                 spawn,'rm -f '+catmaskname[i]+'.fits '+catMom1name[i]+'.fits '+catMom0name[i]+'.fits '+currentfitcube+'_6.0_noisemap.fits',isthere
+              ENDIF
+              CD,old_dir
+              currentfitcube=currentfitcube+'_small'
+              smallexists=1
+              catMom0name[i]=catMom0name[i]+'_small'
+              catMom1name[i]=catMom1name[i]+'_small'
+              catmaskname[i]=catmaskname[i]+'_small'
+              Old=RApix
+              RApix=floor(newsize/2.)+(RApix-floor(RApix))
+              pixshift=Old-RApix
+              RApixboun=RApixboun-pixshift     
+              Old=DECpix
+              DECpix=floor(newsize/2.)+(DECpix-floor(DECpix))
+              pixshift=Old-DECpix
+              DECpixboun=DECpixboun-pixshift
+    
            ENDIF
-           CD,old_dir
-           currentfitcube=catcubename[i]+'_small'
-           catCubename[i]=catCubename[i]+'_small'
-           smallexists=1
-           catMom0name[i]=catMom0name[i]+'_small'
-           catMom1name[i]=catMom1name[i]+'_small'
-           catmaskname[i]=catmaskname[i]+'_small'
-           RApix=floor(newsize/2.)+(Rapix-floor(RApix))
-           DECpix=floor(newsize/2.)+(DECpix-floor(DECpix))
         ENDIF
      ENDIF
      centralflux=dummy[fix(RApix),fix(DECpix),fix(VSYSpix)]
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         printf,66,linenumber()+"We have this value in the central pixel "+string(centralflux)+" at the pixel (x,y,z) "+string(fix(RApix))+","+string(fix(DECpix))+","+string(fix(VSYSpix))
-        IF not FINITE(centralflux) then           printf,66,linenumber()+"Central exclude = 1" else   printf,66,linenumber()+"Central exclude = 0"
+        IF not FINITE(centralflux) then  printf,66,linenumber()+"Central exclude = 1" else   printf,66,linenumber()+"Central exclude = 0"
         close,66
      ENDIF
      IF not FINITE(centralflux) then centralexclude=1 else centralexclude=0.
@@ -1343,91 +1256,7 @@ noconfig:
         printf,66,linenumber()+"V_sys center="+string(catVSYS[i])+"V_sys Boundaries"+string(ROTboun[0])+","+string(ROTboun[1])
         close,66
      ENDIF     
-                                ;if we have not created moment0 and
-                                ;moment1 then we want to make sure we
-                                ;have a proper extension.
-     IF NOT createmoment then begin
-        mom0ext=' '
-        CD,new_dir,CURRENT=old_dir
-        spawn,'ls '+catMom0name[i]+'.*',filenameext
-        CD,OLD_DIR
-        IF (filenameext[0]) then begin
-           for j=0,n_elements(filenameext)-1 do begin
-              tmp=str_sep(strtrim(strcompress(filenameext[j]),2),'.')
-              for g=n_elements(tmp)-1,n_elements(tmp)-3,-1 do begin
-                 
-                 IF STRUPCASE(tmp[g]) EQ 'FITS' then begin
-                    case g of
-                       n_elements(tmp)-1:begin
-                          nametmp=tmp[0]
-                          for z=1,n_elements(tmp)-2 do begin
-                             nametmp=nametmp+'.'+tmp[z]
-                          endfor
-                          
-                          IF nametmp EQ catMom0name[i] then begin
-                             mom0ext='.'+tmp[g]
-                             goto,extmom0set
-                          ENDIF
-                       end
-                       n_elements(tmp)-2:begin
-                          IF STRUPCASE(tmp[g+1]) EQ 'GZ' then begin
-                             nametmp=tmp[0]
-                             for z=1,n_elements(tmp)-3 do begin
-                                nametmp=nametmp+'.'+tmp[z]
-                             endfor
-                             
-                             IF nametmp EQ catMom0name[i] then begin
-                                mom0ext='.'+tmp[g]+'.'+tmp[g+1]
-                                goto,extmom0set
-                             ENDIF
-                             
-                          ENDIF
-                       END
-                    endcase
-                 endif
-              endfor
-           endfor
-           extmom0set:
-        endif
-        mom1ext=' '
-        CD,new_dir,CURRENT=old_dir
-        spawn,'ls '+catMom1name[i]+'.*',filenameext
-        CD,OLD_DIR
-        IF (filenameext[0]) then begin
-           for j=0,n_elements(filenameext)-1 do begin
-              tmp=str_sep(strtrim(strcompress(filenameext[j]),2),'.')
-              for g=n_elements(tmp)-1,n_elements(tmp)-3,-1 do begin
-                 IF STRUPCASE(tmp[g]) EQ 'FITS' then begin
-                    case g of
-                       n_elements(tmp)-1:begin
-                          nametmp=tmp[0]
-                          for z=1,n_elements(tmp)-2 do begin
-                             nametmp=nametmp+'.'+tmp[z]
-                          endfor
-                          IF nametmp EQ catMom1name[i] then begin
-                             mom1ext='.'+tmp[g]
-                             goto,extmom1set
-                          ENDIF
-                       end
-                       n_elements(tmp)-2:begin
-                          IF STRUPCASE(tmp[g+1]) EQ 'GZ' then begin
-                             nametmp=tmp[0]
-                             for z=1,n_elements(tmp)-3 do begin
-                                nametmp=nametmp+'.'+tmp[z]
-                             endfor
-                             IF nametmp EQ catMom1name[i] then begin
-                                mom1ext='.'+tmp[g]+'.'+tmp[g+1]
-                                goto,extmom1set
-                             ENDIF
-                          ENDIF
-                       END
-                    endcase
-                 endif
-              endfor
-           endfor
-        endif
-        extmom1set:     
-     ENDIF
+                   
                                 ;We check whether the galaxy is bright
                                 ;enough
      tmp=WHERE(mask EQ 1.)
@@ -1447,11 +1276,11 @@ noconfig:
         bookkeeping=5 
         goto,finishthisgalaxy
      ENDIF 
-     pixelarea=ABS(3600.^2*sxpar(hed,'CDELT2')*sxpar(hed,'CDELT1'))
-     pixelsizeRA=ABS(sxpar(hed,'CDELT1'))
-     pixelsizeDEC=ABS(sxpar(hed,'CDELT2'))
+     pixelarea=ABS(3600.^2*sxpar(header,'CDELT2')*sxpar(header,'CDELT1'))
+     pixelsizeRA=ABS(sxpar(header,'CDELT1'))
+     pixelsizeDEC=ABS(sxpar(header,'CDELT2'))
                                 ;Let's get the size of the cube
-     imagesize=sxpar(hed,'CDELT2')*(sxpar(hed,'NAXIS2')/2.)*3600.
+     imagesize=sxpar(header,'CDELT2')*(sxpar(header,'NAXIS2')/2.)*3600.
                                 ;IF it is not in km/s convert
      IF strupcase(veltype) EQ 'M/S' then channelwidth=channelwidth/1000.
    
@@ -1479,49 +1308,34 @@ noconfig:
                                 ;we need to investigate the full HI
                                 ;image. But let's reduce it by 1 rings
                                 ;as to not run into edge problems 
-     moment0map=readfits(maindir+'/'+catdirname[i]+'/'+catMom0name[i]+mom0ext,hedmap,/NOSCALE,/SILENT) 
-     tmpfinite=WHERE(FINITE(moment0map) EQ 0)
-     if tmpfinite[0] NE -1 then moment0map[tmpfinite]=0.
-     totflux=TOTAL(moment0map)
-    If NOT createmoment then begin
-        IF sxpar(hedmap,'CDELT1') NE sxpar(hed,'CDELT1') OR sxpar(hedmap,'CDELT2') NE sxpar(hed,'CDELT2') then begin
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+"the pixel scale in your cube and moment 0 map do not correspond."
-              printf,66,linenumber()+"recreating the moment maps."
-              close,66
-           ENDIF 
-           propermom0=0.
-           propermom1=0.
-           goto,mismatchedmoments
-        ENDIF
-        IF NOT sxpar(hedmap,'BMAJ') then sxaddpar,hedmap,'BMAJ',catmajbeam[i]
-        IF NOT sxpar(hedmap,'BMIN') then sxaddpar,hedmap,'BMIN',catminbeam[i]
-     ENDIF
                                 ;Initial size guess is
      norings=fix(round((imagesize)/(catmajbeam[i]))-2)
                                 ; If there is lt 1.5 beams in the cube we can stop here                     
-     IF norings LE 4 then begin    
-        IF norings LT 1.5 then begin
-           openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,A80)', catDirname[i],'This Cube is too small'
-           close,1
-           bookkeeping=5
-           goto,finishthisgalaxy
-        ENDIF                   
-     ENDIF
+    
+     IF norings LT 1.5 then begin
+        openu,1,outputcatalogue,/APPEND
+        printf,1,format='(A60,A80)', catDirname[i],'This Cube is too small'
+        close,1
+        bookkeeping=5
+        goto,finishthisgalaxy
+     ENDIF                   
                        ;Now let's obtain a initial pa and inclination for the galaxy    
      obtain_pav2,moment0map,newPA,inclination=newinclination,center=[RApix,DECpix],noise=momnoise,iterations=10.
-     moment1map=readfits(maindir+'/'+catdirname[i]+'/'+catMom1name[i]+mom1ext,hedvel,/NOSCALE,/SILENT) 
                                 ;Let's check wether the PA
                                 ;lines up with the kinematical
                                 ;or needs a 180  degree shift
+                                ;since we have velocities we need to
+                                ;check which half our PA should be
+                                ;IF negative rotation values are in
+                                ;the east the PA should be between 180
+                                ;to 360 else between 0-180 
+                                ;This is so that the rotation curve is always positive
      dummyvel=moment1map
      tmpfinite=WHERE(FINITE(dummyvel) EQ 0)
      if tmpfinite[0] GT -1 then dummyvel[tmpfinite]=0.
-     twobeampixel=3.*catmajbeam[i]/(ABS(sxpar(hedmap,'cdelt1'))*3600.)
+     twobeampixel=3.*catmajbeam[i]/(ABS(sxpar(headermap,'cdelt1'))*3600.)
      case (1) of
-        (sxpar(hedvel,'cdelt1') LT 0):begin
+        (sxpar(headervel,'cdelt1') LT 0):begin
            elowRA=fix(RApix-twobeampixel)
            IF elowRA LT 0 then elowRA=0
            ehighRA=fix(RApix)
@@ -1543,7 +1357,7 @@ noconfig:
            IF wlowRA GE whighRA then whighRA=n_elements(dummyvel[*,0])-1
            IF wlowDEC GE whighDEC then whighDEC=n_elements(dummyvel[0,*])-1
         end
-        (sxpar(hedvel,'cdelt1') GT 0):begin
+        (sxpar(headervel,'cdelt1') GT 0):begin
            elowRA=fix(RApix)
            IF elowRA LT 0 then elowRA=0
            ehighRA=fix(RApix+twobeampixel)
@@ -1626,7 +1440,7 @@ noconfig:
                                 ;recalculate the inclination
     
      obtain_inclinationv8,moment0map,avPA,newinclination,[RApix,DECpix],extend=noringspix,noise=momnoise,beam=catmajbeam[i]/(pixelsizeRA*3600.)
-     obtain_w50,dummy,mask,hed,W50   
+     obtain_w50,dummy,mask,header,W50   
                                 ;We want to adjust the cutoff values
                                 ;with the inclination as edge-on
                                 ;galaxies are naturally integrated
@@ -1653,21 +1467,14 @@ noconfig:
                                 ;Also our initial ring estimates
                                 ;should take this inclination into
                                 ;account
-     IF sofiafail then begin
-        case 1 of
-           (cutoffcorrection GT 1.03):norings=fix(round((noringspix*ABS(sxpar(hedmap,'cdelt1'))*3600.)/catmajbeam[i]))-floor(ringcorrection/2.)
-           (cutoffcorrection LT 0.981):norings=fix(round((noringspix*ABS(sxpar(hedmap,'cdelt1'))*3600.)/catmajbeam[i])+1)
-           else:norings=fix(round((noringspix*ABS(sxpar(hedmap,'cdelt1'))*3600.)/catmajbeam[i]))
-        endcase
-     endif else begin
-        case 1 of
-           cutoffcorrection GT 1.03 :norings=maxrings-4-floor(ringcorrection/2.)
-           cutoffcorrection LT 0.981:norings=maxrings-4+1          
-           else:norings=maxrings-4
-        endcase
-        IF newinclination[0] LT 60 then norings=norings[0]-1.
-        noringspix=norings[0]*catmajbeam[i]/(ABS(sxpar(hedmap,'cdelt1'))*3600.)
-     ENDELSE
+     case 1 of
+        cutoffcorrection GT 1.03 :norings=maxrings-4-floor(ringcorrection/2.)
+        cutoffcorrection LT 0.981:norings=maxrings-4+1          
+        else:norings=maxrings-4
+     endcase
+     IF newinclination[0] LT 60 then norings=norings[0]-1.
+     noringspix=norings[0]*catmajbeam[i]/(ABS(sxpar(headermap,'cdelt1'))*3600.)
+ 
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         printf,66,linenumber()+'We find a W50 of'+string(W50)
@@ -1692,7 +1499,7 @@ noconfig:
                                 ; only fit a flat disk
      if norings[0] LE 3. then begin
         norings[0]=(maxrings-3)*2.
-        noringspix=norings[0]*(catmajbeam[i]/2.)/(ABS(sxpar(hedmap,'cdelt1'))*3600.)
+        noringspix=norings[0]*(catmajbeam[i]/2.)/(ABS(sxpar(headermap,'cdelt1'))*3600.)
         rad=[0.,((findgen(maxrings*2.))*(catmajbeam[i]/2)+catmajbeam[i]/10.)]
         calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i]],cutoffor
         cutoffor=cutoffor/norings[0]
@@ -1727,7 +1534,7 @@ noconfig:
      ENDIF ELSE BEGIN
         if norings[0] GT maxrings then begin
            norings[0]=maxrings
-           noringspix=norings[0]*catmajbeam[i]/(ABS(sxpar(hedmap,'cdelt1'))*3600.)
+           noringspix=norings[0]*catmajbeam[i]/(ABS(sxpar(headermap,'cdelt1'))*3600.)
         ENDIF
        
            
@@ -1793,34 +1600,6 @@ noconfig:
            Endelse  
         ENDELSE
      ENDELSE
-
-
-
-                                ;since we have velocities we need to
-                                ;check which half our PA should be
-                                ;IF negative rotation values are in
-                                ;the east the PA should be between 180
-                                ;to 360 else between 0-180 
-                                ;This is so that the rotation curve is always positive
-     tmpfinite=WHERE(FINITE(dummyvel) EQ 0)
-     if tmpfinite[0] GT -1 then dummyvel[tmpfinite]=0.
-                                ;If the moment 0 is provided check that
-                                ;it has the same properties as the cube
-     If NOT createmoment then begin
-        IF sxpar(hedvel,'CDELT1') NE sxpar(hed,'CDELT1') OR sxpar(hedvel,'CDELT2') NE sxpar(hed,'CDELT2') then begin
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+"the pixel scale in your cube and moment 0 map do not correspond."
-              printf,66,linenumber()+"recreating the moment maps."
-              close,66
-           ENDIF 
-           propermom0=0.
-           propermom1=0.
-           goto,mismatchedmoments
-        ENDIF
-        IF NOT sxpar(hedvel,'BMAJ') then sxaddpar,hedvel,'BMAJ',catmajbeam[i]
-        IF NOT sxpar(hedvel,'BMIN') then sxaddpar,hedvel,'BMIN',catminbeam[i]
-     ENDIF
                                 ;print the inclination and PA we found to the output log
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
@@ -1857,21 +1636,20 @@ noconfig:
      IF catminbeam[i]/(cubecdelt*3600.) GT optpixelbeam  then begin        
         newcdelt=catminbeam[i]/double(optpixelbeam)
         ratio=double(newcdelt/double((cubecdelt*3600.)))
-        new_hed=hed
-        new_Cube=CONGRID(dummy,fix(sxpar(hed,'NAXIS1')/ratio),fix(sxpar(hed,'NAXIS2')/ratio),sxpar(hed,'NAXIS3'),/CENTER,/MINUS_ONE)
-        sxaddpar,new_hed,'CDELT1',sxpar(hed,'CDELT1')*(double(sxpar(hed,'NAXIS1'))/(fix(sxpar(hed,'NAXIS1')/ratio)-1)),format='(E20.12)'
-        sxaddpar,new_hed,'CDELT2',sxpar(hed,'CDELT2')*(double(sxpar(hed,'NAXIS2'))/(fix(sxpar(hed,'NAXIS2')/ratio)-1)),format='(E20.12)'
-        sxaddpar,new_hed,'CRPIX1',sxpar(hed,'CRPIX1')/(double(sxpar(hed,'NAXIS1'))/(fix(sxpar(hed,'NAXIS1')/ratio))),format='(E20.12)'
-        sxaddpar,new_hed,'CRPIX2',sxpar(hed,'CRPIX2')/(double(sxpar(hed,'NAXIS2'))/(fix(sxpar(hed,'NAXIS2')/ratio))),format='(E20.12)'
-        sxaddpar,new_hed,'NAXIS1',fix(sxpar(hed,'NAXIS1')/ratio)
-        sxaddpar,new_hed,'NAXIS2',fix(sxpar(hed,'NAXIS2')/ratio)
+        new_header=header
+        new_Cube=CONGRID(dummy,fix(sxpar(header,'NAXIS1')/ratio),fix(sxpar(header,'NAXIS2')/ratio),sxpar(header,'NAXIS3'),/CENTER,/MINUS_ONE)
+        sxaddpar,new_header,'CDELT1',sxpar(header,'CDELT1')*(double(sxpar(header,'NAXIS1'))/(fix(sxpar(header,'NAXIS1')/ratio)-1)),format='(E20.12)'
+        sxaddpar,new_header,'CDELT2',sxpar(header,'CDELT2')*(double(sxpar(header,'NAXIS2'))/(fix(sxpar(header,'NAXIS2')/ratio)-1)),format='(E20.12)'
+        sxaddpar,new_header,'CRPIX1',sxpar(header,'CRPIX1')/(double(sxpar(header,'NAXIS1'))/(fix(sxpar(header,'NAXIS1')/ratio))),format='(E20.12)'
+        sxaddpar,new_header,'CRPIX2',sxpar(header,'CRPIX2')/(double(sxpar(header,'NAXIS2'))/(fix(sxpar(header,'NAXIS2')/ratio))),format='(E20.12)'
+        sxaddpar,new_header,'NAXIS1',fix(sxpar(header,'NAXIS1')/ratio)
+        sxaddpar,new_header,'NAXIS2',fix(sxpar(header,'NAXIS2')/ratio)
         CD,new_dir,CURRENT=old_dir
-        currentfitcube=catcubename[i]+'_opt'
-        catcubename[i]=catcubename[i]+'_opt'      
-        writefits,maindir+'/'+catdirname[i]+'/'+catcubename[i]+cubeext,new_Cube,new_hed
+        currentfitcube=currentfitcube+'_opt'    
+        writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+cubeext,float(new_Cube),new_header
         cd,old_dir
         dummy=new_Cube
-        hed=new_hed
+        header=new_header
         optimized=1
      ENDIF
                                 ;Let's write a file with the basic initial parameters
@@ -1886,7 +1664,7 @@ noconfig:
      totflux[0]=totflux[0]/pixperbeam
      HIMASS=2.36E5*catDistance[i]^2*totflux*ABS(channelwidth)
      convertradec,RAhr,DEChr
-     getDHI,moment0map,hedmap,catPA[i],[RADeg,DECdeg,catVSYS[i]],DHI
+     getDHI,moment0map,headermap,catPA[i],[RADeg,DECdeg,catVSYS[i]],DHI
      catmaxrotdev[i]=(VSYSdiff/2.)/SIN((newinclination[0])*!pi/180.)
      IF catmaxrot[i] LT 20*channelwidth AND catmaxrotdev[i] LT 25.*channelwidth then  catmaxrotdev[i]=25.*channelwidth
      IF catmaxrotdev[i] LT 4*channelwidth then catmaxrotdev[i]=4*channelwidth
@@ -1920,12 +1698,12 @@ noconfig:
                                 ;and we make a pv-diagram based on these parameters
      IF optimized then begin
         noptname=str_sep(strtrim(strcompress(currentfitcube),2),'_opt')
-        nooptcube=readfits(maindir+'/'+catdirname[i]+'/'+noptname[0]+'.fits',nopthed,/NOSCALE)
-        extract_pv,nooptcube,nopthed,catpa[i],xv,center=[RAdeg,DECdeg],xvheader=new_header
-        writefits,maindir+'/'+catdirname[i]+'/'+noptname[0]+'_0_xv.fits',xv,new_header
+        nooptcube=readfits(maindir+'/'+catdirname[i]+'/'+noptname[0]+'.fits',noptheader,/NOSCALE,/SILENT)
+        extract_pv,nooptcube,noptheader,catpa[i],xv,center=[RAdeg,DECdeg],xvheader=new_header
+        writefits,maindir+'/'+catdirname[i]+'/'+noptname[0]+'_0_xv.fits',float(xv),new_header
      ENDIF ELSE BEGIN
-        extract_pv,dummy,hed,catpa[i],xv,center=[RAdeg,DECdeg],xvheader=new_header
-        writefits,maindir+'/'+catdirname[i]+'/'+catcubename[i]+'_0_xv.fits',xv,new_header
+        extract_pv,dummy,header,catpa[i],xv,center=[RAdeg,DECdeg],xvheader=new_header
+        writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_0_xv.fits',float(xv),new_header
      ENDELSE
                                 ;break if we do not want to use tirific
      IF finishafter EQ 0. then begin
@@ -1938,7 +1716,7 @@ noconfig:
         goto,finishthisgalaxy
      ENDIF
                                 ;build up moment 0 axis
-     buildaxii,hedmap,xaxmom0,yaxmom0
+     buildaxii,headermap,xaxmom0,yaxmom0
                                 ;some counters for keeping track
      prevmodification=0.
      overwrite=0.
@@ -3535,17 +3313,17 @@ noconfig:
 
 
 
-     tmpcube=readfits(maindir+'/'+catdirname[i]+'/1stfit.fits',hedtmp1stcube)    
+     tmpcube=readfits(maindir+'/'+catdirname[i]+'/1stfit.fits',hedtmp1stcube,/SILENT)    
                                 ;and we make a pv-diagram based on these parameters
      IF optimized then begin
-        extract_pv,nooptcube,nopthed,Basicinfovalues[0,3],xv,center=[RAhr,DEChr],xvheader=new_header
-        writefits,maindir+'/'+catdirname[i]+'/'+noptname[0]+'_1_xv.fits',xv,new_header
+        extract_pv,nooptcube,noptheader,Basicinfovalues[0,3],xv,center=[RAhr,DEChr],xvheader=new_header
+        writefits,maindir+'/'+catdirname[i]+'/'+noptname[0]+'_1_xv.fits',float(xv),new_header
      ENDIF ELSE BEGIN
-        extract_pv,dummy,hed,Basicinfovalues[0,3],xv,center=[RAhr,DEChr],xvheader=new_header
-        writefits,maindir+'/'+catdirname[i]+'/'+catcubename[i]+'_1_xv.fits',xv,new_header
+        extract_pv,dummy,header,Basicinfovalues[0,3],xv,center=[RAhr,DEChr],xvheader=new_header
+        writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_1_xv.fits',float(xv),new_header
      ENDELSE
      extract_pv,tmpcube,hedtmp1stcube,Basicinfovalues[0,3],xv,center=[RAhr,DEChr],xvheader=new_header
-     writefits,maindir+'/'+catdirname[i]+'/1stfit_xv.fits',xv,new_header
+     writefits,maindir+'/'+catdirname[i]+'/1stfit_xv.fits',float(xv),new_header
                                 ;We check that the model actually has enough flux to be reasonable
      hedtmp1st=hedtmp1stcube
      tmpix=WHERE(tmpcube GT catnoise[i])
@@ -3566,15 +3344,15 @@ noconfig:
         printf,66,linenumber()+'we use this mask for the moment maps'+catmaskname[i]
         close,66
      ENDIF 
-     mask=readfits(maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'.fits',hedmask,/NOSCALE)        
+     mask=readfits(maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'.fits',headermask,/NOSCALE,/SILENT)        
                                 ;mask the data cube
      tmpmask=fltarr(n_elements(tmpcube[*,0,0]),n_elements(tmpcube[0,*,0]),n_elements(tmpcube[0,0,*]))
      tmpmask[WHERE(mask GT 0.)]=tmpcube[WHERE(mask GT 0.)]
      momentsv2,tmpmask,tmpmap,hedtmp1st,0.
-     writefits,maindir+'/'+catdirname[i]+'/1stfit_mom0.fits',tmpmap,hedtmp1st
+     writefits,maindir+'/'+catdirname[i]+'/1stfit_mom0.fits',float(tmpmap),hedtmp1st
      hedtmp1stv=hedtmp1stcube
      momentsv2,tmpmask,tmpmapv,hedtmp1stv,1.
-     writefits,maindir+'/'+catdirname[i]+'/1stfit_mom1.fits',tmpmapv,hedtmp1stv
+     writefits,maindir+'/'+catdirname[i]+'/1stfit_mom1.fits',float(tmpmapv),hedtmp1stv
      getDHI,tmpmap,hedtmp1st,Basicinfovalues[0,3],[RAhr,DEChr,Basicinfovalues[0,4]],DHI
      totflux=[TOTAL(tmpcube[tmpix])/pixperbeam,(TOTAL(2.*cutoff[0:norings[0]-1]))/(n_elements(tmpix)/pixperbeam)]
      VSYSdiff=maxchangevel
@@ -3651,7 +3429,7 @@ noconfig:
            finishafter=1.1 
            norings[0]=(norings[0]-1)*2.
            maxrings=maxrings*2.
-           noringspix=norings[0]*(catmajbeam[i]/2.)/(ABS(sxpar(hedmap,'cdelt1'))*3600.)
+           noringspix=norings[0]*(catmajbeam[i]/2.)/(ABS(sxpar(headermap,'cdelt1'))*3600.)
            rad=[0.,((findgen(maxrings))*(catmajbeam[i]/2.)+catmajbeam[i]/10.)]
            calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i]],cutoffor
            cutoff=cutoffor*cutoffcorrection
@@ -5155,28 +4933,28 @@ noconfig:
      RAdiff=maxchangeRA*3600./15.
      DEChr=Basicinfovalues[0,1]
      DECdiff=maxchangeDEC*3600.
-     tmpcube=readfits(maindir+'/'+catdirname[i]+'/2ndfit.fits',hedtmp1stcube)
+     tmpcube=readfits(maindir+'/'+catdirname[i]+'/2ndfit.fits',hedtmp1stcube,/SILENT)
      IF optimized then begin
-        extract_pv,nooptcube,nopthed,Basicinfovalues[0,3],xv,center=[RAhr,DEChr],xvheader=new_header
-        writefits,maindir+'/'+catdirname[i]+'/'+noptname[0]+'_2_xv.fits',xv,new_header
+        extract_pv,nooptcube,noptheader,Basicinfovalues[0,3],xv,center=[RAhr,DEChr],xvheader=new_header
+        writefits,maindir+'/'+catdirname[i]+'/'+noptname[0]+'_2_xv.fits',float(xv),new_header
      ENDIF ELSE BEGIN
-        extract_pv,dummy,hed,Basicinfovalues[0,3],xv,center=[RAhr,DEChr],xvheader=new_header
-        writefits,maindir+'/'+catdirname[i]+'/'+catcubename[i]+'_2_xv.fits',xv,new_header
+        extract_pv,dummy,header,Basicinfovalues[0,3],xv,center=[RAhr,DEChr],xvheader=new_header
+        writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_2_xv.fits',float(xv),new_header
      ENDELSE
      extract_pv,tmpcube,hedtmp1stcube,Basicinfovalues[0,3],xv,center=[RAhr,DEChr],xvheader=new_header
-     writefits,maindir+'/'+catdirname[i]+'/2ndfit_xv.fits',xv,new_header
+     writefits,maindir+'/'+catdirname[i]+'/2ndfit_xv.fits',float(xv),new_header
      hedtmp1st=hedtmp1stcube
      tmpix=WHERE(tmpcube GT catnoise[i])
      totflux=[TOTAL(tmpcube[tmpix])/pixperbeam,(2.*cutoff*norings[0])/(n_elements(tmpix)/pixperbeam)]
-     mask=readfits(maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'.fits',hedmask,/NOSCALE)        
+     mask=readfits(maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'.fits',headermask,/NOSCALE,/SILENT)        
                                 ;mask the data cube
      tmpmask=fltarr(n_elements(tmpcube[*,0,0]),n_elements(tmpcube[0,*,0]),n_elements(tmpcube[0,0,*]))
      tmpmask[WHERE(mask GT 0.)]=tmpcube[WHERE(mask GT 0.)]
      momentsv2,tmpmask,tmpmap,hedtmp1st,0.
-     writefits,maindir+'/'+catdirname[i]+'/2ndfit_mom0.fits',tmpmap,hedtmp1st
+     writefits,maindir+'/'+catdirname[i]+'/2ndfit_mom0.fits',float(tmpmap),hedtmp1st
      hedtmp1stv=hedtmp1stcube
      momentsv2,tmpmask,tmpmapv,hedtmp1stv,1.
-     writefits,maindir+'/'+catdirname[i]+'/2ndfit_mom1.fits',tmpmapv,hedtmp1stv
+     writefits,maindir+'/'+catdirname[i]+'/2ndfit_mom1.fits',float(tmpmapv),hedtmp1stv
      getDHI,tmpmap,hedtmp1st,Basicinfovalues[0,3],[RAhr,DEChr,Basicinfovalues[0,4]],DHI
      VSYSdiff=maxchangevel
      HIMASS=2.36E5*catDistance[i]^2*totflux*ABS(channelwidth)
@@ -5218,14 +4996,14 @@ noconfig:
                                 ;the inclination is below 20 the fit
                                 ;is failed
         case 1 of
-           norings[0] LT 5:begin
+           norings[0] LE 5:begin
               openu,1,outputcatalogue,/APPEND
-              printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,' The finalmodel is less than 8 beams in diameter. FAT is not reliable in this range.'
+              printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,' The finalmodel is less than 8 beams in diameter. FAT is not necessarily reliable in this range.'
               close,1
            end
            Basicinfovalues[0,4] LT 20:begin
               openu,1,outputcatalogue,/APPEND
-              printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,' The final inclination is below 20 degrees. FAT is not reliable in this range.'
+              printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,' The final inclination is below 20 degrees. FAT is not necessarily reliable in this range.'
               close,1
            end
            else:begin
@@ -5242,14 +5020,14 @@ noconfig:
                                 ;the inclination is below 20 the fit
                                 ;is failed
            case 1 of
-              norings[0] LT 9:begin
+              norings[0] LE 9:begin
                  openu,1,outputcatalogue,/APPEND
-                 printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,'The finalmodel is less than 8 beams in diameter. FAT is not reliable in this range.'
+                 printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,'The finalmodel is less than 8 beams in diameter. FAT is not necessarily reliable in this range.'
                  close,1
               end
               Basicinfovalues[0,4] LT 20:begin
                  openu,1,outputcatalogue,/APPEND
-                 printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,'The final inclination is below 20 degrees. FAT is not reliable in this range.'
+                 printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,'The final inclination is below 20 degrees. FAT is not necessarily reliable in this range.'
                  close,1
               end
               else:begin
@@ -5294,7 +5072,7 @@ noconfig:
      ENDIF
      cd, new_dir
      names=[catcubename[i],catMom0name[i],catMom1name[i],catmaskname[i],noisemapname,catCatalogname[i],basicinfo]
-     book_keeping,names,bookkeeping
+     book_keeping,names,bookkeeping,log=log
      
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND

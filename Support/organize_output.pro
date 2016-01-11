@@ -44,12 +44,10 @@ Pro organize_output,names,version,directories
 ;     
 ;-
   COMPILE_OPT IDL2
-  print,directories
   for index=0,n_elements(directories)-1 do begin
      
      exist=FILE_TEST(directories[index],/DIRECTORY)
      IF exist EQ 0 then spawn,'mkdir '+directories[index],isthere
-     print,directories[index],exist
      case directories[index] of
         'Optimized':begin
            spawn,'ls -l *_opt*',list
@@ -74,6 +72,8 @@ Pro organize_output,names,version,directories
               if exist EQ 0 then spawn,'rm -Rf Optimized'
            endelse
            IF FILE_TEST(names[0]+'_opt.fits') then spawn,'mv '+names[0]+'_opt.fits Optimized/',isthere
+           spawn,'ls Optimized',filled
+           IF filled[0] EQ '' then spawn,'rm -Rf Optimized'
         end
         'Finalmodel':begin
            if fix(version) EQ version then begin
@@ -87,6 +87,8 @@ Pro organize_output,names,version,directories
               IF FILE_TEST('1stfit.fits') then spawn,'mv 1stfit.fits Finalmodel/Finalmodel.fits',isthere
               IF FILE_TEST('1stfit.ps') then spawn,'mv 1stfit.ps Finalmodel/Finalmodel.ps',isthere
            ENDELSE
+           spawn,'ls Finalmodel',filled
+           IF filled[0] EQ '' then spawn,'rm -Rf Finalmodel'
         end
         'No_Warp':begin
            if fix(version) EQ version then begin
@@ -97,15 +99,24 @@ Pro organize_output,names,version,directories
            endif else begin
               if exist EQ 0 then spawn,'rm -Rf No_Warp'
            endelse
+           spawn,'ls No_Warp',filled
+           IF filled[0] EQ '' then spawn,'rm -Rf No_Warp'
         end
         'Sofia_Output':begin
-           IF FILE_TEST(names[3]+'.fits') then spawn,'mv '+names[3]+'.fits Sofia_Output/'
-           IF FILE_TEST(names[5]) then spawn,'mv '+names[5]+' Sofia_Output/'
+           check=str_sep(names[3],'/')
+           IF FILE_TEST(names[3]+'.fits') AND check[0] NE 'Sofia_Output' then spawn,'mv '+names[3]+'.fits Sofia_Output/'
+           check=str_sep(names[5],'/')
+           IF FILE_TEST(names[5]) AND check[0] NE 'Sofia_Output' then spawn,'mv '+names[5]+' Sofia_Output/'
+           spawn,'ls Sofia_Output',filled
+           IF filled[0] EQ '' then spawn,'rm -Rf Sofia_Output'
         end
         'Moments':begin
-           IF FILE_TEST(names[1]+'.fits') then spawn,'mv '+names[1]+'.fits'+' Moments/'
-           IF FILE_TEST(names[2]+'.fits') then spawn,'mv '+names[2]+'.fits'+' Moments/'
-           IF FILE_TEST(names[4]+'.fits') then spawn,'mv '+names[4]+'.fits'+' Moments/'
+           check=str_sep(names[1],'/')
+           IF FILE_TEST(names[1]+'.fits') AND check[0] NE 'Moments' then spawn,'mv '+names[1]+'.fits'+' Moments/'
+           check=str_sep(names[2],'/')
+           IF FILE_TEST(names[2]+'.fits') AND check[0] NE 'Moments' then spawn,'mv '+names[2]+'.fits'+' Moments/'
+           check=str_sep(names[4],'/')
+           IF FILE_TEST(names[4]+'.fits') AND check[0] NE 'Moments' then spawn,'mv '+names[4]+'.fits'+' Moments/'
            if fix(version) EQ version then begin
               IF FILE_TEST('1stfit_mom0.fits') then spawn,'mv 1stfit_mom0.fits Moments/No_Warp_mom0.fits'
               IF FILE_TEST('2ndfit_mom0.fits') then spawn,'mv 2ndfit_mom0.fits Moments/Finalmodel_mom0.fits'
@@ -115,6 +126,8 @@ Pro organize_output,names,version,directories
               IF FILE_TEST('1stfit_mom0.fits') then spawn,'mv 1stfit_mom0.fits Moments/Finalmodel_mom0.fits'
               IF FILE_TEST('1stfit_mom1.fits') then spawn,'mv 1stfit_mom1.fits Moments/Finalmodel_mom1.fits'
            ENDELSE
+           spawn,'ls Moments',filled
+           IF filled[0] EQ '' then spawn,'rm -Rf Moments'
         end
         'PV-Diagrams':begin
            if fix(version) EQ version then begin
@@ -126,6 +139,8 @@ Pro organize_output,names,version,directories
            for i=0,2 do begin
               IF FILE_TEST(names[0]+'_'+strtrim(string(i,format='(i1)'),2)+'_xv.fits') then spawn,'mv '+names[0]+'_'+strtrim(string(i,format='(i1)'),2)+'_xv.fits PV-Diagrams/',isthere
            endfor
+           spawn,'ls PV-Diagrams',filled
+           IF filled[0] EQ '' then spawn,'rm -Rf PV-Diagrams'
         end
         'Intermediate':begin
            ext=['log','def','ps','fits']
@@ -152,9 +167,12 @@ Pro organize_output,names,version,directories
               endfor
            ENDELSE
           
-           spawn,'mv progress[1-2].txt Intermediate/',isthere
-           spawn,'mv sofia_input.txt Intermediate/',isthere
-           spawn,'mv tirific.def Intermediate/',isthere
+           IF FILE_TEST('progress1.txt') then spawn,'mv progress1.txt Intermediate/',isthere
+           IF FILE_TEST('progress2.txt') then spawn,'mv progress2.txt Intermediate/',isthere
+           IF FILE_TEST('sofia_input.txt') then spawn,'mv sofia_input.txt Intermediate/',isthere
+           IF FILE_TEST('tirific.def') then spawn,'mv tirific.def Intermediate/',isthere
+           spawn,'ls Intermediate',filled
+           IF filled[0] EQ '' then spawn,'rm -Rf Intermediate'
         end
         'Def_Files':begin
            spawn,'mv *.def Def_Files/',isthere
@@ -175,9 +193,11 @@ Pro organize_output,names,version,directories
               IF FILE_TEST('1stfitold.def') then spawn,'mv 1stfitold.def Def_Files/Finalmodel_prev.def',isthere
            ENDELSE
            IF FILE_TEST('tirific.def') then spawn,'mv tirific.def Def_Files/',isthere
+           spawn,'ls Def_Files',filled
+           IF filled[0] EQ '' then spawn,'rm -Rf Def_Files'
         end
         else:begin
-           print,'That is not a proper directory for output'
+           print,'ORGANIZE_OUTPUT: That is not a proper directory for output'
            if exist eq 0 then spawn,'rm -Rf '+directories[index]
         end
      endcase

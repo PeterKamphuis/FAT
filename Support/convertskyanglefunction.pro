@@ -50,14 +50,14 @@ function convertskyanglefunction,angle,distance,UNIT=unit,DISTANCE_UNIT=unitdist
   COMPILE_OPT IDL2 
   CATCH,Error_status
   IF  Error_status NE 0. THEN BEGIN
-     print, 'Oops the following went wrong:'
+     print, 'CONVERTSKYANGLEFUNCTION: Oops the following went wrong:'
      print, !ERROR_STATE.MSG
-     print, 'Use convertskyangle in this way:'
-     print,'CALLING SEQUENCE: convertskyangle,angle,distance'
-     print,"UNIT = unit of the angle ('arcsec')"
-     print,"DISTANCE_UNIT = unit of the distance ('Mpc')"
-     print,"!!!! Don't forget the apostrophes when using"
-     print,"/PHYSICAL : Keyword to go from kpc to arcsec default unit becomes kpc"  
+     print, 'CONVERTSKYANGLEFUNCTION: Use convertskyangle in this way:'
+     print,'CONVERTSKYANGLEFUNCTION: CALLING SEQUENCE: convertskyangle,angle,distance'
+     print,"CONVERTSKYANGLEFUNCTION: UNIT = unit of the angle ('arcsec')"
+     print,"CONVERTSKYANGLEFUNCTION: DISTANCE_UNIT = unit of the distance ('Mpc')"
+     print,"CONVERTSKYANGLEFUNCTION: !!!! Don't forget the apostrophes when using"
+     print,"CONVERTSKYANGLEFUNCTION: /PHYSICAL : Keyword to go from kpc to arcsec default unit becomes kpc"  
      goto,ending
   endif
 
@@ -86,8 +86,8 @@ function convertskyanglefunction,angle,distance,UNIT=unit,DISTANCE_UNIT=unitdist
         Dkpc=distance/1E3
      end
      else: begin
-        print,unitdistance+' is an unknown unit to convertskyangle'
-        print,'please use Mpc, kpc or pc'
+        print,'CONVERTSKYANGLEFUNCTION: '+unitdistance+' is an unknown unit to convertskyangle'
+        print,'CONVERTSKYANGLEFUNCTION: please use Mpc, kpc or pc'
         goto,ending
      end
   endcase
@@ -118,8 +118,8 @@ function convertskyanglefunction,angle,distance,UNIT=unit,DISTANCE_UNIT=unitdist
            radians=(angle)*((2.*!pi)/360.) 
         end
         else: begin
-           print,unit+' is an unknown unit to convertskyangle'
-           print,'please use arcsec, arcmin or degree'
+           print,'CONVERTSKYANGLEFUNCTION: '+unit+' is an unknown unit to convertskyangle'
+           print,'CONVERTSKYANGLEFUNCTION: please use arcsec, arcmin or degree'
            goto,ending
         end
         
@@ -155,8 +155,8 @@ function convertskyanglefunction,angle,distance,UNIT=unit,DISTANCE_UNIT=unitdist
            kpc=angle/1E3
         end
         else: begin
-           print,unit+' is an unknown unit to convertskyangle'
-           print,'please use kpc, Mpc or pc'
+           print,'CONVERTSKYANGLEFUNCTION: '+unit+' is an unknown unit to convertskyangle'
+           print,'CONVERTSKYANGLEFUNCTION: please use kpc, Mpc or pc'
            goto,ending
         end
         

@@ -2,7 +2,7 @@ Pro parameterreguv87,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixedringsin,RE
 
 ;+
 ; NAME:
-;       OBTAIN_VELPA
+;       PARAMETERREGUV87
 ;
 ; PURPOSE:
 ;       Routine to regularize the parameters of a tirific fit
@@ -1479,7 +1479,7 @@ shifterrors=fiterrors
         order=!values.f_nan
      end
      ELSE:begin
-        print,'this should never happen'
+        print,'PARAMETERREGUV87: this should never happen'
         stop
      ENDELSE
   ENDCASE

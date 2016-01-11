@@ -36,8 +36,10 @@ Pro obtain_velpa,map,velpa,CENTER=center
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       06-01-2016 P.Kamphuis; Added NE 0. Condition to detecting the
+;                              min and max values   
 ;       29-12-2016 P.Kamphuis: Replaced GAUSS_SMOOTH and SMOOTH with FAT_SMOOTH
-;       for increased compatibility with IDL 7.0 and GDL 
+;                              for increased compatibility with IDL 7.0 and GDL 
 ;       Written 01-01-2015 P.Kamphuis v1.0
 ;
 ; NOTE:
@@ -54,13 +56,12 @@ Pro obtain_velpa,map,velpa,CENTER=center
   pixsmooth=3
 smoothagain:
   smoothfield=FAT_SMOOTH(smoothfield,pixsmooth,/GAUSSIAN)
-  tmp=WHERE(FINITE(smoothfield))
- 
+  tmp=WHERE(FINITE(smoothfield) AND smoothfield NE 0.)
   IF tmp[0] NE -1 AND n_elements(tmp) GT 10. then begin
      maxvel=MAX(smoothfield[tmp],min=minvel)
      POS1=WHERE(maxvel EQ smoothfield)
-     POS2=WHERE(minvel EQ smoothfield)
-     IF n_elements(POS1) GT 1 or  n_elements(POS2) GT 1 then goto,smoothagain else begin
+     POS2=WHERE(minvel EQ smoothfield)   
+     IF n_elements(POS1) GT 1 or n_elements(POS2) GT 1 then goto,smoothagain else begin
         s = SIZE(smoothfield)
         ncol = s[1]
         x1 = POS1 MOD ncol
@@ -108,11 +109,8 @@ smoothagain:
         goto,smoothagain
      ENDIF ELSE begin
         smoothfield=map
-        
         smoothfield=FAT_SMOOTH(smoothfield,3,/BOX)
-
-        tmp=WHERE(FINITE(smoothfield))
-        
+        tmp=WHERE(FINITE(smoothfield) AND smoothfield NE 0.)      
         maxvel=MAX(smoothfield[tmp],min=minvel)
         POS1=WHERE(maxvel EQ smoothfield)
         POS2=WHERE(minvel EQ smoothfield)
@@ -160,24 +158,19 @@ smoothagain:
            arr=[velpamax,velpamin,velnocen]
            tmp=WHERE(FINITE(arr))
            IF tmp [0] NE -1 then velpam=MEAN(arr[tmp])*!RADEG else begin
-              print,'we do this?'
               velpa=[!values.f_nan,!values.f_nan]
               goto,endthis
            ENDELSE
            paerr=SIGMA(arr[tmp]*!RADEG)*3.
            IF paerr GT 10. then begin
-              print,'or maybe this?'
               velpa=[!values.f_nan,!values.f_nan]
               goto,endthis
            ENDIF ELSE BEGIN
-              print,'surely not this?'
               velpa=[velpam,paerr]
               goto,endthis
            ENDELSE
-
         ENDELSE
      ENDELSE
-     
   ENDELSE
   arr=[velpamax,velpamin,velnocen]
   tmp=WHERE(FINITE(arr))

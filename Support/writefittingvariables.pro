@@ -50,7 +50,7 @@ Pro writefittingvariables,inputarray,v1,v2,v3,v4,v5,v6,v7,v8,v9,v10,v11,v12,v13,
   On_error,2                    ;Return to caller
 ;We need at least three input parameters
   IF N_params() LT 2 then begin
-     print,'You need to change at least one variable'
+     print,'WRITEFITTINGVARIABLES: You need to change at least one variable'
      return
   endif
   

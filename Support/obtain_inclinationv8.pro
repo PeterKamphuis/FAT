@@ -57,7 +57,7 @@ Pro obtain_inclinationv8,map,inPA,inclination,center,EXTEND=extend,NOISE=noise,B
 ;-
 
 IF keyword_set(debug) then begin
-   print,'The PA'
+   print,'OBTAIN_INCLINATIONV8: The PA'
    print,inPA
 ENDIF
 IF n_elements(beam) EQ 0 then beam=1
@@ -143,7 +143,7 @@ for i=0,n_elements(PA)-1 do begin
       inclin3=double(acos(SQRT((ratio^2-0.2^2)/0.96))*180./!pi+2.)
    ENDELSE
    IF keyword_set(debug) then begin
-      print,'Ratio final 3 is',ratio,inclin3,xFWHM,yFWHM
+      print,'OBTAIN_INCLINATIONV8: Ratio final 3 is',ratio,inclin3,xFWHM,yFWHM
    ENDIF
                                 ;new limit
    limit=maxxprof/2.
@@ -191,7 +191,7 @@ for i=0,n_elements(PA)-1 do begin
       inclin2=double(acos(SQRT((ratio^2-0.2^2)/0.96))*180./!pi+2.)
    ENDELSE
    IF keyword_set(debug) then begin
-      print,'Ratio final 2 is',ratio,inclin2,xFWHM,yFWHM
+      print,'OBTAIN_INCLINATIONV8: Ratio final 2 is',ratio,inclin2,xFWHM,yFWHM
    ENDIF
    limit=maxxprof/1.5
    IF limit LT 4*noise then limit=4.*noise 
@@ -237,12 +237,12 @@ for i=0,n_elements(PA)-1 do begin
       inclin15=double(acos(SQRT((ratio^2-0.2^2)/0.96))*180./!pi+2.)
    ENDELSE
    IF keyword_set(debug) then begin
-      print,'Ratio final 1 is',ratio,inclin15,xFWHM,yFWHM
+      print,'OBTAIN_INCLINATIONV8: Ratio final 1 is',ratio,inclin15,xFWHM,yFWHM
    ENDIF
    skip:
    incarr=[inclin15,inclin2,inclin3]
    IF keyword_set(debug) then begin
-      print,'This is incarr',incarr
+      print,'OBTAIN_INCLINATIONV8: This is incarr',incarr
    ENDIF
    tmpzero=WHERE(incarr GT 0.1)
    IF tmpzero[0] NE -1 then begin
@@ -270,8 +270,8 @@ endif else begin
    inclination[0]=TOTAL(tmpinc[nozer])/n_elements(nozer)
    inclination[1]=SIGMA(tmpincerr[WHERE(FINITE(tmpincerr) EQ 1)])
    IF keyword_set(debug) then begin
-      print,tmpincerr,'this is tmpincer'
-      print,inclination[1],MEDIAN(tmpincerr),MEAN(tmpincerr)
+      print,'OBTAIN_INCLINATIONV8:',tmpincerr,'this is tmpincer'
+      print,'OBTAIN_INCLINATIONV8:',inclination[1],MEDIAN(tmpincerr),MEAN(tmpincerr)
    ENDIF
 endelse
 ;let's not do inclinations lower than 1

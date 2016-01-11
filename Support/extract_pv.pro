@@ -39,12 +39,15 @@ Pro extract_pv,Cube,header,pa,xv,CENTER=center,XVHEADER=new_header
 ;       -
 ; 
 ; PROCEDURES CALLED:
-;       REVERSE(),ROT(),SXADDPAR,SXPAR(),SXDELPAR,SUM()
+;       REVERSE(),ROT(),SXADDPAR,SXPAR(),SXDELPAR,TOTAL()
 ;
 ; EXAMPLE:
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       07-01-2016 P.Kamphuis; Replaced SUM commands with the proper
+;       TOTAL commands reducing the need for outside routines.  
+;       05-01-2016 P.Kamphuis; Updated NAXIS1 in new header  
 ;       Written by P.Kamphuis 01-01-2015 
 ;
 ; NOTE:
@@ -80,7 +83,7 @@ Pro extract_pv,Cube,header,pa,xv,CENTER=center,XVHEADER=new_header
      IF istart Ne 0 then centrpix=xpix-istart
      iend=fix(xpix+xsize-1)
      IF iend-istart GT n_elements(xv[*,0])-1 then iend=n_elements(xv[*,0])-1
-     xv[0:iend-istart,*]=SUM(Newcube[istart:iend,fix(ypix-(width)/(2.*(sxpar(inheader,'CDELT2')))):fix(ypix+(width)/(2.*(sxpar(inheader,'CDELT2')))),*],1)/n_elements(Newcube[0,fix(ypix-(width)/(2.*(sxpar(inheader,'CDELT2')))):fix(ypix+(width)/(2.*(sxpar(inheader,'CDELT2')))),0])
+     xv[0:iend-istart,*]=TOTAL(Newcube[istart:iend,fix(ypix-(width)/(2.*(sxpar(inheader,'CDELT2')))):fix(ypix+(width)/(2.*(sxpar(inheader,'CDELT2')))),*],2)/n_elements(Newcube[0,fix(ypix-(width)/(2.*(sxpar(inheader,'CDELT2')))):fix(ypix+(width)/(2.*(sxpar(inheader,'CDELT2')))),0])
   ENDELSE
   IF sxpar(inheader,'CDELT1') LT 0 then BEGIN
      sxaddpar,inheader,'CDELT1',ABS(sxpar(inheader,'CDELT1'))
@@ -93,6 +96,7 @@ Pro extract_pv,Cube,header,pa,xv,CENTER=center,XVHEADER=new_header
   sxaddpar,new_header,'CRVAL1',0.
   sxaddpar,new_header,'CRPIX1',xsize+1
   sxaddpar,new_header,'CTYPE1','ANGLE'
+  sxaddpar,new_header,'NAXIS1',fix(2*xsize)
   sxaddpar,new_header,'CUNIT1','DEGREE',AFTER='CRPIX1'
   sxaddpar,new_header,'CDELT2',sxpar(inheader,'CDELT3')
   sxaddpar,new_header,'CRVAL2',sxpar(inheader,'CRVAL3')

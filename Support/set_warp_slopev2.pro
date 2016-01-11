@@ -89,7 +89,7 @@ Pro set_warp_slopev2,SBRarr,SBRarr2,cutoff,INCLinput2,PAinput2,INCLinput3,PAinpu
   ENDIF
   IF size(log,/TYPE) EQ 7 then begin
      openu,66,log,/APPEND
-     printf,66,linenumber()+"We fix the warp on side 1 from ring "+strtrim(string(warpconstused[0]),2)+" on and side 2 from ring "+strtrim(string(warpconstused[1]),2)+" on."
+     printf,66,linenumber()+"SET_WARP_SLOPEV2: We fix the warp on side 1 from ring "+strtrim(string(warpconstused[0]),2)+" on and side 2 from ring "+strtrim(string(warpconstused[1]),2)+" on."
      close,66
   ENDIF 
 end

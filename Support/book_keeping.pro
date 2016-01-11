@@ -55,7 +55,7 @@ Pro book_keeping,filenames,version,log=log
   spawn,'pwd',currentdir
   IF size(log,/TYPE) EQ 7 then begin
      openu,66,log,/APPEND
-     printf,66,linenumber()+"Removing the following files from "+currentdir
+     printf,66,linenumber()+"BOOK_KEEPING: Removing the following files from "+currentdir
      close,66
   ENDIF 
   case version of
@@ -65,7 +65,7 @@ Pro book_keeping,filenames,version,log=log
         organize_output,filenames,version, ['Intermediate','Finalmodel','No_Warp','Moments','PV-Diagrams','Sofia_Output']
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+'rm -f 1stfit_opt.log 1stfit.log 1stfitall.log 1stfitold.log 2ndfit.log 2ndfitold.log 2ndfituncor.log 2ndfitunsmooth.log 2ndfitslop.log 1stfit_opt.def 1stfit_opt.fits 1stfit_opt.ps 2ndfit_opt.def 2ndfit_opt.fits 2ndfit_opt.ps '+filenames[0]+'_opt.fits sofia_input.txt tirific.def' 
+           printf,66,linenumber()+'BOOK_KEEPING: rm -f 1stfit_opt.log 1stfit.log 1stfitall.log 1stfitold.log 2ndfit.log 2ndfitold.log 2ndfituncor.log 2ndfitunsmooth.log 2ndfitslop.log 1stfit_opt.def 1stfit_opt.fits 1stfit_opt.ps 2ndfit_opt.def 2ndfit_opt.fits 2ndfit_opt.ps '+filenames[0]+'_opt.fits sofia_input.txt tirific.def' 
            close,66
         ENDIF
        
@@ -76,7 +76,7 @@ Pro book_keeping,filenames,version,log=log
         organize_output,filenames,version, ['Intermediate','Finalmodel','No_Warp','Moments','PV-Diagrams','Sofia_Output']
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+'rm -f 1stfit_opt.log 1stfit.log 1stfitall.log 1stfitold.log 2ndfitold.log 2ndfit.log 2ndfituncor.log 2ndfitunsmooth.log 2ndfitslop.log 1stfit_opt.def 1stfit_opt.fits 1stfit_opt.ps 2ndfit_opt.def 2ndfit_opt.fits 2ndfit_opt.ps '+filenames[0]+'_opt.fits sofia_input.txt tirific.def 1stfit_opt.ps 1stfit.ps 1stfitold.ps 2ndfit.ps 2ndfitold.ps 2ndfitslop.ps 2ndfitunsmooth.ps  2ndfitunsmooth.fits  2ndfituncor.fits  progress1.txt progress2.txt'
+           printf,66,linenumber()+'BOOK_KEEPING: rm -f 1stfit_opt.log 1stfit.log 1stfitall.log 1stfitold.log 2ndfitold.log 2ndfit.log 2ndfituncor.log 2ndfitunsmooth.log 2ndfitslop.log 1stfit_opt.def 1stfit_opt.fits 1stfit_opt.ps 2ndfit_opt.def 2ndfit_opt.fits 2ndfit_opt.ps '+filenames[0]+'_opt.fits sofia_input.txt tirific.def 1stfit_opt.ps 1stfit.ps 1stfitold.ps 2ndfit.ps 2ndfitold.ps 2ndfitslop.ps 2ndfitunsmooth.ps  2ndfitunsmooth.fits  2ndfituncor.fits  progress1.txt progress2.txt'
            close,66
         ENDIF
      end
@@ -86,7 +86,7 @@ Pro book_keeping,filenames,version,log=log
         organize_output,filenames,version, ['Intermediate','Finalmodel','No_Warp','Moments','PV-Diagrams','Sofia_Output']
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+ spawn,'rm -f 1stfit_opt.log 1stfit.log 1stfitall.log 1stfitold.log 2ndfit.log 2ndfitold.log 2ndfituncor.log 2ndfitunsmooth.log 2ndfitslop.log 1stfit_opt.def 1stfit_opt.fits 1stfit_opt.ps 1stfitall.ps 1stfitall.fits 2ndfit_opt.def 2ndfit_opt.fits 2ndfit_opt.ps '+filenames[0]+'_opt.fits sofia_input.txt tirific.def 1stfit_opt.ps 1stfit.ps 1stfitold.ps 2ndfit.ps 2ndfitold.ps 2ndfitslop.ps 2ndfitunsmooth.ps 2ndfitslop.fits 2ndfitunsmooth.fits  2ndfituncor.fits 1stfitold.def 1stfitold.fits 2ndfitold.def 2ndfitold.fits  progress1.txt progress2.txt'+filenames[0]+'_0_xv.fits '+filenames[0]+'_1_xv.fits ' 
+           printf,66,linenumber()+ spawn,'BOOK_KEEPING: rm -f 1stfit_opt.log 1stfit.log 1stfitall.log 1stfitold.log 2ndfit.log 2ndfitold.log 2ndfituncor.log 2ndfitunsmooth.log 2ndfitslop.log 1stfit_opt.def 1stfit_opt.fits 1stfit_opt.ps 1stfitall.ps 1stfitall.fits 2ndfit_opt.def 2ndfit_opt.fits 2ndfit_opt.ps '+filenames[0]+'_opt.fits sofia_input.txt tirific.def 1stfit_opt.ps 1stfit.ps 1stfitold.ps 2ndfit.ps 2ndfitold.ps 2ndfitslop.ps 2ndfitunsmooth.ps 2ndfitslop.fits 2ndfitunsmooth.fits  2ndfituncor.fits 1stfitold.def 1stfitold.fits 2ndfitold.def 2ndfitold.fits  progress1.txt progress2.txt'+filenames[0]+'_0_xv.fits '+filenames[0]+'_1_xv.fits ' 
            close,66
         ENDIF
      end
@@ -95,19 +95,24 @@ Pro book_keeping,filenames,version,log=log
         organize_output,filenames,version, ['Def_Files']
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+'rm -f 1stfit_opt.log 1stfit.log 1stfitold.log 1stfitall.log 2ndfitold.log 2ndfit.log 2ndfituncor.log 2ndfitunsmooth.log 2ndfitslop.log 1stfit_opt.def 1stfit_opt.fits 1stfit_opt.ps 1stfitall.ps 1stfitall.fits 2ndfit_opt.def 2ndfit_opt.fits 2ndfit_opt.ps '+filenames[0]+'_opt.fits sofia_input.txt tirific.def 1stfit_opt.ps 1stfit.ps 1stfitold.ps 2ndfit.ps 2ndfitold.ps 2ndfitslop.ps 2ndfitunsmooth.ps  2ndfitunsmooth.fits  2ndfituncor.fits 1stfitold.def 1stfitold.fits 2ndfitold.def 2ndfitold.fits'+filenames[1]+'.fits '+filenames[2]+'.fits '+filenames[0]+'_0_xv.fits '+filenames[0]+'_1_xv.fits '+filenames[3]+'.fits '+filenames[4]+'.fits '+filenames[5]+'.fits '+filenames[6]+'.fits 2ndfit.fits 1stfit.fits  progress1.txt progress2.txt'
+           printf,66,linenumber()+'BOOK_KEEPING: rm -f 1stfit_opt.log 1stfit.log 1stfitold.log 1stfitall.log 2ndfitold.log 2ndfit.log 2ndfituncor.log 2ndfitunsmooth.log 2ndfitslop.log 1stfit_opt.def 1stfit_opt.fits 1stfit_opt.ps 1stfitall.ps 1stfitall.fits 2ndfit_opt.def 2ndfit_opt.fits 2ndfit_opt.ps '+filenames[0]+'_opt.fits sofia_input.txt tirific.def 1stfit_opt.ps 1stfit.ps 1stfitold.ps 2ndfit.ps 2ndfitold.ps 2ndfitslop.ps 2ndfitunsmooth.ps  2ndfitunsmooth.fits  2ndfituncor.fits 1stfitold.def 1stfitold.fits 2ndfitold.def 2ndfitold.fits'+filenames[1]+'.fits '+filenames[2]+'.fits '+filenames[0]+'_0_xv.fits '+filenames[0]+'_1_xv.fits '+filenames[3]+'.fits '+filenames[4]+'.fits '+filenames[5]+'.fits '+filenames[6]+'.fits 2ndfit.fits 1stfit.fits  progress1.txt progress2.txt'
            close,66
         ENDIF
      end
      5:begin
         organize_output,filenames,version, ['Intermediate','Moments','Sofia_Output']
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"BOOK_KEEPING: none "+currentdir
+           close,66
+        ENDIF
      end
      else:begin       
         create_residuals,filenames,version
         organize_output,filenames,version, ['Optimized','Intermediate','Finalmodel','No_Warp','Moments','PV-Diagrams','Sofia_Output']
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"none "+currentdir
+           printf,66,linenumber()+"BOOK_KEEPING: none "+currentdir
            close,66
         ENDIF
      END

@@ -51,16 +51,16 @@ Pro buildaxii,header,xaxis,yaxis,ZAXIS=zaxis
   COMPILE_OPT IDL2 
   CATCH,Error_status
   IF  Error_status NE 0. THEN BEGIN  
-     print, 'Oops the following went wrong:'
+     print, 'BUILDAXII: Oops the following went wrong:'
      print, !ERROR_STATE.MSG
-     print, 'Use buildaxii in this way'
-     print, 'Build the axii based on a header red from a fits file   '
-     print, 'CALLING SEQUENCE: buildaxii,header,xaxis,yaxis,ZAXIS=zaxis'
-     print, '    Keywords:'
-     print, '     header       array with the header keywords from the fits file'
-     print, '      xaxis       name of the first axis '
-     print, '      yaxis       name of the second axis '
-     print, '      ZAXIS=      name of a third axis '  
+     print, 'BUILDAXII: Use buildaxii in this way'
+     print, 'BUILDAXII: Build the axii based on a header red from a fits file   '
+     print, 'BUILDAXII: CALLING SEQUENCE: buildaxii,header,xaxis,yaxis,ZAXIS=zaxis'
+     print, 'BUILDAXII:    Keywords:'
+     print, 'BUILDAXII:     header       array with the header keywords from the fits file'
+     print, 'BUILDAXII:      xaxis       name of the first axis '
+     print, 'BUILDAXII:      yaxis       name of the second axis '
+     print, 'BUILDAXII:      ZAXIS=      name of a third axis '  
      goto,ending
   ENDIF
   numaxii=sxpar(header,'NAXIS')
@@ -86,7 +86,7 @@ Pro buildaxii,header,xaxis,yaxis,ZAXIS=zaxis
      cdelt2=cd[1,1]/(COS(ATAN(-cd[0,1]/cd[1,1])))
      CROTA2=ATAN(cd[1,0]/cd[0,0])*(180./!pi)
      IF ABS(crota2) GT 2 then begin
-        print,'You have significant rotation (crota2='+string(crota2)+'from the cd matrix. Buildaxii is not made for that aborting'
+        print,'BUILDAXII: You have significant rotation (crota2='+string(crota2)+'from the cd matrix. Buildaxii is not made for that aborting'
         goto,ending
      endif
   endif

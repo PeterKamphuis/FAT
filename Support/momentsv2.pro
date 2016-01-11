@@ -34,13 +34,15 @@ Pro momentsv2,Cube,Momentmap,header,map
 ;       -
 ; 
 ; PROCEDURES CALLED:
-;       STR_SEP(), STRTRIM(), STRCOMPRESS(), SUM(), SXADDPAR(),
+;       STR_SEP(), STRTRIM(), STRCOMPRESS(), TOTAL(), SXADDPAR(),
 ;       SXPAR(), SXDELPAR()
 ;
 ; EXAMPLE:
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       07-01-2016 P.Kamphuis; Replaced SUM commands with the proper
+;       TOTAL commands reducing the need for outside routines.  
 ;       Modified to deal with existing CUNIT3 without error message 12-08-2015 P. Kamphuis v2
 ;       Modified to deal with missing CUNIT3  29-07-2015 P. Kamphuis v2
 ;       Modified to use SUM which is much faster 25-05-2015 P. Kamphuis v2
@@ -57,14 +59,14 @@ IF map EQ 0 then begin
    blank=WHERE(FINITE(Cube) NE 1.)
    IF blank[0] NE -1 then Cube[blank]=0
    Momentmap=fltarr(n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]))
-   Momentmap[*,*]=SUM(Cube,2)*ABS(sxpar(header,'CDELT3'))
+   Momentmap[*,*]=TOTAL(Cube,3)*ABS(sxpar(header,'CDELT3'))
    IF isnumeric(sxpar(header,'CUNIT3')) then begin
       IF sxpar(header,'CDELT3') GT 500. then sxaddpar,header,'CUNIT3','M/S' else sxaddpar,header,'CUNIT3','M/S'
    ENDIF
    IF STRUPCASE(strtrim(sxpar(header,'CUNIT3'),2)) EQ 'M/S' then begin
       sxaddpar,header,'CUNIT3','KM/S'
       momentmap=momentmap/1000.
-      print,'We have converted the units to Jy/Beam x Km/s'
+      print,linenumber()+'MOMENTSV2: We have converted the units to Jy/Beam x Km/s'
    ENDIF
    sxaddpar,header,'BUNIT',strtrim(strcompress(sxpar(header,'BUNIT')),2)+'.'+strtrim(strcompress(sxpar(header,'CUNIT3')),2)
    sxaddpar,header,'DATAMAX',MAX(momentmap,MIN=minmap)
@@ -76,12 +78,12 @@ IF map EQ 1 then begin
    IF blank[0] NE -1 then Cube[blank]=0
    Momentmap=fltarr(n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]))
    c=rebin(reform(zaxis,1,1,n_elements(zaxis)),n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]),n_elements(Cube[0,0,*]))
-   Momentmap=SUM(c*Cube,2)/sum(Cube,2)
+   Momentmap=TOTAL(c*Cube,3)/TOTAL(Cube,3)
    IF isnumeric(sxpar(header,'CUNIT3')) then begin
       IF sxpar(header,'CDELT3') GT 500. then sxaddpar,header,'CUNIT3','M/S' else sxaddpar,header,'CUNIT3','M/S'
    ENDIF
    IF strtrim(sxpar(header,'CUNIT3'),2) EQ 'M/S' or strtrim(sxpar(header,'CUNIT3'),2) eq 'm/s' then begin
-      print,'We are converting to KM/S'
+      print,linenumber()+'MOMENTSV2: We are converting to KM/S'
       Momentmap=Momentmap/1000.
    ENDIF
    sxaddpar,header,'DATAMAX',MAX(momentmap,MIN=minmap)
