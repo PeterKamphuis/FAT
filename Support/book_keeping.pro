@@ -1,4 +1,4 @@
-Pro book_keeping,filenames,version,log=log
+Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise
   
 ;+
 ; NAME:
@@ -46,6 +46,9 @@ Pro book_keeping,filenames,version,log=log
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       27-02-2016 P.Kamphuis; Modified to accomodate the creation of
+;       an overview plot. This does mean creating the full output
+;       first and deleting subsequently. 
 ;       Written 24-07-2015 P.Kamphuis v1.0
 ;
 ; NOTE:
@@ -57,65 +60,116 @@ Pro book_keeping,filenames,version,log=log
      openu,66,log,/APPEND
      printf,66,linenumber()+"BOOK_KEEPING: Removing the following files from "+currentdir
      close,66
-  ENDIF 
+  ENDIF
+  create_residuals,filenames,version
+  organize_output,filenames,version, ['Optimized','Intermediate','Finalmodel','No_Warp','Moments','PV-Diagrams','Sofia_Output']
+  IF version NE 5 then overview_plot,distance,gdlidl,noise=noise
   case version of
-     1 OR 1.5: begin
-        spawn,'rm -f 1stfit_opt.log 1stfit.log 1stfitall.log 1stfitold.log 2ndfit.log 2ndfitold.log 2ndfituncor.log 2ndfitunsmooth.log 2ndfitslop.log 1stfit_opt.def 1stfit_opt.fits 1stfit_opt.ps 2ndfit_opt.def 2ndfit_opt.fits 2ndfit_opt.ps '+filenames[0]+'_opt.fits sofia_input.txt tirific.def',isthere 
-        create_residuals,filenames,version
-        organize_output,filenames,version, ['Intermediate','Finalmodel','No_Warp','Moments','PV-Diagrams','Sofia_Output']
+     1:begin
+        spawn,'rm -Rf Optimized'
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+'BOOK_KEEPING: rm -f 1stfit_opt.log 1stfit.log 1stfitall.log 1stfitold.log 2ndfit.log 2ndfitold.log 2ndfituncor.log 2ndfitunsmooth.log 2ndfitslop.log 1stfit_opt.def 1stfit_opt.fits 1stfit_opt.ps 2ndfit_opt.def 2ndfit_opt.fits 2ndfit_opt.ps '+filenames[0]+'_opt.fits sofia_input.txt tirific.def' 
+           printf,66,linenumber()+'BOOK_KEEPING: rm -Rf Optimized' 
            close,66
-        ENDIF
-       
+        endif
+        spawn,'rm -f No_Warp/No_Warp.log Intermediate/No_Warp_first_correct_center.log Intermediate/No_Warp_prev.log Finalmodel/Finalmodel.log Intermediate/Finalmodel_sloped.log Intermediate/Finalmodel_prev.log Intermediate/Finalmodel_uncorrected.log Intermediate/Finalmodel_unsmoothed.log Intermediate/sofia_input.txt Intermediate/tirific.def',isthere 
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+'BOOK_KEEPING: rm -f No_Warp/No_Warp.log Intermediate/No_Warp_first_correct_center.log Intermediate/No_Warp_prev.log Finalmodel/Finalmodel.log Intermediate/Finalmodel_sloped.log Intermediate/Finalmodel_prev.log Intermediate/Finalmodel_uncorrected.log Intermediate/Finalmodel_unsmoothed.log Intermediate/sofia_input.txt Intermediate/tirific.def' 
+           close,66
+        endif
+     end
+     1.5: begin
+        spawn,'rm -Rf Optimized'
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+'BOOK_KEEPING: rm -Rf Optimized' 
+           close,66
+        endif
+        spawn,'rm -f Finalmodel/Finalmodel.log Intermediate/Finalmodel_first_correct_center.log Intermediate/Finalmodel_prev.log  Intermediate/sofia_input.txt Intermediate/tirific.def',isthere 
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+'BOOK_KEEPING: rm -f Finalmodel/Finalmodel.log Intermediate/Finalmodel_first_correct_center.log Intermediate/Finalmodel_prev.log  Intermediate/sofia_input.txt Intermediate/tirific.def' 
+           close,66
+        endif
      end    
-     2 OR 2.5: begin
-        spawn,'rm -f 1stfit_opt.log 1stfit.log 1stfitall.log 1stfitold.log 2ndfit.log 2ndfituncor.log 2ndfitold.log 2ndfitunsmooth.log 2ndfitslop.log 1stfit_opt.def 1stfit_opt.fits 1stfit_opt.ps 2ndfit_opt.def 2ndfit_opt.fits 2ndfit_opt.ps '+filenames[0]+'_opt.fits sofia_input.txt tirific.def 1stfit_opt.ps 1stfit.ps 1stfitold.ps 2ndfit.ps 2ndfitold.ps 2ndfitslop.ps 2ndfitunsmooth.ps  2ndfitunsmooth.fits  2ndfituncor.fits  progress1.txt progress2.txt',isthere 
-        create_residuals,filenames,version
-        organize_output,filenames,version, ['Intermediate','Finalmodel','No_Warp','Moments','PV-Diagrams','Sofia_Output']
+     2: begin
+        spawn,'rm -Rf Optimized'
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+'BOOK_KEEPING: rm -f 1stfit_opt.log 1stfit.log 1stfitall.log 1stfitold.log 2ndfitold.log 2ndfit.log 2ndfituncor.log 2ndfitunsmooth.log 2ndfitslop.log 1stfit_opt.def 1stfit_opt.fits 1stfit_opt.ps 2ndfit_opt.def 2ndfit_opt.fits 2ndfit_opt.ps '+filenames[0]+'_opt.fits sofia_input.txt tirific.def 1stfit_opt.ps 1stfit.ps 1stfitold.ps 2ndfit.ps 2ndfitold.ps 2ndfitslop.ps 2ndfitunsmooth.ps  2ndfitunsmooth.fits  2ndfituncor.fits  progress1.txt progress2.txt'
+           printf,66,linenumber()+'BOOK_KEEPING: rm -Rf Optimized' 
+           close,66
+        endif
+          spawn,'rm -f No_Warp/No_Warp.log Intermediate/No_Warp_first_correct_center.log Intermediate/No_Warp_prev.log Finalmodel/Finalmodel.log Intermediate/Finalmodel_sloped.log Intermediate/Finalmodel_prev.log Intermediate/Finalmodel_uncorrected.log Intermediate/Finalmodel_unsmoothed.log Intermediate/sofia_input.txt Intermediate/tirific.def No_Warp/No_Warp.ps Intermediate/No_Warp_prev.ps Finalmodel/Finalmodel.ps  Intermediate/Finalmodel_prev.ps Intermediate/Finalmodel_sloped.ps  Intermediate/Finalmodel_uncorrected.ps Intermediate/Finalmodel_unsmoothed.ps  Intermediate/Finalmodel_unsmoothed.fits Intermediate/Finalmodel_uncorrected.fits Intermediate/progress1.txt Intermediate/progress2.txt',isthere 
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+'BOOK_KEEPING: rm -f No_Warp/No_Warp.log Intermediate/No_Warp_first_correct_center.log Intermediate/No_Warp_prev.log Finalmodel/Finalmodel.log Intermediate/Finalmodel_sloped.log Intermediate/Finalmodel_prev.log Intermediate/Finalmodel_uncorrected.log Intermediate/Finalmodel_unsmoothed.log Intermediate/sofia_input.txt Intermediate/tirific.def No_Warp/No_Warp.ps Intermediate/No_Warp_prev.ps Finalmodel/Finalmodel.ps  Intermediate/Finalmodel_prev.ps Intermediate/Finalmodel_sloped.ps  Intermediate/Finalmodel_uncorrected.ps Intermediate/Finalmodel_unsmoothed.ps  Intermediate/Finalmodel_unsmoothed.fits Intermediate/Finalmodel_uncorrected.fits Intermediate/progress1.txt Intermediate/progress2.txt'
            close,66
         ENDIF
      end
-     3 OR 3.5: begin
-           spawn,'rm -f 1stfit_opt.log 1stfit.log 1stfitall.log 1stfitold.log 2ndfit.log 2ndfitold.log 2ndfituncor.log 2ndfitunsmooth.log 2ndfitslop.log 1stfit_opt.def 1stfit_opt.fits 1stfit_opt.ps 1stfitall.ps 1stfitall.fits 2ndfit_opt.def 2ndfit_opt.fits 2ndfit_opt.ps '+filenames[0]+'_opt.fits sofia_input.txt tirific.def 1stfit_opt.ps 1stfit.ps 1stfitold.ps 2ndfit.ps 2ndfitold.ps 2ndfitslop.ps 2ndfitunsmooth.ps 2ndfitslop.fits 2ndfitunsmooth.fits  2ndfituncor.fits 1stfitold.def 1stfitold.fits 2ndfitold.def 2ndfitold.fits  progress1.txt progress2.txt'+filenames[0]+'_0_xv.fits '+filenames[0]+'_1_xv.fits ',isthere 
-        create_residuals,filenames,version
-        organize_output,filenames,version, ['Intermediate','Finalmodel','No_Warp','Moments','PV-Diagrams','Sofia_Output']
+     2.5: begin
+       spawn,'rm -Rf Optimized'
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+ spawn,'BOOK_KEEPING: rm -f 1stfit_opt.log 1stfit.log 1stfitall.log 1stfitold.log 2ndfit.log 2ndfitold.log 2ndfituncor.log 2ndfitunsmooth.log 2ndfitslop.log 1stfit_opt.def 1stfit_opt.fits 1stfit_opt.ps 1stfitall.ps 1stfitall.fits 2ndfit_opt.def 2ndfit_opt.fits 2ndfit_opt.ps '+filenames[0]+'_opt.fits sofia_input.txt tirific.def 1stfit_opt.ps 1stfit.ps 1stfitold.ps 2ndfit.ps 2ndfitold.ps 2ndfitslop.ps 2ndfitunsmooth.ps 2ndfitslop.fits 2ndfitunsmooth.fits  2ndfituncor.fits 1stfitold.def 1stfitold.fits 2ndfitold.def 2ndfitold.fits  progress1.txt progress2.txt'+filenames[0]+'_0_xv.fits '+filenames[0]+'_1_xv.fits ' 
+           printf,66,linenumber()+'BOOK_KEEPING: rm -Rf Optimized' 
+           close,66
+        endif
+          spawn,'rm -f Finalmodel/Finalmodel.log Intermediate/Finalmodel_first_correct_center.log Intermediate/Finalmodel_prev.log  Intermediate/sofia_input.txt Intermediate/tirific.def Finalmodel/Finalmodel.ps Intermediate/Finalmodel_prev.ps Intermediate/progress1.txt Intermediate/progress2.txt',isthere 
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+'BOOK_KEEPING:rm -f Finalmodel/Finalmodel.log Intermediate/Finalmodel_first_correct_center.log Intermediate/Finalmodel_prev.log  Intermediate/sofia_input.txt Intermediate/tirific.def Finalmodel/Finalmodel.ps Intermediate/Finalmodel_prev.ps Intermediate/progress1.txt Intermediate/progress2.txt'
            close,66
         ENDIF
      end
-     4 OR 4.5: begin        
-             spawn,'rm -f 1stfit_opt.log 1stfit.log 1stfitold.log 1stfitall.log 2ndfitold.log 2ndfit.log 2ndfituncor.log 2ndfitunsmooth.log 2ndfitslop.log 1stfit_opt.def 1stfit_opt.fits 1stfit_opt.ps 1stfitall.ps 1stfitall.fits 2ndfit_opt.def 2ndfit_opt.fits 2ndfit_opt.ps '+filenames[0]+'_opt.fits sofia_input.txt tirific.def 1stfit_opt.ps 1stfit.ps 1stfitold.ps 2ndfit.ps 2ndfitold.ps 2ndfitslop.ps 2ndfitunsmooth.ps  2ndfitunsmooth.fits  2ndfituncor.fits 1stfitold.def 1stfitold.fits 2ndfitold.def 2ndfitold.fits'+filenames[1]+'.fits '+filenames[2]+'.fits '+filenames[0]+'_0_xv.fits '+filenames[0]+'_1_xv.fits '+filenames[3]+'.fits '+filenames[4]+'.fits '+filenames[5]+'.fits '+filenames[6]+'.fits 2ndfit.fits 1stfit.fits  progress1.txt progress2.txt',isthere 
-        organize_output,filenames,version, ['Def_Files']
+     3:begin
+        spawn,'rm -Rf Optimized'
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+'BOOK_KEEPING: rm -f 1stfit_opt.log 1stfit.log 1stfitold.log 1stfitall.log 2ndfitold.log 2ndfit.log 2ndfituncor.log 2ndfitunsmooth.log 2ndfitslop.log 1stfit_opt.def 1stfit_opt.fits 1stfit_opt.ps 1stfitall.ps 1stfitall.fits 2ndfit_opt.def 2ndfit_opt.fits 2ndfit_opt.ps '+filenames[0]+'_opt.fits sofia_input.txt tirific.def 1stfit_opt.ps 1stfit.ps 1stfitold.ps 2ndfit.ps 2ndfitold.ps 2ndfitslop.ps 2ndfitunsmooth.ps  2ndfitunsmooth.fits  2ndfituncor.fits 1stfitold.def 1stfitold.fits 2ndfitold.def 2ndfitold.fits'+filenames[1]+'.fits '+filenames[2]+'.fits '+filenames[0]+'_0_xv.fits '+filenames[0]+'_1_xv.fits '+filenames[3]+'.fits '+filenames[4]+'.fits '+filenames[5]+'.fits '+filenames[6]+'.fits 2ndfit.fits 1stfit.fits  progress1.txt progress2.txt'
+           printf,66,linenumber()+'BOOK_KEEPING: rm -Rf Optimized' 
+           close,66
+        endif
+          spawn,'rm -f No_Warp/No_Warp.log Intermediate/No_Warp_first_correct_center.log Intermediate/No_Warp_prev.log Finalmodel/Finalmodel.log Intermediate/Finalmodel_prev.log   Intermediate/Finalmodel_uncorrected.log Intermediate/Finalmodel_unsmoothed.log  Intermediate/Finalmodel_sloped.log Intermediate/No_Warp_first_correct_center.ps Intermediate/No_Warp_first_correct_center.fits Intermediate/sofia_input.txt Intermediate/tirific.def No_Warp/No_Warp.ps Intermediate/No_Warp_prev.ps Finalmodel/Finalmodel.ps Intermediate/Finalmodel_prev.ps Intermediate/Finalmodel_sloped.ps  Intermediate/Finalmodel_uncorrected.ps Intermediate/Finalmodel_unsmoothed.ps Intermediate/Finalmodel_sloped.fits  Intermediate/Finalmodel_unsmoothed.fits Intermediate/Finalmodel_uncorrected.fits  Intermediate/No_Warp_prev.def  Intermediate/No_Warp_prev.fits Intermediate/Finalmodel_prev.def Intermediate/Finalmodel_prev.fits Intermediate/progress1.txt Intermediate/progress2.txt',isthere 
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+'BOOK_KEEPING:rm -f No_Warp/No_Warp.log Intermediate/No_Warp_first_correct_center.log Intermediate/No_Warp_prev.log Finalmodel/Finalmodel.log Intermediate/Finalmodel_prev.log   Intermediate/Finalmodel_uncorrected.log Intermediate/Finalmodel_unsmoothed.log  Intermediate/Finalmodel_sloped.log Intermediate/No_Warp_first_correct_center.ps Intermediate/No_Warp_first_correct_center.fits Intermediate/sofia_input.txt Intermediate/tirific.def No_Warp/No_Warp.ps Intermediate/No_Warp_prev.ps Finalmodel/Finalmodel.ps Intermediate/Finalmodel_prev.ps Intermediate/Finalmodel_sloped.ps  Intermediate/Finalmodel_uncorrected.ps Intermediate/Finalmodel_unsmoothed.ps Intermediate/Finalmodel_sloped.fits  Intermediate/Finalmodel_unsmoothed.fits Intermediate/Finalmodel_uncorrected.fits  Intermediate/No_Warp_prev.def  Intermediate/No_Warp_prev.fits Intermediate/Finalmodel_prev.def Intermediate/Finalmodel_prev.fits Intermediate/progress1.txt Intermediate/progress2.txt'
+           close,66
+        ENDIF
+     end     
+     3.5: begin
+         spawn,'rm -Rf Optimized'
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+'BOOK_KEEPING: rm -Rf Optimized' 
+           close,66
+        endif
+          spawn,'rm -f Finalmodel/Finalmodel.log Intermediate/Finalmodel_first_correct_center.log Intermediate/Finalmodel_prev.log Intermediate/Finalmodel_first_correct_center.ps Intermediate/Finalmodel_first_correct_center.fits Intermediate/sofia_input.txt Intermediate/tirific.def Finalmodel/Finalmodel.ps Intermediate/Finalmodel_prev.ps Intermediate/Finalmodel_prev.def  Intermediate/Finalmodel_prev.fits Intermediate/progress1.txt Intermediate/progress2.txt',isthere 
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+'BOOK_KEEPING:rm -f Finalmodel/Finalmodel.log Intermediate/Finalmodel_first_correct_center.log Intermediate/Finalmodel_prev.log Intermediate/Finalmodel_first_correct_center.ps Intermediate/Finalmodel_first_correct_center.fits Intermediate/sofia_input.txt Intermediate/tirific.def Finalmodel/Finalmodel.ps Intermediate/Finalmodel_prev.ps Intermediate/Finalmodel_prev.def  Intermediate/Finalmodel_prev.fits Intermediate/progress1.txt Intermediate/progress2.txt'
            close,66
         ENDIF
      end
-     5:begin
-        organize_output,filenames,version, ['Intermediate','Moments','Sofia_Output']
+     4 OR 4.5: begin
+        spawn,'mkdir Def_Files',isthere
+        spawn,'mv No_Warp/*.def Def_Files',isthere
+        spawn,'mv Finalmodel/*.def Def_Files',isthere
+        spawn,'mv Intermediate/*.def Def_Files',isthere
+        spawn,'mv Optimized/*.def Def_Files',isthere
+        spawn,'rm -Rf Optimized Intermediate Finalmodel No_Warp Moments PV-Diagrams Sofia_Output ',isthere 
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+'BOOK_KEEPING:rm -Rf Optimized Intermediate Finalmodel No_Warp Moments PV-Diagrams Sofia_Output'
+           close,66
+        ENDIF
+     end
+     else:begin
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+"BOOK_KEEPING: none "+currentdir
            close,66
         ENDIF
      end
-     else:begin       
-        create_residuals,filenames,version
-        organize_output,filenames,version, ['Optimized','Intermediate','Finalmodel','No_Warp','Moments','PV-Diagrams','Sofia_Output']
-        IF size(log,/TYPE) EQ 7 then begin
-           openu,66,log,/APPEND
-           printf,66,linenumber()+"BOOK_KEEPING: none "+currentdir
-           close,66
-        ENDIF
-     END
+  
 
 
      

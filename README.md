@@ -13,7 +13,7 @@ The code requires full installation of:
     IDL 7.0 or higher with astrolib
     TiRiFiC v2.2.3 or higher (http://gigjozsa.github.io/tirific/download_and_installation.html)
     SoFiA v 0.4.0 or higher  (https://github.com/SoFiA-Admin/SoFiA)
-    Standard unix commands pwd, mkdir, rm, cp, ls, python, rename
+    Standard unix commands pwd, mkdir, rm, cp, ls, python
     
 IDL needs to be able to exececute tirific, sofia, rename and the standard unix commands from a spawn command. All other dependencies should be in IDL and available with the normal IDL distributions. 
 

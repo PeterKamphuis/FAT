@@ -34,12 +34,12 @@ Pro get_newringsv8,SBR1in,SBR2in,cutoffin,newrings,INDIVIDUAL=individual
 ;       -
 ; 
 ; PROCEDURES CALLED:
-;       MAX(), SIGMA(), ROBUST_SIGMA(), FLOOR()
+;       MAX(), FLOOR()
 ;
 ; EXAMPLE:
 ;      
 ;
-; MODIFICATION HISTORY:
+; MODIFICATION HISTORY:  
 ;       Written by P.Kamphuis 01-01-2015 
 ;
 ; NOTE:

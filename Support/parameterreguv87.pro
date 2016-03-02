@@ -63,12 +63,13 @@ Pro parameterreguv87,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixedringsin,RE
 ;       ORDER = the order of the applied polynomial;     
 ; 
 ; PROCEDURES CALLED:
-;       MEAN(), POLY_FIT(), SIGMA(), ROBUST_SIGMA()
+;       MEAN(), POLY_FIT(), STDDEV(), ROBUST_SIGMA()
 ;
 ; EXAMPLE:
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       18-02-2016 P.Kamphuis; Replaced sigma with STDDEV   
 ;       11-08-2015 P.Kamphuis; Modified the handling of single value
 ;       rotation curves
 ;       Written 01-01-2015 P.Kamphuis v1.0
@@ -484,7 +485,7 @@ Pro parameterreguv87,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixedringsin,RE
   IF NOT keyword_set(rev) then begin
      IF fixedrings NE 0. then begin
         IF RADIIin[3]/RADIIin[n_elements(PA)-1] GT 0.2 then PA[0:fixedrings]=TOTAL(PA[0:fixedrings])/(fixedrings+1) else begin
-           checkrms=SIGMA(PA[4:9])
+           checkrms=STDDEV(PA[4:9])
            checkmean=MEAN(PA[4:9])
            if keyword_set(debug) then begin
               print,'This is the rms, mean and 0 value'
@@ -1509,7 +1510,7 @@ shifterrors=fiterrors
      tmperr2=dblarr(n_elements(PA)) 
      IF keyword_set(rev) then begin
         for j=0,n_elements(checkPA[*,0,0])-1 do begin  
-           tmperr[j]=SIGMA(checkPA[j,*,order-2])*3.
+           tmperr[j]=STDDEV(checkPA[j,*,order-2])*3.
         endfor
         tmperr=REVERSE(tmperr)
         tmperr2=ABS(PAin-REVERSE(newPA))
@@ -1517,9 +1518,9 @@ shifterrors=fiterrors
      ENDIF ELSE BEGIN
         for j=0,n_elements(checkPA[*,0,0])-1 do begin
            if keyword_set(nocentral) then begin
-              tmperr[j+1]=SIGMA(checkPA[j,*,order-2])*3.
+              tmperr[j+1]=STDDEV(checkPA[j,*,order-2])*3.
            ENDIF ELSE BEGIN
-              tmperr[j]=SIGMA(checkPA[j,*,order-2])*3.
+              tmperr[j]=STDDEV(checkPA[j,*,order-2])*3.
            ENDELSE
         endfor
         tmperr2=ABS(PAin-newPA)

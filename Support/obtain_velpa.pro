@@ -36,6 +36,7 @@ Pro obtain_velpa,map,velpa,CENTER=center
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       18-02-2016 P.Kamphuis; Replaced sigma with STDDEV   
 ;       06-01-2016 P.Kamphuis; Added NE 0. Condition to detecting the
 ;                              min and max values   
 ;       29-12-2016 P.Kamphuis: Replaced GAUSS_SMOOTH and SMOOTH with FAT_SMOOTH
@@ -161,7 +162,7 @@ smoothagain:
               velpa=[!values.f_nan,!values.f_nan]
               goto,endthis
            ENDELSE
-           paerr=SIGMA(arr[tmp]*!RADEG)*3.
+           paerr=STDDEV(arr[tmp]*!RADEG)*3.
            IF paerr GT 10. then begin
               velpa=[!values.f_nan,!values.f_nan]
               goto,endthis
@@ -178,7 +179,7 @@ smoothagain:
      velpa=[!values.f_nan,!values.f_nan]
      goto,endthis
   ENDELSE
-  IF n_elements(tmp) GT 1 then paerr=SIGMA(arr[tmp]*!RADEG)*3. ELSE paerr=20.
+  IF n_elements(tmp) GT 1 then paerr=STDDEV(arr[tmp]*!RADEG)*3. ELSE paerr=20.
   velpa=[velpam,paerr]
 
 endthis:

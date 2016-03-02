@@ -80,7 +80,11 @@
 ;            I no longer have to make huge arrays. The arrays are only as big as the blob
 ;            being fitted. 17 AUG 2008. DWF.
 ;       Fixed small typo that caused blobs of indices with a longer X axis than Y axis
-;            to misrepresent the center of the ellipse. 23 February 2009.
+;            to misrepresent the center of the ellipse. 23 February
+;            2009.
+;       18-02-2016 P.Kamphuis, N.Giese; Replaced the eigenql function as it is
+;       not available in GDL. And adapted the use of Array_Indices to
+;       be GDL compatible 
 ;-
 ;******************************************************************************************;
 ;  Copyright (c) 2008-2009, by Fanning Software Consulting, Inc.                           ;
@@ -142,7 +146,9 @@ FUNCTION Fit_Ellipse, indices, $
     ENDIF
     
     ; Convert the indices to COL/ROW coordinates. Find min and max values
-    xyindices = Array_Indices([xsize,ysize], indices, /DIMENSIONS)
+;    xyindices = Array_Indices([xsize,ysize], indices, /DIMENSIONS)
+    array = BytArr(xsize, ysize)
+    xyindices = Array_Indices(array, indices)
     minX = Min(xyindices[0,*], MAX=maxX)
     minY = Min(xyindices[1,*], MAX=maxY)
     cols = Reform(xyindices[0,*]) - minX
@@ -179,12 +185,30 @@ FUNCTION Fit_Ellipse, indices, $
     i11 = Total(yy[cols, rows]^2) / npts
     i22 = Total(xx[cols, rows]^2) / npts
     i12 = -Total(xx[cols, rows] * yy[cols, rows]) / npts
-    tensor = [[ i11, i12],[i12,i22]]
+ ;   tensor = [[ i11, i12],[i12,i22]]
 
     ; Find the eigenvalues and eigenvectors of the tensor.
-    evals = Eigenql(tensor, Eigenvectors=evecs)
+;Replace this beuase Eigenql not available in GDL
+;   evals = Eigenql(tensor, Eigenvectors=evecs)
+    D = i11*i22-i12*i12
+    T = i11+i22
+
+    L1 = T/2 + Sqrt(T*T/4.-D)
+    L2 = T/2 - Sqrt(T*T/4.-D)
+
+    evals = [L1,L2]
+
+    IF i12 NE 0 THEN BEGIN
+       V1 = [i12,L1-i11]
+       V2 = [L2-i22,i12]
+    ENDIF ELSE BEGIN
+       V1 = [1,0]
+       V1 = [0,1]
+    ENDELSE
+    evecs = -1*[[V1],[V2]]
 
     ; The semi-major and semi-minor axes of the ellipse are obtained from the eigenvalues.
+
     semimajor = Sqrt(evals[0]) * 2.0
     semiminor = Sqrt(evals[1]) * 2.0
 

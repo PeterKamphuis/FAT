@@ -38,7 +38,7 @@ Function FAT_SMOOTH,map,sigma,GAUSSIAN=Gaussian,BOX=box
 ; EXAMPLE:
 ;      
 ;
-; MODIFICATION HISTORY:
+; MODIFICATION HISTORY: 
 ;       Written 29-12-2016 by P.Kamphuis
 ;
 ; NOTE:

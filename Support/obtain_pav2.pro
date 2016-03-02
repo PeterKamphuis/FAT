@@ -41,6 +41,7 @@ Pro obtain_pav2,map,PA,INCLINATION=inclination,CENTER=center,NOISE=noise,ITERATI
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       18-02-2016 P.Kamphuis; Replaced sigma with STDDEV   
 ;       Written 01-01-2015 P.Kamphuis v1.0
 ;
 ; NOTE:
@@ -92,13 +93,13 @@ Pro obtain_pav2,map,PA,INCLINATION=inclination,CENTER=center,NOISE=noise,ITERATI
      PA[0]=TOTAL(pafound[tmp])/n_elements(pafound[tmp])+90.
      IF PA[0] LT 0 then PA[0]=PA[0]+360
      IF PA[0] GT 360 then PA[0]=PA[0]-360
-     PA[1]=sigma(pafound[tmp])
+     PA[1]=STDDEV(pafound[tmp])
 
      tmp2=inclfound[2:n_elements(inclfound)-1]
      tmp=WHERE(tmp2 NE 0)
      IF tmp[0] NE -1 then begin 
         inclination[0]=TOTAL(tmp2[tmp])/(n_elements(tmp))
-        inclination[1]=sigma(tmp2[tmp])
+        inclination[1]=STDDEV(tmp2[tmp])
      ENDIF
 
   ENDIF

@@ -47,6 +47,7 @@ Pro obtain_inclinationv8,map,inPA,inclination,center,EXTEND=extend,NOISE=noise,B
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       18-02-2016 P.Kamphuis; Replaced sigma with STDDEV   
 ;       Written 01-01-2015 P.Kamphuis v1.0
 ;
 ; NOTE:
@@ -268,7 +269,7 @@ If nozer[0] EQ -1 then begin
    inclination[1]=40.
 endif else begin
    inclination[0]=TOTAL(tmpinc[nozer])/n_elements(nozer)
-   inclination[1]=SIGMA(tmpincerr[WHERE(FINITE(tmpincerr) EQ 1)])
+   inclination[1]=STDDEV(tmpincerr[WHERE(FINITE(tmpincerr) EQ 1)])
    IF keyword_set(debug) then begin
       print,'OBTAIN_INCLINATIONV8:',tmpincerr,'this is tmpincer'
       print,'OBTAIN_INCLINATIONV8:',inclination[1],MEDIAN(tmpincerr),MEAN(tmpincerr)

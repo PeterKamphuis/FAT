@@ -41,6 +41,7 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       18-02-2016 P.Kamphuis; Replaced sigma with STDDEV 
 ;       Written 04-01-2016 P.Kamphuis v1.0
 ;
 ; NOTE:
@@ -105,7 +106,7 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
         tmpnoblank=cube[*,*,0]
         wherefinite=WHERE(FINITE(tmpnoblank))
      ENDWHILE
-     rmsfirstchannel=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])          
+     rmsfirstchannel=STDDEV(tmpnoblank[WHERE(FINITE(tmpnoblank))])          
      tmpnoblank=cube[*,*,n_elements(cube[0,0,*])-1]
      wherefinite=WHERE(FINITE(tmpnoblank))
      WHILE wherefinite[0] EQ -1 DO begin
@@ -137,17 +138,17 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
         tmpnoblank=cube[*,*,n_elements(cube[0,0,*])-1]
         wherefinite=WHERE(FINITE(tmpnoblank))
      ENDWHILE
-     rmslastchannel=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
+     rmslastchannel=STDDEV(tmpnoblank[WHERE(FINITE(tmpnoblank))])
      IF rmsfirstchannel EQ 0. then rmsfirstchannel=2.*rmslastchannel
      IF rmslastchannel EQ 0. then rmslastchannel=2.*rmsfirstchannel
      tmpnoblank=cube[0:5,0:5,*]
-     rmsbottoml=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
+     rmsbottoml=STDDEV(tmpnoblank[WHERE(FINITE(tmpnoblank))])
      tmpnoblank=cube[n_elements(cube[*,0,0])-6:n_elements(cube[*,0,0])-1,0:5,*]
-     rmsbottomr=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
+     rmsbottomr=STDDEV(tmpnoblank[WHERE(FINITE(tmpnoblank))])
      tmpnoblank=cube[n_elements(cube[*,0,0])-6:n_elements(cube[*,0,0])-1,n_elements(cube[0,*,0])-6:n_elements(cube[0,*,0])-1,*]
-     rmstopr=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
+     rmstopr=STDDEV(tmpnoblank[WHERE(FINITE(tmpnoblank))])
      tmpnoblank=cube[0:5,n_elements(cube[0,*,0])-6:n_elements(cube[0,*,0])-1,*]
-     rmstopl=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
+     rmstopl=STDDEV(tmpnoblank[WHERE(FINITE(tmpnoblank))])
      rmschan=(rmsfirstchannel+rmslastchannel)/2.
      rmscorn=(rmsbottoml+rmsbottomr+rmstopl+rmstopr)/4.
      diff=ABS((rmsfirstchannel-rmslastchannel)/rmsfirstchannel)

@@ -32,12 +32,13 @@ Pro get_fixedringsv8,Parametersin,rings
 ;       -
 ; 
 ; PROCEDURES CALLED:
-;       MAX(), SIGMA(), ROBUST_SIGMA(), FLOOR()
+;       MAX(), STDDEV(), ROBUST_SIGMA(), FLOOR()
 ;
 ; EXAMPLE:
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       18-02-2016 P.Kamphuis; Replaced sigma with STDDEV   
 ;       Written by P.Kamphuis 01-01-2015 
 ;
 ; NOTE:
@@ -58,7 +59,7 @@ Pro get_fixedringsv8,Parametersin,rings
      IF  n_elements(Parameters[0:half,j]) LT 8. then begin
         rms=ROBUST_SIGMA(Parameters[*,j]-newPA)
      ENDIF ELSE BEGIN
-        rms=(SIGMA(Parameters[*,j]-newPA)+6*ROBUST_SIGMA(Parameters[*,j]-newPA))/7.
+        rms=(STDDEV(Parameters[*,j]-newPA)+6*ROBUST_SIGMA(Parameters[*,j]-newPA))/7.
      ENDELSE
      IF rms GT MAXdiff/4. and rms GT 10. then begin
         newPA2=dblarr(n_elements(newPA[*]))
@@ -70,7 +71,7 @@ Pro get_fixedringsv8,Parametersin,rings
         IF n_elements(Parameters[0:half,j]) LT 8. then begin
            rms=ROBUST_SIGMA(newPA-newPA2)
         ENDIF ELSE BEGIN
-           rms=(SIGMA(newPA-newPA2)+6*ROBUST_SIGMA(newPA-newPA2))/7.
+           rms=(STDDEV(newPA-newPA2)+6*ROBUST_SIGMA(newPA-newPA2))/7.
         ENDELSE
      ENDIF
      av1=Parameters[0,j]

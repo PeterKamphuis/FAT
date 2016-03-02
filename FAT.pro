@@ -35,12 +35,19 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
 ;  CONVERTRADEC, CONVERTSKYANGLEFUNCTION(), EXTRACT_PV, FIT_ELLIPSE(),FAT_SMOOTH()
 ;  GETDHI, GET_FIXEDRINGSV8, GET_NEWRINGSV8, GET_PROGRESS, 
 ;  INT_PROFILEV2, INTERPOLATE, ISNUMERIC(), LINENUMBER(), MOMENTSV2,
-;  OBTAIN_INCLINATIONV8, OBTAIN_PAV2, OBTAIN_VELPA, OBTAIN_W50, 
+;  OBTAIN_INCLINATIONV8, OBTAIN_PAV2, OBTAIN_VELPA, OBTAIN_W50, OVERVIEW_PLOT
 ;  PARAMETERREGUV87, PREPROCESSING, READ_TEMPLATE, SBR_CHECK, SET_SBR, SET_VROTV6,
 ;  SET_WARP_SLOPEV2, TOTAL(), WRITEFITTINGVARIABLES, WRITENEWTOTEMPLATE
-;  RESOLVE_ROUTINE, STRLOWCASE, and likely more.
+;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      27-02-2016 P.Kamphuis; Added overviewplot to be produced for
+;      every galaxy and introduced the variable gdlidl which
+;      indentifies wether we are running idl or gdl   
+;      16-02-2016 P.Kamphuis, N. Giese; Replaced the eigenql function in
+;      fit_ellipse with a normal calculation as the function is not
+;      avalaible in GDL. Additionally adapted the use of Array_Indices to
+;      be GDL compatible.    
 ;      05-01-2016 P.Kamphuis; Restructered the whole preprocessing
 ;      into a more logical flow.    
 ;      04-01-2016 P.Kamphuis; Added fail conditions when final model
@@ -118,8 +125,9 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
 
                           
   COMPILE_OPT IDL2 
-
-  version='v3.2'
+  version='v3.3'
+                                ;First thing we do is to check whether we run IDL or GDL
+  DEFSYSV, '!GDL', EXISTS = gdlidl ;is 1 when running GDL
   if n_elements(supportdir) EQ 0 then supportdir='Support'
   CD,supportdir,CURRENT=old_dir
   spawn,'pwd',supportdir
@@ -145,10 +153,13 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
   RESOLVE_ROUTINE, 'check_cflux'
   RESOLVE_ROUTINE, 'cleanup'
   RESOLVE_ROUTINE, 'clean_header'
+  RESOLVE_ROUTINE, 'colour_bar' 
+  RESOLVE_ROUTINE, 'colormaps' 
   RESOLVE_ROUTINE, 'columndensity'
   RESOLVE_ROUTINE, 'convertradec'
   RESOLVE_ROUTINE, 'convertskyanglefunction',/IS_FUNCTION
   RESOLVE_ROUTINE, 'create_residuals'
+  RESOLVE_ROUTINE, 'dec_names'
   RESOLVE_ROUTINE, 'extract_pv'
   RESOLVE_ROUTINE, 'fat_smooth',/IS_FUNCTION
   RESOLVE_ROUTINE, 'fit_ellipse',/IS_FUNCTION
@@ -166,14 +177,17 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
   RESOLVE_ROUTINE, 'obtain_velpa'
   RESOLVE_ROUTINE, 'obtain_w50'
   RESOLVE_ROUTINE, 'organize_output'
+  RESOLVE_ROUTINE, 'overview_plot'
   RESOLVE_ROUTINE, 'parameterreguv87'
   RESOLVE_ROUTINE, 'preprocessing'
+  RESOLVE_ROUTINE, 'ra_names' 
   RESOLVE_ROUTINE, 'read_template'
   RESOLVE_ROUTINE, 'rename'
   RESOLVE_ROUTINE, 'sbr_check'
   RESOLVE_ROUTINE, 'set_sbr'
   RESOLVE_ROUTINE, 'set_vrotv6'
   RESOLVE_ROUTINE, 'set_warp_slopev2'
+  RESOLVE_ROUTINE, 'showpixelsmap'
   RESOLVE_ROUTINE, 'writefittingvariables'
   RESOLVE_ROUTINE, 'writenewtotemplate'
   CD,old_dir
@@ -623,13 +637,13 @@ noconfig:
         currentfitcube=currentfitcube+'_preprocessed'
         dummy=readfits(maindir+'/'+catdirname[i]+'/'+currentfitcube+cubeext,header,/NOSCALE,/SILENT)
         tmpnoblank=dummy[0:5,0:5,*]
-        rmsbottoml=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
+        rmsbottoml=STDDEV(tmpnoblank[WHERE(FINITE(tmpnoblank))])
         tmpnoblank=dummy[n_elements(dummy[*,0,0])-6:n_elements(dummy[*,0,0])-1,0:5,*]
-        rmsbottomr=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
+        rmsbottomr=STDDEV(tmpnoblank[WHERE(FINITE(tmpnoblank))])
         tmpnoblank=dummy[n_elements(dummy[*,0,0])-6:n_elements(dummy[*,0,0])-1,n_elements(dummy[0,*,0])-6:n_elements(dummy[0,*,0])-1,*]
-        rmstopr=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
+        rmstopr=STDDEV(tmpnoblank[WHERE(FINITE(tmpnoblank))])
         tmpnoblank=dummy[0:5,n_elements(dummy[0,*,0])-6:n_elements(dummy[0,*,0])-1,*]
-        rmstopl=SIGMA(tmpnoblank[WHERE(FINITE(tmpnoblank))])
+        rmstopl=STDDEV(tmpnoblank[WHERE(FINITE(tmpnoblank))])
         noise=(rmsbottoml+rmsbottomr+rmstopl+rmstopr)/4.
         beam=[sxpar(header,'BMAJ')*3600,sxpar(header,'BMIN')*3600]
      ENDELSE
@@ -5070,10 +5084,10 @@ noconfig:
      IF optimized then begin
         catcubename[i]= noptname[0]
      ENDIF
+  
      cd, new_dir
      names=[catcubename[i],catMom0name[i],catMom1name[i],catmaskname[i],noisemapname,catCatalogname[i],basicinfo]
-     book_keeping,names,bookkeeping,log=log
-     
+     book_keeping,names,bookkeeping,catdistance[i],gdlidl,log=log,noise=catnoise[i]
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         printf,66,linenumber()+"Finished "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()

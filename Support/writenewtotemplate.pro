@@ -1,5 +1,4 @@
 Pro WriteNewToTemplate,Template,NewFileName,VARIABLES=TemplateVariables,ARRAYS=Arrays,VARIABLECHANGE=VariableChange,EXTRACT=extract
-
 ;+
 ; NAME:
 ;       WRITENEWTOTEMPLATE
@@ -29,7 +28,7 @@ Pro WriteNewToTemplate,Template,NewFileName,VARIABLES=TemplateVariables,ARRAYS=A
 ;       variableChange and their names
 ;       VARIABLECHANGE = a string array with the names of the variable
 ;       that should be changed or extracted
-;
+;       
 ; KEYWORD PARAMETERS:
 ;       /EXTRACT - Set this keyword to not write the new values to the
 ;                  template but merely extract them from the file
@@ -47,6 +46,8 @@ Pro WriteNewToTemplate,Template,NewFileName,VARIABLES=TemplateVariables,ARRAYS=A
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       25-02-2016 P.Kamphuis; Made an adjustment to always look for
+;                              the presence of error parameters 
 ;       Written 01-01-2015 P.Kamphuis v1.0
 ;
 ; NOTE:
@@ -99,7 +100,19 @@ Pro WriteNewToTemplate,Template,NewFileName,VARIABLES=TemplateVariables,ARRAYS=A
         IF isnumeric(arr[0]) then begin
            Arrays[0:n_elements(arr)-1,varpos]=double(arr)
         ENDIF
-     endif   
+     endif ELSE BEGIN
+        tmp1=str_sep(strtrim(strcompress(tmp[0]),2),' ')
+        IF tmp1[0] EQ '#' then begin
+           tmp3=WHERE(tmp1[1] EQ VariableChange)
+           IF tmp3[0] NE -1 then begin
+              arr=str_sep(strtrim(strcompress(tmp[1]),2),' ')
+              IF isnumeric(arr[0]) then begin
+                 IF n_elements(arr) GT n_elements(Arrays[*,0]) then arr=[0,0]
+                 Arrays[0:n_elements(arr)-1,tmp3]=double(arr)
+              ENDIF
+           ENDIF
+        ENDIF
+     ENDELSE  
   ENDWHILE
   close,1  
 END
