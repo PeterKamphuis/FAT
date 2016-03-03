@@ -53,6 +53,22 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
                                 ; things up
                                 ;IF present assume they are blanks and
                                 ;add warning
+
+  IF sxpar(header,'CDELT3') LT 0 then begin
+     IF size(log,/TYPE) EQ 7 then begin
+        openu,66,log,/APPEND
+        printf,66,linenumber()+'PREPROCESSING: Your velocity axis is declining with increasing channels'
+        printf,66,linenumber()+'PREPROCESSING: We reversed the velocity axis'   
+        close,66
+     ENDIF ELSE BEGIN
+        print,linenumber()+'PREPROCESSING: Your velocity axis is declining with increasing channels'
+        print,linenumber()+'PREPROCESSING: We reversed the velocity axis'    
+     ENDELSE
+     sxaddpar,header,'CDELT3',ABS(sxpar(header,'CDELT3'))
+     cube=reverse(cube,3)
+     writecube=1
+  ENDIF
+  
   
   tmp=WHERE(cube EQ 0.d)
   IF tmp[0] NE -1 then begin
@@ -66,7 +82,7 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
         print,linenumber()+'PREPROCESSING: We have changed them to blanks.'
      ENDELSE
      cube[tmp]=!values.f_nan
-     writecube=1
+     IF writecube EQ 0 then writecube=1
   ENDIF
                                 ;first we check wether the cube has some proper noise statistics by
                                 ;comparing the last and first channel, if they differ to much we cut
@@ -101,7 +117,7 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
            close,66
         ENDIF
         sxaddpar,header,'NAXIS3',fix(sxpar(header,'NAXIS3')-1)
-        writecube=1
+        IF writecube EQ 0 then writecube=1
         cube=tmp
         tmpnoblank=cube[*,*,0]
         wherefinite=WHERE(FINITE(tmpnoblank))
@@ -166,7 +182,7 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
            print,linenumber()+'PREPROCESSING: Noise in the first channel is '+string(rmsfirstchannel)
            print,linenumber()+'PREPROCESSING: Noise in the last channel is '+string(rmslastchannel)       
         ENDELSE
-        writecube=1.
+        IF writecube EQ 0 then writecube=1.
         tmp=fltarr(n_elements(cube[*,0,0]),n_elements(cube[0,*,0]),n_elements(cube[0,0,*])-1)
         firstcomp=ABS((rmsfirstchannel-rmscorn)/rmscorn)
         secondcomp=ABS((rmslastchannel-rmscorn)/rmscorn)

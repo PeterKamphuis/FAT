@@ -57,7 +57,44 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
      sxdelpar,header,'NAXIS4'
      writecube=1
   ENDIF
- 
+  IF ~sxpar(header,'EPOCH') then begin
+     IF sxpar(header,'EQUINOX') then begin
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+'CLEAN_HEADER: Your cube has no EPOCH keyword but we found EQUINOX.'
+           printf,66,linenumber()+'CLEAN_HEADER: We have set EPOCH to '+string(sxpar(header,'EQUINOX'))
+           close,66
+        ENDIF ELSE BEGIN
+           print,linenumber()+'CLEAN_HEADER: Your cube has no EPOCH keyword but we found EQUINOX.'
+           print,linenumber()+'CLEAN_HEADER: We have set EPOCH to '+string(sxpar(header,'EQUINOX'))   
+        ENDELSE
+        sxaddpar,header,'EPOCH',sxpar(header,'EQUINOX')
+     ENDIF ELSE BEGIN
+         IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+'CLEAN_HEADER: Your cube has no EPOCH keyword'
+           printf,66,linenumber()+'CLEAN_HEADER: We assumed J2000'
+           close,66
+        ENDIF ELSE BEGIN
+           print,linenumber()+'CLEAN_HEADER: Your cube has no EPOCH keyword'
+           print,linenumber()+'CLEAN_HEADER: We assumed J2000'
+        ENDELSE
+        sxaddpar,header,'EPOCH',2000.
+     ENDELSE  
+     writecube=1
+  ENDIF
+  
+  IF n_elements(sxpar(header,'HISTORY')) GT 10. then begin
+     sxdelpar,header,'HISTORY'
+     writecube=1
+     IF size(log,/TYPE) EQ 7 then begin
+        openu,66,log,/APPEND
+        printf,66,linenumber()+'CLEAN_HEADER: Your cube has a significant history attached we are removing it for easier interpretation.'          
+        close,66
+     ENDIF ELSE BEGIN
+        print,linenumber()+'CLEAN_HEADER:  Your cube has a significant history attached we are removing it for easier interpretation.'    
+     ENDELSE
+  ENDIF
   channelwidth=ABS(sxpar(header,'CDELT3'))   
   veltype=strtrim(strcompress(sxpar(header,'CUNIT3')))
   IF STRUPCASE(veltype) EQ 'HZ' then begin
@@ -174,6 +211,9 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
         ENDELSE
      ENDELSE
   ENDIF
+ 
+  
+  
   beam=[sxpar(header,'BMAJ')*3600,sxpar(header,'BMIN')*3600.]
   finishup:
 end
