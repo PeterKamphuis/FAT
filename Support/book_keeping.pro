@@ -61,7 +61,7 @@ Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise
      printf,66,linenumber()+"BOOK_KEEPING: Removing the following files from "+currentdir
      close,66
   ENDIF
-  create_residuals,filenames,version
+  IF version NE 5 then create_residuals,filenames,version
   organize_output,filenames,version, ['Optimized','Intermediate','Finalmodel','No_Warp','Moments','PV-Diagrams','Sofia_Output']
   IF version NE 5 then overview_plot,distance,gdlidl,noise=noise
   case version of

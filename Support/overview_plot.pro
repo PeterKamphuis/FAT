@@ -227,7 +227,7 @@ Pro overview_plot,distance,gdlidl,noise=noise
                                 ;in using the degree symbol. It also
                                 ;does not yet recognize superscript
                                 ;commands in tickmarks.
-  spawn,'ls -1 Moments/Cube*mom0*.fits',mom0name
+  spawn,'ls -1 Moments/*6.0_mom0*.fits',mom0name
   mom0=readfits(mom0name,mom0hed,/SILENT)
   mom0mod=readfits('Moments/FinalModel_mom0.fits',mom0hedmod,/SILENT)
   mapmax=MAX(mom0,min=mapmin)
@@ -249,7 +249,7 @@ Pro overview_plot,distance,gdlidl,noise=noise
   XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.04,'Moment 0 Contours are at 1, 2, 4, 8, 16, 32 x 10!E20!N cm!E-2',color=0,/normal,charthick=charthick
 
 ;Velocity Field
-  spawn,'ls -1 Moments/Cube*mom1*.fits',mom0name
+  spawn,'ls -1 Moments/*6.0_mom1*.fits',mom0name
   mom0=readfits(mom0name,mom0hed,/SILENT)
   mom0mod=readfits('Moments/FinalModel_mom1.fits',mom0hedmod,/SILENT)
   tmp=WHERE(FINITE(mom0mod))
@@ -271,7 +271,7 @@ Pro overview_plot,distance,gdlidl,noise=noise
   ENDELSE
   
 ;PV Diagram along major axis
-  spawn,'ls -1 PV-Diagrams/Cube*_xv.fits',mom0name
+  spawn,'ls -1 PV-Diagrams/*_[0-2]_xv.fits',mom0name
   mom0=readfits(mom0name[n_elements(mom0name)-1],mom0hed,/SILENT)
   mom0mod=readfits('PV-Diagrams/FinalModel_xv.fits',mom0hedmod,/SILENT)
   mapmax=MAX(mom0,min=mapmin)

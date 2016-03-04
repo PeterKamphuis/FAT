@@ -89,6 +89,10 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
                                 ;off the high noise channel
   difference = 10.
   changedcube=0.
+  firstcompprev=0.
+  secondcompprev=0.
+  firstcut=0
+  secondcut=0
   WHILE difference GT 1 do begin
      tmpnoblank=cube[*,*,0]
      wherefinite=WHERE(FINITE(tmpnoblank))
@@ -186,12 +190,26 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
         tmp=fltarr(n_elements(cube[*,0,0]),n_elements(cube[0,*,0]),n_elements(cube[0,0,*])-1)
         firstcomp=ABS((rmsfirstchannel-rmscorn)/rmscorn)
         secondcomp=ABS((rmslastchannel-rmscorn)/rmscorn)
-        IF firstcomp GT secondcomp OR NOT FINITE(rmsfirstchannel) then begin
+        IF (firstcomp GT secondcomp AND ABS((firstcomp-firstcompprev)/firstcomp) GT ABS((secondcomp-secondcompprev)/secondcomp) AND firstcut LT 8.) OR NOT FINITE(rmsfirstchannel) then begin
+           firstcompprev=firstcomp
+           firstcut++
            tmp[*,*,0:n_elements(tmp[0,0,*])-1]=cube[*,*,1:n_elements(cube[0,0,*])-1]
            sxaddpar,header,'CRPIX3',sxpar(header,'CRPIX3')-1.
         ENDIF ELSE BEGIN
+           secondcompprev=secondcomp
+           secondcut++
            tmp[*,*,0:n_elements(tmp[0,0,*])-1]=cube[*,*,0:n_elements(cube[0,0,*])-2]
         endelse
+        IF firstcut GE 8 AND secondcut GE 8 then begin
+           difference=0.
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+'PREPROCESSING: '+dir+'/'+name+' has non-uniform noise statistics.'
+              close,66
+           ENDIF ELSE BEGIN
+              print,linenumber()+'PREPROCESSING: '+dir+'/'+name+'  has non-uniform noise statistics.'
+           ENDELSE     
+        ENDIF
         sxaddpar,header,'NAXIS3',fix(sxpar(header,'NAXIS3')-1)
         cube=fltarr(n_elements(tmp[*,0,0]),n_elements(tmp[0,*,0]),n_elements(tmp[0,0,*]))
         cube=tmp

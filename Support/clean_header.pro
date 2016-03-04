@@ -137,6 +137,23 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
      STRUPCASE(strtrim(velproj,2)) NE 'FELO-LSR' AND $
      STRUPCASE(strtrim(velproj,2)) NE 'VELO' AND $
      STRUPCASE(strtrim(velproj,2)) NE 'FREQ' then begin
+     checkax=strtrim(strsplit(velproj,'-',/extract),2)
+     IF STRUPCASE(checkax[0]) EQ 'DEC' or STRUPCASE(checkax[0]) EQ 'RA' then begin
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+'CLEAN_HEADER: Your zaxis is a spatial axis not a velocity axis.'
+           printf,66,linenumber()+'CLEAN_HEADER: Please arrange your cube logically'
+           close,66
+        ENDIF ELSE BEGIN
+           print,linenumber()+'CLEAN_HEADER: Your zaxis is a spatial axis not a velocity axis.'
+           print,linenumber()+'CLEAN_HEADER: Please arrange your cube logically'
+        ENDELSE
+        openu,1,outputcatalogue,/APPEND
+        printf,1,format='(A60,A90)', Dir,'The Cube is not arranged properly'
+        close,1
+        writecube=2
+        goto,finishup
+     ENDIF   
      sxaddpar,header,'CTYPE3','VELO',after='CUNIT3'
      writecube=1
      IF size(log,/TYPE) EQ 7 then begin
