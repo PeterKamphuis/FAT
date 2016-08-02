@@ -46,7 +46,7 @@ Function FAT_SMOOTH,map,sigma,GAUSSIAN=Gaussian,BOX=box
 ;-
   
 mapor=map
-
+print,'We are doing a fat_smooth',sigma
 if not keyword_set(gaussian) and not keyword_set(box) then gaussian=1
 
 if keyword_set(gaussian) then begin

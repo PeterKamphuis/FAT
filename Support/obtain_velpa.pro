@@ -61,8 +61,13 @@ smoothagain:
   IF tmp[0] NE -1 AND n_elements(tmp) GT 10. then begin
      maxvel=MAX(smoothfield[tmp],min=minvel)
      POS1=WHERE(maxvel EQ smoothfield)
-     POS2=WHERE(minvel EQ smoothfield)   
-     IF n_elements(POS1) GT 1 or n_elements(POS2) GT 1 then goto,smoothagain else begin
+     POS2=WHERE(minvel EQ smoothfield)
+     print,n_elements(POS1),n_elements(POS2)
+     IF n_elements(POS1) GT 1 or n_elements(POS2) GT 1 then begin
+        POS1=POS1[0]
+        POS2=POS2[0]
+     ENDIF
+     ;goto,smoothagain else begin
         s = SIZE(smoothfield)
         ncol = s[1]
         x1 = POS1 MOD ncol
@@ -101,7 +106,7 @@ smoothagain:
            else:velnocen=!values.f_nan
         endcase
         
-     ENDELSE
+     
 
   ENDIF else begin
      IF pixsmooth GT 2 then begin

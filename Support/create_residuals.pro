@@ -1,8 +1,8 @@
 Pro create_residual_file,outname,data,model,header
   COMPILE_OPT IDL2
   cmax=MAX(data-model,min=cmin)
-  sxaddpar,header,'DATAMAX',cmax
-  sxaddpar,header,'DATAMIN',cmin
+  if FINITE(cmax) then sxaddpar,header,'DATAMAX',cmax
+  if FINITE(cmin) then sxaddpar,header,'DATAMIN',cmin
   writefits,outname,data-model,header
 end
 
@@ -55,6 +55,8 @@ Pro create_residuals,filenames,version
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       08-06-2016 P.Kamphuis; Added a finite check for datamax and
+;                              datamin in the residual to avoid crashes.
 ;       Written 24-07-2015 P.Kamphuis v1.0
 ;
 ; NOTE:

@@ -41,6 +41,8 @@ Pro momentsv2,Cube,Momentmap,header,map
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       01-06-2016 P.Kamphuis; Added a condition to check that datamax
+;                              and datamin are finite.   
 ;       07-01-2016 P.Kamphuis; Replaced SUM commands with the proper
 ;       TOTAL commands reducing the need for outside routines.  
 ;       Modified to deal with existing CUNIT3 without error message 12-08-2015 P. Kamphuis v2
@@ -61,7 +63,7 @@ IF map EQ 0 then begin
    Momentmap=fltarr(n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]))
    Momentmap[*,*]=TOTAL(Cube,3)*ABS(sxpar(header,'CDELT3'))
    IF isnumeric(sxpar(header,'CUNIT3')) then begin
-      IF sxpar(header,'CDELT3') GT 500. then sxaddpar,header,'CUNIT3','M/S' else sxaddpar,header,'CUNIT3','M/S'
+      IF sxpar(header,'CDELT3') GT 500. then sxaddpar,header,'CUNIT3','M/S' else sxaddpar,header,'CUNIT3','KM/S'
    ENDIF
    IF STRUPCASE(strtrim(sxpar(header,'CUNIT3'),2)) EQ 'M/S' then begin
       sxaddpar,header,'CUNIT3','KM/S'
@@ -69,26 +71,30 @@ IF map EQ 0 then begin
       print,linenumber()+'MOMENTSV2: We have converted the units to Jy/Beam x Km/s'
    ENDIF
    sxaddpar,header,'BUNIT',strtrim(strcompress(sxpar(header,'BUNIT')),2)+'.'+strtrim(strcompress(sxpar(header,'CUNIT3')),2)
-   sxaddpar,header,'DATAMAX',MAX(momentmap,MIN=minmap)
-   sxaddpar,header,'DATAMIN',minmap
+   maxmap=MAX(momentmap,MIN=minmap)
+   if FINITE(maxmap) then sxaddpar,header,'DATAMAX',maxmap else sxaddpar,header,'DATAMAX',MAX(Cube)
+   if FINITE(minmap) then sxaddpar,header,'DATAMIN',minmap else sxaddpar,header,'DATAMIN',0.
+
 endif
 IF map EQ 1 then begin
    buildaxii,header,xaxis,yaxis,zaxis=zaxis
    blank=WHERE(FINITE(Cube) NE 1.)
-   IF blank[0] NE -1 then Cube[blank]=0
+   IF blank[0] NE -1 then Cube[blank]=0  
+   IF isnumeric(sxpar(header,'CUNIT3')) then begin
+      IF sxpar(header,'CDELT3') GT 500. then sxaddpar,header,'CUNIT3','M/S' else sxaddpar,header,'CUNIT3','KM/S'
+   ENDIF
+   IF STRUPCASE(strtrim(sxpar(header,'CUNIT3'),2)) EQ 'M/S' then begin
+      print,linenumber()+'MOMENTSV2: We are converting to KM/S'
+      zaxis=zaxis/1000.
+   ENDIF
    Momentmap=fltarr(n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]))
    c=rebin(reform(zaxis,1,1,n_elements(zaxis)),n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]),n_elements(Cube[0,0,*]))
    Momentmap=TOTAL(c*Cube,3)/TOTAL(Cube,3)
-   IF isnumeric(sxpar(header,'CUNIT3')) then begin
-      IF sxpar(header,'CDELT3') GT 500. then sxaddpar,header,'CUNIT3','M/S' else sxaddpar,header,'CUNIT3','M/S'
-   ENDIF
-   IF strtrim(sxpar(header,'CUNIT3'),2) EQ 'M/S' or strtrim(sxpar(header,'CUNIT3'),2) eq 'm/s' then begin
-      print,linenumber()+'MOMENTSV2: We are converting to KM/S'
-      Momentmap=Momentmap/1000.
-   ENDIF
-   sxaddpar,header,'DATAMAX',MAX(momentmap,MIN=minmap)
-   sxaddpar,header,'DATAMIN',minmap
+   maxmap=MAX(momentmap,MIN=minmap)
+   if FINITE(maxmap) then sxaddpar,header,'DATAMAX',maxmap else sxaddpar,header,'DATAMAX',zaxis[n_elements(zaxis)-1]
+   if FINITE(minmap) then sxaddpar,header,'DATAMIN',minmap else sxaddpar,header,'DATAMIN',zaxis[0]
    sxaddpar,header,'BUNIT','KM/S'
+   c=0
 ENDIF
 
 sxdelpar,header,'CUNIT3'

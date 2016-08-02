@@ -1,4 +1,4 @@
-Pro get_newringsv8,SBR1in,SBR2in,cutoffin,newrings,INDIVIDUAL=individual
+Pro get_newringsv9,SBR1in,SBR2in,cutoffin,newrings,INDIVIDUAL=individual,debug=debug
 
 ;+
 ; NAME:
@@ -11,7 +11,7 @@ Pro get_newringsv8,SBR1in,SBR2in,cutoffin,newrings,INDIVIDUAL=individual
 ;       Support
 ; 
 ; CALLING SEQUENCE:
-;       GET_NEWRINGSV8,SBR1in,SBR2in,cutoffin,newrings,individual=individual
+;       GET_NEWRINGSV9,SBR1in,SBR2in,cutoffin,newrings,individual=individual
 ;
 ;
 ; INPUTS:
@@ -25,6 +25,8 @@ Pro get_newringsv8,SBR1in,SBR2in,cutoffin,newrings,INDIVIDUAL=individual
 ; KEYWORD PARAMETERS:
 ;       /INDIVIDUAL - Set this keyword to get an independent ring for
 ;                     each sides.
+;       /DEBUG      - Set this keyword to get printed output during
+;                     the running  
 ;
 ; OUTPUTS:
 ;       newrings = the new amount of rings. a 2D array when
@@ -40,6 +42,12 @@ Pro get_newringsv8,SBR1in,SBR2in,cutoffin,newrings,INDIVIDUAL=individual
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       30-05-2016 P.Kamphuis; Added debug keyword for testing  
+;       17-05-2016 P.Kamphuis; Added a condition that when the last
+;       ring is too low but the second too last is 5* cutoff or
+;       bigger then no cutting.  
+;       12-03-2016 P.Kamphuis; Removed the +1 in the multiple
+;                              detection of toolow.
 ;       Written by P.Kamphuis 01-01-2015 
 ;
 ; NOTE:
@@ -55,20 +63,28 @@ Pro get_newringsv8,SBR1in,SBR2in,cutoffin,newrings,INDIVIDUAL=individual
   toolow=WHERE(SBR1 LT cutoff)
   toolow2=WHERE(SBR2 LT cutoff)
   If keyword_set(individual) then begin
+     if keyword_set(debug) then print,'Running in individual mode'
      newrings=dblarr(2)
      newrings=[n_elements(SBR1),n_elements(SBR2)]
      IF n_elements(toolow) GT 1 then begin
+        if keyword_set(debug) then print,'Multiple rings below cutoff in first array'
         IF toolow[n_elements(toolow)-1] EQ n_elements(SBR1)-1 OR  toolow[n_elements(toolow)-1] EQ n_elements(SBR1)-2 then begin
            for j=n_elements(toolow)-1,1,-1 do begin
               if toolow[j] - toolow[j-1] NE 1 then break
            endfor
-           last1=toolow[j]+1
+           last1=toolow[j]
         ENDIF ELSE last1=n_elements(SBR1)
      ENDIF ELSE BEGIN
+        if keyword_set(debug) then print,'Single ring below cutoff in first array. Ring='+string(toolow)
         case (1) of
                                 ; first case where the elements are
                                 ; the last elements of the array 
-           toolow[0] EQ n_elements(SBR1)-1: last1=toolow[0]
+           toolow[0] EQ n_elements(SBR1)-1: begin
+                                ;If the secondring is more then 5
+                                ;times the cutoff this is acceptable
+                                ;and we do not cut
+              IF SBR1[toolow[0]-1] GE 5.*cutoff[toolow[0]-1] then last1=toolow[0]+1 else last1=toolow[0]
+           end
                                 ;The second case deals with the last
                                 ;ring being risen above the threshold
                                 ;but the second to last is below. This
@@ -86,17 +102,24 @@ Pro get_newringsv8,SBR1in,SBR2in,cutoffin,newrings,INDIVIDUAL=individual
         endcase
      ENDELSE
      IF n_elements(toolow2) GT 1 then begin
+         if keyword_set(debug) then print,'Multiple rings below cutoff in second array.'
         IF toolow2[n_elements(toolow2)-1] EQ n_elements(SBR2)-1 OR  toolow2[n_elements(toolow2)-1] EQ n_elements(SBR2)-2 then begin
            for j=n_elements(toolow2)-1,1,-1 do begin
               if toolow2[j] - toolow2[j-1] NE 1 then break
            endfor
-           last2=toolow2[j]+1
+           last2=toolow2[j]
         ENDIF ELSE last2=n_elements(SBR2)
      ENDIF ELSE BEGIN
+         if keyword_set(debug) then print,'Single ring below cutoff in second array. Ring='+string(toolow)
         case (1) of
                                 ; first case where the elements are
                                 ; the last elements of the array 
-           toolow2[0] EQ n_elements(SBR1)-1: last2=toolow2[0]
+           toolow2[0] EQ n_elements(SBR2)-1: begin
+                                ;If the secondring is more then 5
+                                ;times the cutoff this is acceptable
+                                ;and we do not cut
+              IF SBR2[toolow2[0]-1] GE 5.*cutoff[toolow2[0]-1] then last2=toolow2[0]+1 else last2=toolow2[0]
+           end 
                                 ;The second case deals with the last
                                 ;ring being risen above the threshold
                                 ;but the second to last is below. This
@@ -137,20 +160,26 @@ Pro get_newringsv8,SBR1in,SBR2in,cutoffin,newrings,INDIVIDUAL=individual
      IF newrings[1] GT  n_elements(SBR2) then newrings[1]=n_elements(SBR2)
      
      
-  ENDIF else begin  
+  ENDIF else begin
+     if keyword_set(debug) then print,'Running in non-individual mode'
      IF toolow[0] NE -1 AND toolow2[0] NE -1 then begin
         IF n_elements(toolow) GT 1 AND n_elements(toolow2) GT 1 then begin
+           if keyword_set(debug) then begin
+              print,'Multiple rings below cutoff in Both arrays'
+              print,'Array 1:'+STRJOIN(toolow,' ')
+              print,'Array 2:'+STRJOIN(toolow2,' ')
+           endif
            IF toolow[n_elements(toolow)-1] EQ n_elements(SBR1)-1 OR  toolow[n_elements(toolow)-1] EQ n_elements(SBR1)-2 then begin
               for j=n_elements(toolow)-1,1,-1 do begin
                  if toolow[j] - toolow[j-1] NE 1 then break
               endfor
-              last1=toolow[j]+1
+              last1=toolow[j]
            ENDIF ELSE last1=n_elements(SBR1)
            IF toolow2[n_elements(toolow2)-1] EQ n_elements(SBR2)-1 OR  toolow2[n_elements(toolow2)-1] EQ n_elements(SBR2)-2 then begin
               for j=n_elements(toolow2)-1,1,-1 do begin
                  if toolow2[j] - toolow2[j-1] NE 1 then break
               endfor
-              last2=toolow2[j]+1
+              last2=toolow2[j]
            ENDIF ELSE last2=n_elements(SBR2)
            newrings=MAX([last1,last2])
 
@@ -161,9 +190,16 @@ Pro get_newringsv8,SBR1in,SBR2in,cutoffin,newrings,INDIVIDUAL=individual
                                 ; rings are not very bright as
                                 ; we'll just end up adding rings 
            
-        ENDIF ELSE begin                           
+        ENDIF ELSE begin
+           if keyword_set(debug) then print,'One of the arrays has only one array below the cutoff'
            IF n_elements(toolow) GT 1 then toolow=toolow[n_elements(toolow)-1]
            IF n_elements(toolow2) GT 1 then toolow2=toolow2[n_elements(toolow2)-1]
+            if keyword_set(debug) then begin
+              print,'Ring below cutoff in Both arrays'
+              print,'Array 1:'+STRJOIN(toolow,' ')
+              print,'Array 2:'+STRJOIN(toolow2,' ')
+              print,'Array extent = '+string(n_elements(SBR1)-1)
+           endif
            
            case (1) of
                                 ; first case where the elements are
@@ -171,7 +207,10 @@ Pro get_newringsv8,SBR1in,SBR2in,cutoffin,newrings,INDIVIDUAL=individual
               toolow[0] EQ n_elements(SBR1)-1 $
                  AND toolow2[0] EQ n_elements(SBR2)-1 $
                  : begin
-                 newrings=toolow[0]              
+                                ;If the secondring is more then 5
+                                ;times the cutoff this is acceptable
+                                ;and we do not cut
+                  IF SBR2[toolow2[0]-1] GE 5.*cutoff[toolow2[0]-1] OR SBR1[toolow[0]-1] GE 5.*cutoff[toolow[0]-1] then newrings=toolow[0]+1 else newrings=toolow[0]                            
               end
                                 ;The second case deals with the last
                                 ;ring being risen above the threshold

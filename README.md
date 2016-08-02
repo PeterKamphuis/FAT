@@ -10,12 +10,14 @@ Requirements
 ------------
 The code requires full installation of:
 
-    IDL 7.0 or higher with astrolib
+    IDL 7.0 or higher with astrolib (http://idlastro.gsfc.nasa.gov/, note the Coyote Library Dependencies for newer versions)
     TiRiFiC v2.2.3 or higher (http://gigjozsa.github.io/tirific/download_and_installation.html)
     SoFiA v 0.4.0 or higher  (https://github.com/SoFiA-Admin/SoFiA)
     Standard unix commands pwd, mkdir, rm, cp, ls, python
     
-IDL needs to be able to exececute tirific, sofia, rename and the standard unix commands from a spawn command. All other dependencies should be in IDL and available with the normal IDL distributions. 
+IDL needs to be able to execute tirific, sofia, rename and the standard unix commands from a spawn command. All other dependencies should be in IDL and available with the normal IDL distributions. 
+
+To run under GDL you will additionally need the package mpfit for GDL by Ole Streicher (https://packages.debian.org/sid/all/gdl-mpfit/download)
 
 Installation
 ------------
@@ -126,7 +128,7 @@ the distance is the distance to the galaxy in Mpc. This is used to make some ini
 The directory name is the name of the directory of the galaxy to be fitted. This directory should be located in the specified maindir in the config file.
 cubename is the name of the cube to be fitted. This should be without the fits extension.
 
-An example catalog is included in the distribution. This also gives examples for how to set up a cataog when using pre-made sofia input, i.e. allnew=2
+An example catalog is included in the distribution. This also gives examples for how to set up a catalog when using pre-made sofia input, i.e. allnew=2
 
 
 

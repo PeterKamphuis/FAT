@@ -1,4 +1,4 @@
-Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise
+Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishafter=finishafter
   
 ;+
 ; NAME:
@@ -30,7 +30,7 @@ Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise
 ;
 ; OPTIONAL INPUTS:
 ;       LOG = name of the tracing log 
-;
+;finishafter = key for what kind of fitting was done.
 ; KEYWORD PARAMETERS:
 ;       -
 ;
@@ -56,14 +56,15 @@ Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise
 ;-
   COMPILE_OPT IDL2
   spawn,'pwd',currentdir
-  IF size(log,/TYPE) EQ 7 then begin
+ 
+  IF version NE 5 then create_residuals,filenames,version
+  organize_output,filenames,version, ['Optimized','Intermediate','Finalmodel','No_Warp','Moments','PV-Diagrams','Sofia_Output']
+  IF version NE 5 then overview_plot,distance,gdlidl,noise=noise,finishafter=finishafter,filenames=filenames
+   IF size(log,/TYPE) EQ 7 then begin
      openu,66,log,/APPEND
      printf,66,linenumber()+"BOOK_KEEPING: Removing the following files from "+currentdir
      close,66
   ENDIF
-  IF version NE 5 then create_residuals,filenames,version
-  organize_output,filenames,version, ['Optimized','Intermediate','Finalmodel','No_Warp','Moments','PV-Diagrams','Sofia_Output']
-  IF version NE 5 then overview_plot,distance,gdlidl,noise=noise
   case version of
      1:begin
         spawn,'rm -Rf Optimized'

@@ -1,5 +1,5 @@
 pro showpixelsmap, xaxis, yaxis, int, BLANK_VALUE=blankval,RANGE=range, PLOT_ALL=plotall,PIXELSIZE=pixelsize,WCS=wcs, BLACK=blackw,_EXTRA=ex, $
-                   XRANGE=xrng,YRANGE=yrng,XTICKS=n_ticksx,YTICKS=n_ticksy, FORCE= force,XTICKNAME=xtn,YTICKNAME=ytn
+                   XRANGE=xrng,YRANGE=yrng,XTICKS=n_ticksx,YTICKS=n_ticksy, FORCE= force,XTICKNAME=xtn,YTICKNAME=ytn,HEX_COLOR=hex_color
   compile_opt idl2
 ;+
 ; NAME:

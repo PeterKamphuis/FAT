@@ -1,4 +1,4 @@
-Pro set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,AVINNER=avinner,START=start,CENTRALEXCLUDE=centralexclude,FINISH_AFTER=finish_after
+Pro set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,AVINNER=avinner,START=start,CENTRALEXCLUDE=centralexclude,FINISH_AFTER=finish_after,slope=slope
 
 ;+
 ; NAME:
@@ -31,6 +31,7 @@ Pro set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwi
 ;       START = indicator from which node fitting should start
 ;       CENTRALEXCLUDE = trigger to exclude the inner ring from
 ;       fitting
+;       SLOPE = if 0 then fit slope if 1 then fit flat.  
 ;
 ; KEYWORD PARAMETERS:
 ;       /INITIAL - indicates it is the first time parameters are being set
@@ -48,6 +49,8 @@ Pro set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwi
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       10-03-2016 P.Kamphuis; Added an option to not fit a slope but
+;                              fit a flat extension of the last reliable ring.  
 ;       Written 01-01-2015 P.Kamphuis v1.0
 ;
 ; NOTE:
@@ -55,7 +58,10 @@ Pro set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwi
 ;-
   COMPILE_OPT IDL2 
   
-                                ;If the model is big we always want to fit a slope to the outer parts
+                                ;If the model is big we always want to
+                                ;fit a slope to the outer parts
+  IF n_elements(slope) EQ 0 then slope=0
+ 
   IF double(norings[0]) GT 15. then begin
      IF n_elements(finish_after) EQ 0 then finish_after=2.
      IF finish_after EQ 2.1 then begin
@@ -89,7 +95,7 @@ Pro set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwi
         string10=' '
      end
                                 ; IF only the second to last ring is sloped
-     velconstused GE norings[0]-1 :begin
+     velconstused GE norings[0]-1:begin
         avinner=VROTarr[n_elements(VROTarr)-2]*0.9
         case (1) of
            avinner GT VROTmax:begin
@@ -111,12 +117,29 @@ Pro set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwi
         string7=string(0.01*channelwidth)+' '+string(0.01*channelwidth)
         string8='3 3'
         string9='70 70'
-        IF centralexclude then begin
-           string10=' VROT 2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+' VROT_2 2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)
-        ENDIF ELSE BEGIN
-           string10=' VROT '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+' VROT_2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)
-        ENDELSE
-     end
+        case (1) of
+           centralexclude EQ 1 AND slope EQ 0:begin
+              string10=' VROT 2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+' VROT_2 2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)
+           end
+           centralexclude EQ 1 AND slope EQ 1:begin
+              string10=' VROT 2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+' '+$
+                       strtrim(strcompress(string(norings[0],format='(I3)')),1)+$
+                       ' VROT_2 2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+' '+$
+                       strtrim(strcompress(string(norings[0],format='(I3)')),1)
+           end
+           
+           centralexclude EQ 0 AND slope EQ 1:begin
+              string10=' VROT '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+' '+$
+                       strtrim(strcompress(string(norings[0],format='(I3)')),1)+$
+                       ' VROT_2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+' '+$
+                       strtrim(strcompress(string(norings[0],format='(I3)')),1)
+
+           end
+           else:begin
+              string10=' VROT '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+' VROT_2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)
+           end
+        ENDCASE
+     End
                                 ;All other cases
      else:begin
         avinner=VROTarr[velconstused]*0.8
@@ -141,11 +164,37 @@ Pro set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwi
         string7=string(0.01*channelwidth)+' '+string(0.01*channelwidth)
         string8='3 3'
         string9='70 70'
-        IF centralexclude then begin
-           string10=' VROT 2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+':'+strtrim(strcompress(string(velconstused+1,format='(I3)')),1)+' VROT_2 2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+':'+strtrim(strcompress(string(velconstused+1,format='(I3)')),1)
-        ENDIF else begin
-           string10=' VROT '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+':'+strtrim(strcompress(string(velconstused+1,format='(I3)')),1)+' VROT_2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+':'+strtrim(strcompress(string(velconstused+1,format='(I3)')),1)
-        ENDELSE
+
+
+        case (1) of
+           centralexclude EQ 1 AND slope EQ 0:begin
+              string10=' VROT 2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+$
+                       ':'+strtrim(strcompress(string(velconstused+1,format='(I3)')),1)+$
+                       ' VROT_2 2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+$
+                       ':'+strtrim(strcompress(string(velconstused+1,format='(I3)')),1)
+           end
+           centralexclude EQ 1 AND slope EQ 1:begin
+              string10=' VROT 2 '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+$
+                       ':'+strtrim(strcompress(string(velconstused+1,format='(I3)')),1)+$
+                       ' VROT_2 2 '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+$
+                       ':'+strtrim(strcompress(string(velconstused+1,format='(I3)')),1)
+           end
+           
+           centralexclude EQ 0 AND slope EQ 1:begin
+              string10=' VROT '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+$
+                       ':'+strtrim(strcompress(string(velconstused+1,format='(I3)')),1)+$
+                       ' VROT_2 '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+$
+                       ':'+strtrim(strcompress(string(velconstused+1,format='(I3)')),1)
+
+           end
+           else:begin
+              string10=' VROT '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+$
+                       ':'+strtrim(strcompress(string(velconstused+1,format='(I3)')),1)+$
+                       ' VROT_2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+$
+                       ':'+strtrim(strcompress(string(velconstused+1,format='(I3)')),1)
+           end
+        ENDCASE
+
      end
   endcase
                                 ;make an array

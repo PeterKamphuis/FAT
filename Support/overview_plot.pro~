@@ -33,13 +33,6 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
 ;       AXIS,COLORMAPS,COLOUR_BAR,COLUMNDENSITY,CONTOUR,DEVICE,FILE_TEST(),LOADCT,MAX(),N_ELEMENTS(),OPLOT,PLOT,FAT_PLOTERR,READFITS(),SET_PLOT,SHOWPIXELSMAP,WRITENEWTOTEMPLATE,XYOUTS
 ;
 ; MODIFICATION HISTORY:
-;       01-08-2016 P.Kamphuis; Updated the GDL plotting to use png as
-;                              well. This now happens through the X
-;                              buffer which unfortunately means that
-;                              it is limited to the amount of pixels
-;                              in the users screen. This is because
-;                              the Z-buffer in GDL does not accept the
-;                              decomposed keyword.
 ;       09-06-2016 P.Kamphuis; Case matched the call to Finalmodel as
 ;                              unix is case sensitive.  
 ;       23-03-2016 P.Kamphuis; Added filename and finishafter
@@ -52,8 +45,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
 ;-
   
   arrays=1.
-  IF gdlidl then SET_PLOT,'X' else SET_PLOT, 'Z'
-;  SET_PLOT,'Z'
+  IF gdlidl then SET_PLOT,'PS' else SET_PLOT, 'Z'
   plotpara=['RADI','SBR','SBR_2','VROT','VROT_ERR','PA','PA_ERR','PA_2','PA_2_ERR','INCL','INCL_ERR','INCL_2','INCL_2_ERR','BMAJ','SDIS','XPOS','YPOS','VSYS']
   plotstart=[[1,3,5,9],[2,3,7,11],[0,1,1,1]]
   Template=1.
@@ -102,7 +94,6 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   !x.style=1.5
   !y.style=1.5
   !p.charsize=3.7
-  !p.charthick=2.15569
   !p.thick=6
   !P.FONT=1
   !p.background=0
@@ -112,24 +103,15 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   UserSym, cos(A), sin(A), /fill
   ssize=1.3
   IF gdlidl then begin
-
-;                                ;Currently GDL does not recognize true
+     !p.charsize=0.4
+     charthick=0.7
+     ssize=0.3
+                                ;Currently GDL does not recognize true
                                 ;type fonts yet. This leads to errors
                                 ;in using the degree symbol. It also
                                 ;does not yet recognize superscript
-                                ;commands in tickmarks. Additonally as
-                                ;we cannot use the Z-buffer as it does
-                                ;not accept the decomposed keyword and
-                                ;because we do not want to be screen
-                                ;size depndent we need a widget.
-     device,decomposed=0
-     base=widget_base()
-     draw=WIDGET_DRAW(base,X_SCROLL_SIZE=250,Y_SCROLL_SIZE=250,XSIZE=scrdim[0],ysize=scrdim[1],/scroll,sensitive=0)
-     WIDGET_CONTROL,base,/REALIZE
-     WIDGET_CONTROL,draw,GET_VALUE=drawID,DRAW_XSIZE=scrdim[0],DRAW_YSIZE=scrdim[1]
-     WSET,drawID
-     plot,[0]
-     XMANAGER,'draw_scroll',base,/NO_BLOCK
+                                ;commands in tickmarks.
+     DEVICE,xsize=scrdim[0]/200.,ysize=scrdim[1]/200,FILENAME='Overview.ps',/color,/PORTRAIT,/ENCAPSULATED,SET_FONT='Times', /TT_FONT  
   endif else  $
      DEVICE,SET_FONT='Times',/TT_FONT,SET_RESOLUTION=[scrdim[0],scrdim[1]],DECOMPOSED=0,SET_PIXEL_DEPTH=24
   plotradii=Arrays[*,0]
@@ -144,7 +126,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         plotvariable=Arrays[tmp,1]
         loadct,0,/silent
         plot,plotradii,plotVariable,position=[0.15,0.9-4*ysize,0.55,0.9-3*ysize],xtitle='Radius (arcmin)',$
-             xrange=[0.,maxradii],yrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]],ytickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xticklayout=1,background='ffffff'x,color=254
+             xrange=[0.,maxradii],yrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]],ytickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xticklayout=1,background=254,color=254
         oplot,plotradii,plotVariable,color=0,linestyle=0,symsize=ssize
         levelsrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]]*1000.
         oplot,plotradii,plotVariable,psym=8,color=0,linestyle=2,symsize=ssize
@@ -261,12 +243,12 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
      XYOUTS,0.60,0.81,'Black lines: approaching side parameters.',/normal,alignment=0.,charthick=charthick
      XYOUTS,0.60,0.79,'Red lines: receding side parameters.',/normal,alignment=0.,charthick=charthick
       if fix(finishafter)/finishafter NE 1 OR finishafter EQ 1 then begin
-        XYOUTS,0.60,0.77,'The inclination and PA were not allowed to vary',/normal,charthick=charthick
-        XYOUTS,0.60,0.75,'The major FWHM beam is '+majbeam+' arcsec',/normal,charthick=charthick
-        XYOUTS,0.60,0.73,'We used rings of size '+ringsize+' arcsec',/normal,charthick=charthick
+        XYOUTS,0.60,0.77,'The inclination and PA were not allowed to vary',/normal
+        XYOUTS,0.60,0.75,'The major FWHM beam is '+majbeam+' arcsec',/normal
+        XYOUTS,0.60,0.73,'We used rings of size '+ringsize+' arcsec',/normal
      Endif ELSE BEGIN
-        XYOUTS,0.60,0.77,'The major FWHM beam is '+majbeam+' arcsec',/normal,charthick=charthick
-        XYOUTS,0.60,0.75,'We used rings of size '+ringsize+' arcsec',/normal,charthick=charthick
+        XYOUTS,0.60,0.77,'The major FWHM beam is '+majbeam+' arcsec',/normal
+        XYOUTS,0.60,0.75,'We used rings of size '+ringsize+' arcsec',/normal
      ENDELSE
   ENDELSE
                                 ;Currently GDL does not recognize true
@@ -351,18 +333,17 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   levels=[1,2,4,8,16,32,64,128]*1.5*noise
   levelsneg=([-2,-1])*1.5*noise
   loadct,0,/SILENT
-  Contour,mom0,xaxis*3600.,yaxis,levels=levels,/overplot,c_colors=['000000'x]
-  Contour,mom0,xaxis*3600,yaxis,levels=levelsneg,/overplot,c_colors=['999999'x],c_linestyle=2
+  Contour,mom0,xaxis*3600.,yaxis,levels=levels,/overplot,c_colors=[0]
+  Contour,mom0,xaxis*3600,yaxis,levels=levelsneg,/overplot,c_colors=[100],c_linestyle=2
   loadct,40,/silent
-  Contour,mom0mod,xaxis*3600,yaxis,levels=levels,/overplot,c_colors=['0000F9'x]
+  Contour,mom0mod,xaxis*3600,yaxis,levels=levels,/overplot,c_colors=[254]
   colormaps,'heat',/invert
   colour_bar,[0.87,0.89],[0.1+0.2*scrdim[0]/scrdim[1]+0.02,0.1+0.4*scrdim[0]/scrdim[1]-0.02],strtrim(string(mapinmin,format='(F10.4)'),2),strtrim(string(mapinmax,format='(F10.4)'),2),/OPPOSITE_LABEL,/BLACK,TITLE='(Jy bm!E-1!N)',/VERTICAL,charthick=charthick
   loadct,0,/SILENT
   XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.08,'PV-Diagram Contours start are at -3, -1.5, 1.5, 3, 6, 12, 24 x rms.',color=0,/normal,charthick=charthick
   XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.1,'rms = '+strtrim(string(noise,format='(F10.5)'),2)+' Jy bm!E-1!N.',color=0,/normal,charthick=charthick
   XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.12,'The distance used for conversions = '+strtrim(string(Distance,format='(F10.1)'),2)+' Mpc',color=0,/normal,charthick=charthick
-  image=tvrd(/true)
-  IF ~(gdlidl) THEN DEVICE,/CLOSE    
-  write_png,'Overview.png',image
-
+  IF ~(gdlidl) then image = tvrd(true=1)
+  DEVICE,/CLOSE  
+  IF ~(gdlidl) then  write_png,'Overview.png',image
 end

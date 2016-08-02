@@ -1,4 +1,4 @@
-Pro obtain_inclinationv8,map,inPA,inclination,center,EXTEND=extend,NOISE=noise,BEAM=beam,DEBUG=debug
+Pro obtain_inclinationv8,map,inPA,inclination,center,EXTEND=extend,NOISE=noise,BEAM=beam,DEBUG=debug,gdlidl=gdlidl
 
 ;+
 ; NAME:
@@ -47,6 +47,8 @@ Pro obtain_inclinationv8,map,inPA,inclination,center,EXTEND=extend,NOISE=noise,B
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       02-06-2016 P.Kamphuis; Added GDL compatibility by replacing
+;                              GAUSSFIT with MPFITFUN   
 ;       18-02-2016 P.Kamphuis; Replaced sigma with STDDEV   
 ;       Written 01-01-2015 P.Kamphuis v1.0
 ;
@@ -61,6 +63,7 @@ IF keyword_set(debug) then begin
    print,'OBTAIN_INCLINATIONV8: The PA'
    print,inPA
 ENDIF
+IF n_elements(gdlidl) EQ 0 then gdlidl=0
 IF n_elements(beam) EQ 0 then beam=1
 IF n_elements(beam) EQ 1 then beam=[beam,beam] 
 xpos=dblarr(n_elements(map[0,*]))
@@ -85,12 +88,17 @@ for i=0,n_elements(PA)-1 do begin
 
                                 ;get the maximum
    axis=findgen(n_elements(xprofile))
-   xfit = GAUSSFIT(axis, xprofile, coeff, NTERMS=3)
-   yfit = GAUSSFIT(axis, yprofile, coeff, NTERMS=3)
- 
+   IF gdlidl then begin
+      xfit = FAT_GDLGAUSS(axis, xprofile)
+      yfit = FAT_GDLGAUSS(axis, yprofile)
+   ENDIF ELSE BEGIN
+      xfit = GAUSSFIT(axis, xprofile, coeff, NTERMS=3)
+      yfit = GAUSSFIT(axis, yprofile, coeff, NTERMS=3)
+   ENDELSE
    newaxis=findgen(n_elements(xprofile)*10.)/10.
    xprof=1
    yprof=1
+
    interpolate,xfit,axis,newradii=newaxis,output=xprofile
    interpolate,yfit,axis,newradii=newaxis,output=yprofile 
 

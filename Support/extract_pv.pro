@@ -98,20 +98,30 @@ Pro extract_pv,Cube,header,pa,xv,CENTER=center,XVHEADER=new_header
   sxaddpar,new_header,'CTYPE1','ANGLE'
   sxaddpar,new_header,'NAXIS1',fix(2*xsize)
   sxaddpar,new_header,'CUNIT1','DEGREE',AFTER='CRPIX1'
-  sxaddpar,new_header,'CDELT2',sxpar(inheader,'CDELT3')
-  sxaddpar,new_header,'CRVAL2',sxpar(inheader,'CRVAL3')
-  sxaddpar,new_header,'CRPIX2',sxpar(inheader,'CRPIX3')
-  sxaddpar,new_header,'CTYPE2',sxpar(inheader,'CTYPE3')
-  sxaddpar,new_header,'NAXIS2',sxpar(inheader,'NAXIS3')
   sxaddpar,new_header,'PA',pa,AFTER='CTYPE2'
   sxaddpar,new_header,'RA POS',center[0],AFTER='PA'
   sxaddpar,new_header,'DEC POS',center[1],AFTER='RA POS'
   IF width/(sxpar(inheader,'CDELT2')) GT 1 then sxaddpar,new_header,'Strip Width',width,AFTER='PA'
+  sxaddpar,new_header,'CDELT2',sxpar(inheader,'CDELT3')
+  sxaddpar,new_header,'CRVAL2',sxpar(inheader,'CRVAL3')
+  sxaddpar,new_header,'CRPIX2',sxpar(inheader,'CRPIX3')
+  sxaddpar,new_header,'CTYPE2',sxpar(inheader,'CTYPE3')
+  sxaddpar,new_header,'NAXIS2',sxpar(inheader,'NAXIS3') 
   sxdelpar,new_header,['NAXIS3','CDELT3','CRPIX3','CRVAL3','CTYPE3','LTYPE']
   IF sxpar(inheader,'CUNIT3') then begin
      sxaddpar,new_header,'CUNIT2',sxpar(inheader,'CUNIT3'),after='CTYPE2'
      sxdelpar,new_header,'CUNIT3'
   ENDIF
+  IF isnumeric(sxpar(new_header,'CUNIT2')) then begin
+     IF sxpar(new_header,'CDELT2') GT 500. then sxaddpar,new_header,'CUNIT2','M/S',after='CTYPE2' else sxaddpar,new_header,'CUNIT2','KM/S',after='CTYPE2'
+  ENDIF
+  IF STRUPCASE(strtrim(sxpar(new_header,'CUNIT2'),2)) EQ 'M/S' then begin
+     print,linenumber()+'EXTRACT_PV: We are converting to KM/S'
+     sxaddpar,new_header,'CDELT2',sxpar(new_header,'CDELT2')/1000.
+     sxaddpar,new_header,'CRVAL2',sxpar(new_header,'CRVAL2')/1000.
+     sxaddpar,new_header,'CUNIT2','KM/S'
+  ENDIF
+   
 end
 
 
