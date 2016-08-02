@@ -1504,6 +1504,7 @@ noconfig:
                                 ;recalculate the inclination
     
      obtain_inclinationv8,moment0map,avPA,newinclination,[RApix,DECpix],extend=noringspix,noise=momnoise,beam=catmajbeam[i]/(pixelsizeRA*3600.),gdlidl=gdlidl
+    
      obtain_w50,dummy,mask,header,W50   
                                 ;We want to adjust the cutoff values
                                 ;with the inclination as edge-on
@@ -1536,6 +1537,7 @@ noconfig:
         cutoffcorrection LT 0.981:norings=maxrings-4+1          
         else:norings=maxrings-4
      endcase
+     IF norings LT 3 then norings=3
      IF newinclination[0] LT 60 then norings=norings[0]-1.
      noringspix=norings[0]*catmajbeam[i]/(ABS(sxpar(headermap,'cdelt1'))*3600.)
  
@@ -1582,7 +1584,7 @@ noconfig:
         ENDIF ELSE begin
                                 ;we don't want to do individual ring fits on this cube
            IF finishafter GT 1. then finishafter=1.1
-           maxrings=maxrings*2.-2
+           maxrings=maxrings*2.-1
                                 ;we also want to make sure that we are in the cube    
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
