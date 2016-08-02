@@ -25,6 +25,9 @@ The GDL version is tested under Ubuntu and runs after running the command
 Under ubuntu the astrolib package and mpfit package were not found after installation and hence a .gdlstartup file is required with the line
 
 	!PATH=!PATH+':usr/share/gnudatalanguage/astrolib:usr/share/gnudatalanguage/coyote:usr/share/gnudatalanguage/mpfit'
+
+Please note that due to the limited availability of the Z-buffer in GDL FAT will create a small widget window for plotting when run under GDL.
+
 ------------
 !!!!-- The version in the Branch FAT-GDL-Beta is under development and not guaranteed to give the results as given in Kamphuis et al. 2015. Use with extreme caution and please file bug reports. --!!!!
 ------------
