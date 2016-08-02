@@ -26,6 +26,9 @@ Under ubuntu the astrolib package and mpfit package were not found after install
 
 	!PATH=!PATH+':usr/share/gnudatalanguage/astrolib:usr/share/gnudatalanguage/coyote:usr/share/gnudatalanguage/mpfit'
 
+!!!!The version in the Branch of FAT-GDL-Beta is under development and not guaranteed to give the results as given in Kamphuis et al. 2015. Use with extreme caution and please file bug reports.!!!!
+
+
 Installation
 ------------
 
