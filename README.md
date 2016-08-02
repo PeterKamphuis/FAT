@@ -25,9 +25,9 @@ The GDL version is tested under Ubuntu and runs after running the command
 Under ubuntu the astrolib package and mpfit package were not found after installation and hence a .gdlstartup file is required with the line
 
 	!PATH=!PATH+':usr/share/gnudatalanguage/astrolib:usr/share/gnudatalanguage/coyote:usr/share/gnudatalanguage/mpfit'
-
-!!!!The version in the Branch of FAT-GDL-Beta is under development and not guaranteed to give the results as given in Kamphuis et al. 2015. Use with extreme caution and please file bug reports.!!!!
-
+------------
+!!!!-- The version in the Branch FAT-GDL-Beta is under development and not guaranteed to give the results as given in Kamphuis et al. 2015. Use with extreme caution and please file bug reports. --!!!!
+------------
 
 Installation
 ------------
