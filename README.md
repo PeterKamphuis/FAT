@@ -18,6 +18,13 @@ The code requires full installation of:
 IDL needs to be able to execute tirific, sofia, rename and the standard unix commands from a spawn command. All other dependencies should be in IDL and available with the normal IDL distributions. 
 
 To run under GDL you will additionally need the package mpfit for GDL by Ole Streicher (https://packages.debian.org/sid/all/gdl-mpfit/download)
+The GDL version is tested under Ubuntu and runs after running the command
+
+	sudo apt-get install gnudatalanguage gdl-astrolib gdl-mpfit libplplot-dev
+
+Under ubuntu the astrolib package and mpfit package were not found after installation and hence a .gdlstartup file is required with the line
+
+	!PATH=!PATH+':usr/share/gnudatalanguage/astrolib:usr/share/gnudatalanguage/coyote:usr/share/gnudatalanguage/mpfit'
 
 Installation
 ------------
