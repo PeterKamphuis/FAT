@@ -362,7 +362,10 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.1,'rms = '+strtrim(string(noise,format='(F10.5)'),2)+' Jy bm!E-1!N.',color=0,/normal,charthick=charthick
   XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.12,'The distance used for conversions = '+strtrim(string(Distance,format='(F10.1)'),2)+' Mpc',color=0,/normal,charthick=charthick
   image=tvrd(/true)
-  IF ~(gdlidl) THEN DEVICE,/CLOSE    
+  IF ~(gdlidl) THEN DEVICE,/CLOSE ELSE BEGIN
+     print,'Are we doing This?'
+     WIDGET_CONTROL,base,/DESTROY
+  ENDELSE
   write_png,'Overview.png',image
 
 end
