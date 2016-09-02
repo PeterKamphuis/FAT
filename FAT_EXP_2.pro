@@ -536,6 +536,11 @@ noconfig:
            openw,66,log
            printf,66,linenumber()+"This file is a log of the fitting process run at "+systime()
            printf,66,linenumber()+"This is version "+version[0]+" of the program."
+           IF gdlidl then begin
+              printf,66,linenumber()+"You are using GDL"
+           endif else begin
+              printf,66,linenumber()+"You are using IDL"
+           endelse
            close,66
         ENDIF ELSE BEGIN
            openu,66,log,/APPEND
