@@ -4009,7 +4009,6 @@ noconfig:
            errors=[[0.],[0.]]
            
            revised_regularisation_com,comin,SBRarror,RADarr,fixedrings=3,difference=[1.,8.*exp(-catinc[i]^2.5/10^3.5)+2],cutoff=cutoff,arctan=1,order=polorder,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[1./4.,1.],error=errors ,gdlidl=gdlidl,log=log
-                        
            PAang=comin[*,0]
            INCLang=comin[*,1]
            sigmapa1=errors[*,0]
@@ -4145,7 +4144,7 @@ noconfig:
            printf,66,linenumber()+"The inner" +string(fixedrings)+" rings are fixed."
            Close,66
         ENDIF
-        revised_regularisation_com,comin,SBRarror,RADarr,fixedrings=3,difference=[padiv,8.*exp(-catinc[i]^2.5/10^3.5)+2.],cutoff=cutoff,arctan=prefunc,order=polorder1,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[accuracy/4.,accuracy],error=errors ,gdlidl=gdlidl,log=log,sloped=prevslopedrings[1] 
+        revised_regularisation_com,comin,SBRarror,RADarr,fixedrings=3,difference=[padiv,8.*exp(-catinc[i]^2.5/10^3.5)+2.],cutoff=cutoff,arctan=prefunc,order=polorder1,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[accuracy/4.,accuracy],error=errors ,gdlidl=gdlidl,log=log,sloped=prevslopedrings[1]
            
                             
         PAang=comin[*,0]

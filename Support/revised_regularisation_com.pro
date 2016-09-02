@@ -389,7 +389,10 @@ restartall:
         IF adjust then begin
            IF j EQ n_elements(PA[*,0])-2 then begin
               IF sawtooth then begin
-                 errors[j+1,*]=ABS((PA[j,*]-PA[j+1,*])/2.)
+                 tmp=ABS((PA[j,*]-PA[j+1,*])/2.)
+                 IF tmp[0] LT Ddiv[0] then errors[j+1,0]=errors[j,0] else  errors[j+1,0]=tmp[0]
+                 IF tmp[1] LT Ddiv[1] then errors[j+1,1]=errors[j,1] else  errors[j+1,1]=tmp[1]
+           ;      errors[j+1,*]=ABS((PA[j,*]-PA[j+1,*])/2.)
                  IF ABS((PA[j,0]-PA[j+1,0])) GT maxdev[0]*2 then begin
                     errors[j+1,0]=ABS((PA[j,0]-PA[j+1,0]))*(ABS((PA[j,0]-PA[j+1,0])/maxdev[0]))
                     ;*ratio[j+1]
@@ -476,7 +479,18 @@ restartall:
         errors[i,*]=MAX([errors[i,*]*1.75,errors[i-1,*]*1.75])
      endfor
   ENDIF
+  
   IF keyword_set(extending) then errors[n_elements(errors[*,0])-1,*]=errors[n_elements(errors[*,0])-2,*]
+; There can't be zeros in the errors let's check
+  for i=0,1 do begin
+     tmp=WHERE(errors[*,i] LT ddiv[i])
+     IF tmp[0] NE -1 THEN begin
+        for j=0,n_elements(tmp)-1 do begin
+           IF tmp[j] NE n_elements(errors[*,i])-1 then errors[tmp[j],i]=ddiv[i] else errors[tmp[j],i]=errors[tmp[j]-1,i]
+        endfor
+     endif
+  endfor
+  
   IF keyword_set(debug) then begin
      print,'The final errors are:'
      print,errors
@@ -681,7 +695,7 @@ refit:
         fitfailed=0.
         newPAcoeff=FAT_FIT(RADII,fitPA,order,RCHI_SQR=tmp,errors=fiterrors,STATUS=fitstat,/Monte_Carlo,mc_iters=150000.,$
                            mc_errors=shifterrors,maximum_deviation=maxdev,accuracy=accuracy,fixedrings=fixedrings[par],$
-                           mc_y_min=pamin,mc_y_max=pamax,nocentral=nocentral,mc_maxfails=100.,log=log)
+                           mc_y_min=pamin,mc_y_max=pamax,nocentral=nocentral,mc_maxfails=100.,log=log,/debug)
       
         newPA[*,par]=fitPA[*]   
         if fitstat EQ 1 then Chi[order-2]=!values.f_nan else begin
@@ -705,14 +719,40 @@ refit:
      ENDIF
      checkorderfitted=FINITE(Chi,/NAN)
      IF TOTAL(checkorderfitted) EQ n_elements(Chi) then begin
-        order=-1
-        IF keyword_set(debug) then begin
-           print,'We return the smoothed profile as all Chis are infinite'
-        ENDIF
-        attempts++
-        fitPAoriginal=PAsmooth[*,par]
-        shifterrorsor=errors[*,par]
-        goto,newendorder
+        IF attempts EQ 0 then begin 
+                                ; order=order-1
+           IF keyword_set(debug) then begin
+              print,'As all Chis are infinite we try to fit the smoothed profile'
+           ENDIF
+           attempts++
+           fitPAoriginal=PAsmooth[*,par]
+           shifterrorsor=errors[*,par]
+           goto,newendorder
+        ENDIF ELSE BEGIN
+           IF keyword_set(debug) then begin
+              print,'We return the smoothed profile as all Chis are infinite'
+           ENDIF
+           newPA=dblarr(n_elements(PAin[*,0]),n_elements(PAin[0,*]))
+           errors=dblarr(n_elements(PAin[*,0]),n_elements(PAin[0,*]))
+                                ;We do not smooth small profiles as
+                                ;this supresseses warps too much
+           IF n_elements(PAin) LT 15 then begin
+              for i=0,n_elements(PAin[0,*])-1 do begin
+                 newPA[*,i]=PAin[*,i]
+                 errors[*,i]=ABS(PA[*,i]-PAsmooth[*,i])
+              endfor
+           endif else begin
+              for i=0,n_elements(PAin[0,*])-1 do begin
+                 newPA[*,i]=PAsmooth[*,i]
+                 errors[*,i]=ABS(PA[*,i]-PAsmooth[*,i])
+              endfor
+           endelse
+           fitstat=-1.
+           arctan=1
+           finorder[*]=!values.f_nan
+           fixedrings=[fixedrings,fixedrings]
+           goto,cleanup
+        ENDELSE
      ENDIF
        
      maxchi=MAX(Chi,MIN=minchi)
@@ -723,14 +763,41 @@ refit:
      case 1 of 
         minchi EQ 1E9: begin
            IF erroradjusted NE 1 then begin
-              order=-1
-              IF keyword_set(debug) then begin
-                 print,'We will return the smoothed profile because the error is not adjusted and minchi is GT 1e9'
-              ENDIF
-              attempts++
-              fitPAoriginal=PAsmooth[*,par]
-              shifterrorsor=errors[*,par]
-              goto,newendorder
+              IF attempts EQ 0 then begin 
+                                ; order=order-1
+                 
+                 IF keyword_set(debug) then begin
+                    print,'We will try to fit the smoothed profile because the error is not adjusted and minchi is GT 1e9'
+                 ENDIF
+                 attempts++
+                 fitPAoriginal=PAsmooth[*,par]
+                 shifterrorsor=errors[*,par]
+                 goto,newendorder
+              ENDIF ELSE BEGIN
+                 IF keyword_set(debug) then begin
+                    print,'We will return the smoothed profile because the error is not adjusted and minchi is GT 1e9'
+                 ENDIF
+                 newPA=dblarr(n_elements(PAin[*,0]),n_elements(PAin[0,*]))
+                 errors=dblarr(n_elements(PAin[*,0]),n_elements(PAin[0,*]))
+                                ;We do not smooth small profiles as
+                                ;this supresseses warps too much
+                 IF n_elements(PAin) LT 15 then begin
+                    for i=0,n_elements(PAin[0,*])-1 do begin
+                       newPA[*,i]=PAin[*,i]
+                       errors[*,i]=ABS(PA[*,i]-PAsmooth[*,i])
+                    endfor
+                 endif else begin
+                    for i=0,n_elements(PAin[0,*])-1 do begin
+                       newPA[*,i]=PAsmooth[*,i]
+                       errors[*,i]=ABS(PA[*,i]-PAsmooth[*,i])
+                    endfor
+                 endelse
+                 fitstat=-1.
+                 arctan=1
+                 finorder[*]=!values.f_nan
+                 fixedrings=[fixedrings,fixedrings]
+                 goto,cleanup
+              ENDELSE
            ENDIF ELSE BEGIN
               fiterrors=fiterrors*1.2
               IF keyword_set(debug) then begin
@@ -744,7 +811,11 @@ refit:
               fiterrors=shifterrors/errfact
               addminchi=2
               goto,newendorder
-           ENDIF             
+           ENDIF
+          
+          
+           
+           
            adjustzeroth=0.
            erroradjusted=0
            xxx=MAX([minchi,0.8],min=reduceerr)
@@ -752,9 +823,9 @@ refit:
            IF prevreduce then reduceerr=reduceerr*2.
            If reduceerr LT 0.1 then reduceerr=0.1
            If reduceerr GT 0.9 then reduceerr=0.9
-               
+           
            minChi=1e9
-          
+           
            fiterrors=fiterrors*reduceerr
            IF keyword_set(debug) then begin
               print,'Is it too small tmp',maxchi,n_elements(fitPA),reduceerr 
@@ -762,14 +833,16 @@ refit:
 
                                 ;for the rotation curve we always want
                                 ;the higher polynomials to be considered
-              
-               
-             
+           
+           
+           
            erroradjusted=1
            IF keyword_set(debug) then begin
               print,'We go to refit cause maxchi is too small'
            ENDIF
            goto,newendorder
+           
+              
         end
         minchi LT 1:begin
            IF addminchi EQ 1 then begin
@@ -784,18 +857,24 @@ refit:
                                 ;for the rotation curve we always want
                                 ;the higher polynomials to be considered
                               
-           xxx=MAX([minchi,0.8],min=reduceerr)
-           reduceerr=round(reduceerr*10.)/10.
-           IF prevreduce then reduceerr=reduceerr*2.
-           If reduceerr LT 0.1 then reduceerr=0.1
-           If reduceerr GT 0.9 then reduceerr=0.9
-           fiterrors=fiterrors*reduceerr
-           erroradjusted=1
-           IF keyword_set(debug) then begin
-              print,'We go to newendorder cause in minchi is too small'
-           ENDIF
-           prevreduce=1
-           goto,newendorder
+        ;   xxx=MAX([minchi,0.8],min=reduceerr)
+        ;   reduceerr=round(reduceerr*10.)/10.
+        ;   IF prevreduce then reduceerr=reduceerr*2.
+        ;   If reduceerr LT 0.1 then reduceerr=0.1
+        ;   If reduceerr GT 0.9 then reduceerr=0.9
+        ;   fiterrors=fiterrors*reduceerr
+        ;   erroradjusted=1
+        ;   IF keyword_set(debug) then begin
+        ;      print,'We go to newendorder cause in minchi is too small'
+        ;   ENDIF
+        ;   prevreduce=1
+                                ;   goto,newendorder
+
+                                ;IF we are here it means that at least
+                                ;a low order does have a reasonable
+                                ;chi square since we are now in PA and
+                                ;INCL only it is ok to not use the
+                                ;higher orders.
                                 ; ENDIF
            IF keyword_set(debug) then begin
               print,'We gobbl',minchi
@@ -829,7 +908,14 @@ refit:
         end
      endcase
      adjustzeroth=0.
-     
+                                ;If we are doing the INCLination we
+                                ;want the variations to be as small as
+                                ;possible and hence we penalize the
+                                ;higher order
+     if par EQ 1 then begin
+        chi[*]=chi[*]*SQRT(findgen(endorder-1)+2)
+        maxchi=MAX(Chi,min=minchi)
+     endif
      
                                 ;Let's check a 0th order
                                 ;polynomial if it is not the
@@ -880,6 +966,7 @@ refit:
         newPAcoeff=dblarr(order)
         newPAcoeff=finalcoeff[0:order,order-2]
      ENDELSE
+     
      IF fitstat LT 1 then begin
         finorder[par]=order
         newPA[*,par]=newPAcoeff[0]
