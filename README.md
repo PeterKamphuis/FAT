@@ -48,11 +48,11 @@ Running FAT
 -----------
 FAT is currently run under IDL. It is called as a regular IDL program, i.e. in IDL:
 
-    IDL >.r FAT_vx.x
+    IDL >.r FAT_EXP_2.pro
 
 where x.x is the version number
 
-    IDL >FAT,configuration_file='pathtodir/configfile.config',support='pathtosupportfilesdir'
+    IDL >FAT_EXP_2,configuration_file='pathtodir/configfile.config',support='pathtosupportfilesdir'
     
 All information that the code needs about output directories fitting steps and input parameters are taken from the configfile.
 If a config file is not given it will look for the file 'FAT_INPUT.config' in the directory from which FAT is run.
