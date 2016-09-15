@@ -166,35 +166,6 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
            ENDIF ELSE BeGIN
               newy[*]=p[0]
               for i=1,n_elements(p)-1 do newy[*]=newy[*]+p[i]*x[*]^i
-      ;        noticed=0.
-       ;       if iterno GT 1000 then begin
-        ;         testp=totp
-         ;        loc=n_elements(testp)-1            
-          ;       WHILE noticed EQ 0 AND TOTAL(testp) NE 0 do begin
-           ;         testp[loc]=0
-            ;        testy[*]=testp[0]
-             ;       for i=1,n_elements(testp)-1 do testy[*]=testy[*]+testp[i]*x[*]^i
-              ;      if newy[n_elements(testy)-1] LT testy[n_elements(testy)-1]-mc_errors[0] OR $
-               ;        newy[n_elements(testy)-1] GT testy[n_elements(testy)-1]+mc_errors[0] OR $
-                ;       newy[n_elements(testy)-2] GT testy[n_elements(testy)-2]+mc_errors[0] OR $
-                 ;      newy[n_elements(testy)-2] LT testy[n_elements(testy)-2]-mc_errors[0] then begin
-                  ;     testp[loc]=p[loc]
-                   ;    noticed=1
-                   ; endif
-                   ; loc--
-;                 ENDWHILE
- ;                tmp=WHERE(testp EQ 0.)                 
-  ;               if tmp[0] NE -1 then begin
-   ;                 IF size(log,/TYPE) EQ 7 then begin
-    ;                   openu,66,log,/APPEND
-     ;                  printf,66,linenumber()+'FAT_FIT: The following orders have no effect on the fit '+strtrim(STRJOIN(tmp,' '),2)
-      ;                 printf,66,linenumber()+'FAT_FIT: We will exclude them from fitting'
-       ;                close,66
-        ;            ENDIF
-         ;           p=testp
-          ;          goto,finishearly
-           ;      ENDIF
-            ;  ENDIF
               IF fixedrings GT 0. and order NE 0 then begin
                  IF n_elements(ddiv) EQ 0 then begin
                     IF fixedrings GT fix(n_elements(newy)/2.)-1 then begin
@@ -209,6 +180,11 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
                                 ;flat.
                     
                     if locmax[n_elements(locmax)-1] GT n_elements(yor)/2. then newy[0:fixedrings]=TOTAL(y[0:fixedrings])/n_elements(y[0:fixedrings])
+                    decline=0
+                    for ch=1,3 do begin
+                       if newy[ch-1] lt newy[ch] then decline=ch else break
+                    endfor
+                    if decline gt 0. then newy[0:ch-1]=newy[ch]
                  ENDELSE
               ENDIF
               
@@ -359,6 +335,27 @@ skippenalize:
      newy=dblarr(n_elements(x))
      newy[*]=p[0]
      for i=1,n_elements(p)-1 do newy[*]=newy[*]+p[i]*x[*]^i
+     IF fixedrings GT 0. and order NE 0 then begin
+        IF n_elements(ddiv) EQ 0 then begin
+           IF fixedrings GT fix(n_elements(newy)/2.)-1 then begin
+              newy[0:fix(n_elements(newy)/2.)-1]=yor[0]
+              newy[fix(n_elements(newy)/2.):fixedrings]=(yor[0]+newy[fix(n_elements(newy)/2.):fixedrings])/2.                    
+           ENDIF else begin
+              newy[0:fixedrings]=yor[0]
+           ENDELSE
+        ENDIF  ELSE BEGIN
+                                ;If we have a declining rotation curve
+                                ;we want the outer part to be reset to
+                                ;flat.
+           
+           if locmax[n_elements(locmax)-1] GT n_elements(yor)/2. then newy[0:fixedrings]=TOTAL(y[0:fixedrings])/n_elements(y[0:fixedrings])
+           decline=0
+           for ch=1,3 do begin
+              if newy[ch-1] lt newy[ch] then decline=ch else break
+           endfor
+           if decline gt 0. then newy[0:ch-1]=newy[ch]
+        ENDELSE
+     ENDIF
                                 ;calculate chi-squares    
      IF n_elements(errors) GT 0 then chisqr=TOTAL((newy - y)^2/sqerrors) else chisqr=TOTAL((newy - y)^2)
      rchisqr=chisqr/(n_elements(y)-order)

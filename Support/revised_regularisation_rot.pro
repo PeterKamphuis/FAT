@@ -715,6 +715,13 @@ refit:
      for i=1,n_elements(newPAcoeff)-1 do begin
         newPA[*]= newPA[*]+newPAcoeff[i]*RADII[*]^i 
      endfor
+     locmax=WHERE(MAX(PA) EQ PA)
+     if locmax[n_elements(locmax)-1] GT n_elements(PA)/2. then newPA[0:fixedrings]=TOTAL(PA[0:fixedrings])/n_elements(PA[0:fixedrings])
+     decline=0
+     for ch=1,3 do begin
+        if newPA[ch-1] lt newPA[ch] then decline=ch else break
+     endfor
+     if decline gt 0. then newPA[0:ch-1]=newPA[ch]
      errors[*]=mcerrors[*,order-2] 
   ENDIF Else begin
      IF attempts GE 1 then begin
