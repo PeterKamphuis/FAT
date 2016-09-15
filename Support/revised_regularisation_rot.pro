@@ -577,7 +577,7 @@ refit:
      attempts++
      fitPAoriginal=PAsmooth[*]
      shifterrorsor=errors[*]
-     goto,newendorder
+     IF attempts LT 2 then goto,newendorder
   ENDIF
        
   maxchi=MAX(Chi,MIN=minchi)

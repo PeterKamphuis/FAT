@@ -675,14 +675,16 @@ refit:
      IF endorder LT 2 then endorder=2
      IF endorder GT 5 then endorder=5
      maxendorder=endorder
+     
      fitPAoriginal=PA[*,par]
      fiterrors=errors[*,par]
      shifterrorsor=errors[*,par]
      newendorder:
      IF endorder GT maxendorder then endorder=maxendorder
      fitPA=fitPAoriginal
-     
+     devflat=dblarr(endorder-1)
      Chi=dblarr(endorder-1)
+     ReturnPA=1
      mcerrors=dblarr(n_elements(PA[*,0]),endorder-1)
      finalcoeff=dblarr(6,endorder-1)
      for order=endorder,2,-1 do begin
@@ -695,9 +697,13 @@ refit:
         fitfailed=0.
         newPAcoeff=FAT_FIT(RADII,fitPA,order,RCHI_SQR=tmp,errors=fiterrors,STATUS=fitstat,/Monte_Carlo,mc_iters=150000.,$
                            mc_errors=shifterrors,maximum_deviation=maxdev,accuracy=accuracy,fixedrings=fixedrings[par],$
-                           mc_y_min=pamin,mc_y_max=pamax,nocentral=nocentral,mc_maxfails=100.,log=log,/debug)
+                           mc_y_min=pamin,mc_y_max=pamax,nocentral=nocentral,mc_maxfails=100.,log=log,newy=ReturnPA,/debug)
       
-        newPA[*,par]=fitPA[*]   
+        newPA[*,par]=fitPA[*]
+                                ;let's calculate how much our
+                                ;solution deviates from the central
+                                ;value        
+        devflat[order-2]=TOTAL(ABS(ReturnPA[*]-ReturnPA[0]))
         if fitstat EQ 1 then Chi[order-2]=!values.f_nan else begin
            IF tmp GT 1e9 then Chi[order-2]=1e9 else Chi[order-2]=tmp
            for j=0,order do begin
@@ -911,10 +917,62 @@ refit:
                                 ;If we are doing the INCLination we
                                 ;want the variations to be as small as
                                 ;possible and hence we penalize the
-                                ;higher order
+                                ;order furthest removed from flat
+                                ;However we only want to do this if
+                                ;the original input is fairly flat
+                                ;else we just penalize the higher orders
+   
      if par EQ 1 then begin
-        chi[*]=chi[*]*SQRT(findgen(endorder-1)+2)
+        devflatin=TOTAL(ABS(PA[*,par]-PA[0,par]))/(n_elements(PA[*,par])-fixedrings[par])
+        IF devflatin LT 4.*ddiv[par] then begin
+                                ;first we normalize the deviations from flat
+           if keyword_set(debug) then begin
+              print,'this is devflat before normalising'
+              print,devflat
+           endif
+           flatmax=MAX(devflat,min=flatmin)
+           devflat[*]=devflat[*]/(n_elements(ReturnPA)-fixedrings[par])
+           if keyword_set(debug) then begin
+              print,'This is the normalised deviation from flat before taking out flats'
+              print,devflat
+           ENDIF
+           
+           tmp=WHERE(devflat LT ddiv[pa]/2.)
+           tmp2=WHERE(devflat LT ddiv[pa]/4.)
+           
+           if tmp[0] NE -1 then devflat[tmp]=devflat[tmp]*1.25
+           if tmp2[0] NE -1 then devflat[tmp2]=devflat[tmp2]*5.
+           if keyword_set(debug) then begin
+              print,'This is the normalised deviation from flat for the orders'
+              print,devflat
+              print,'This is the Chi before'
+              print,Chi
+           ENDIF
+                                ;make sure there is no devflat less than 1
+;           tmp=WHERE(devflat LT ddiv[par])
+;           ordercor=SQRT(findgen(endorder-1)+1)
+;           if tmp[0] NE -1 then devflat[tmp]=devflat[tmp]*ordercor[tmp]
+                                ; and then penalize the ones deviating
+                                ; most as well as the higher orders if
+                                ; their devflat is less than ddiv
+;However we will reduce the Chi's if the PA is not 0.
+                                ;      if finorder[0] NE 0 then
+           chi[*]=chi[*]*devflat[*]
+           ;*ordercor[*]
+           if keyword_set(debug) then begin
+              print,'this is the chi after correcting for flatness'
+              print,chi
+           endif
+        
+        endif else begin
+           Chi[*]=Chi[*]*SQRT(findgen(endorder-1)+1.)
+        endelse
+        ;However we will reduce the Chi's if the PA is not 0.
+        
+        if finorder[0] EQ 0 then Chi[*]=Chi[*]*SQRT(findgen(endorder-1)+1.)*2.
+        ;SQRT(findgen(endorder-1)+2)
         maxchi=MAX(Chi,min=minchi)
+        
      endif
      
                                 ;Let's check a 0th order
@@ -939,10 +997,10 @@ refit:
         straighterrors=straighterrors*reduceerr
         goto,againzero
      ENDIF else begin
-        tmp=WHERE(fitPA NE PA[0])
+        tmp=WHERE(fitPA NE PA[0,par])
         IF not FINITE(TOTAL(newPAcoeff)) and tmp[0] EQ -1 then begin
            redchi=1.0001
-           newPAcoeff[0]=PA[0]
+           newPAcoeff[0]=PA[0,par]
         ENDIF
      ENDELSE
      toogood:
@@ -957,6 +1015,7 @@ refit:
            
         order=0
         fiterrors= straighterrors
+        newPAcoeff=PAin[0,par]
      ENDIF ELSE begin 
            
         order=WHERE(Chi EQ minchi)+2
@@ -1007,12 +1066,12 @@ refit:
         ENDIF ELSE BEGIN
            IF fixedrings[i] GT fix(n_elements(newPA[*,i])/2.) then begin
               if finorder[i] NE 0 then begin
-                 newPA[0:fix(n_elements(newPA[*,i])/2.)-1,i]=PA[0,i]
-                 newPA[fix(n_elements(newPA[*,i])/2.):fixedrings[i],i]=(PA[0,i]+ newPA[fix(n_elements(newPA[*,i])/2.):fixedrings[i],i])/2.
+                 newPA[0:fix(n_elements(newPA[*,i])/2.)-1,i]=PAin[0,i]
+                 newPA[fix(n_elements(newPA[*,i])/2.):fixedrings[i],i]=(PAin[0,i]+ newPA[fix(n_elements(newPA[*,i])/2.):fixedrings[i],i])/2.
               endif
            
            ENDIF else begin
-              If finorder[i] NE 0. then newPA[0:fixedrings[i],i]=PA[0,i]
+              If finorder[i] NE 0. then newPA[0:fixedrings[i],i]=PAin[0,i]
            ENDELSE
         ENDELSE
      ENDIF
@@ -1020,25 +1079,29 @@ refit:
   
   for i=0,n_elements(PA[0,*])-1 do begin
      for j=0,n_elements(PA[*,i])-1 do begin
-        errors[j,i]=MAX([errors[j,i]*1.5,ABS(PAin[j,i]-newPA[j,i]),ddiv[i]])
-        
-        endfor
+        errors[j,i]=MAX([errors[j,i]*1.5,ABS(PAin[j,i]-newPA[j,i]),ddiv[i]])        
+     endfor
   endfor
-  
+  if keyword_set(debug) then begin
+     print,'The errors before min max stuff'
+     print,errors
+  ENDIF
  
   tmp=WHERE(FINITE(newPA) EQ 0.)
   IF tmp[0] NE -1 then newPA[WHERE(FINITE(newPA) EQ 0.)]=PAin[WHERE(FINITE(newPA) EQ 0.)]
   for i=0,n_elements(PA[0,*])-1 do begin 
      IF n_elements(pamin[i]) gt 0 then tmp=WHERE(PA[*,i]-errors[*,i] LT pamin[i]) else tmp=-1
      IF tmp[0] NE -1  then begin
-        errors[tmp,i]=PAin[tmp,i]-pamin[i]
+        for j=0,n_elements(tmp)-1 do begin
+           errors[j,i]=MAX([PAin[j,i]-pamin[i],ddiv[i]])
+        endfor
      endif
      IF SBRin[n_elements(PAin[*,i])-1] LT cutoff[n_elements(PAin[*,i])-1] then errors[n_elements(PAin[*,i])-1,i]=MAX(errors[*,i])
      If errors[n_elements(errors[*,0])-1,i] LT errors[n_elements(errors[*,0])-2,i] then errors[n_elements(errors[*,0])-1,i]=errors[n_elements(errors[*,0])-2,i]
-     IF n_elements(pamax) gt 0 then tmp=WHERE(newPA[*,i]+errors[*,i] GT pamax[i]) else tmp=-1
-     IF tmp[0] NE -1 then errors[tmp,i]=pamax[i]-PA[tmp,i]
-     IF n_elements(pamin) gt 0 and n_elements(pamax) gt 0 then tmp=WHERE(errors[*,i] LT 0) else tmp=-1
-     IF tmp[0] NE -1 then errors[tmp,i]=pamax[i]-pamin[i]
+    ; IF n_elements(pamax) gt 0 then tmp=WHERE(newPA[*,i]+errors[*,i] GT pamax[i]) else tmp=-1
+    ; IF tmp[0] NE -1 then errors[tmp,i]=pamax[i]-newPA[tmp,i]
+    ; IF n_elements(pamin) gt 0 and n_elements(pamax) gt 0 then tmp=WHERE(errors[*,i] LT 0) else tmp=-1
+    ; IF tmp[0] NE -1 then errors[tmp,i]=pamax[i]-pamin[i]
   endfor
   errorin=errors
   order=finorder

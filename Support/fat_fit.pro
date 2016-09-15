@@ -60,7 +60,7 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
 ; NOTE:
 ;     
 ;-
-
+  print,'FAT_FIT:Starting'
   status=0
   chisqr=1
   rchisqr=1
@@ -124,30 +124,33 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
         gftim=0.
         check = 0
         WHILE iterno LT mc_iters-1 AND satisf NE 1 DO BEGIN
-           IF iterno/10000. EQ fix(iterno/10000.) AND iterno GT 50000 then begin
-               IF size(log,/TYPE) EQ 7 then begin
-                  openu,66,log,/APPEND
-                   IF check EQ 0 then begin
-                     printf,66,linenumber()+'FAT_FIT: Using a large number of iterations.'
-                     check++
-                  ENDIF
-                  printf,66,linenumber()+'FAT_FIT: We are currently at iteration number '+strtrim(string(iterno),2)
-                  IF iterno GT 75000 then begin
-                     printf,66,linenumber()+'FAT_FIT: The current difference is '+strtrim(STRJOIN(div[*]/totp[*]*100.,' '),2)
-                     printf,66,linenumber()+'FAT_FIT: And we have satisfied '+strtrim(string(gftim),2)+' times.'
-                  ENDIF
-                  close,66
-               ENDIF ELSE BEGIN
-                  IF check EQ 0 then begin
-                     print,'FAT_FIT: Using a large number of iterations.'
-                     check++
-                  ENDIF
-                  print,'FAT_FIT: We are currently at iteration number '+strtrim(string(iterno),2)
-                  IF iterno GT 75000 then begin
-                     print,'FAT_FIT: The current difference is '+strtrim(STRJOIN(div[*]/totp[*]*100.,' '),2)
-                     print,'FAT_FIT: And we have satisfied '+strtrim(string(gftim),2)+' times.'
-                  ENDIF
-               ENDELSE
+           IF iterno/10000. EQ fix(iterno/10000.) then begin
+              IF iterno NE 0 then print,'FAT_FIT: We are currently at iteration number '+strtrim(string(iterno),2)
+              IF iterno GT 50000 then begin
+                 IF size(log,/TYPE) EQ 7 then begin
+                    openu,66,log,/APPEND
+                    IF check EQ 0 then begin
+                       printf,66,linenumber()+'FAT_FIT: Using a large number of iterations.'
+                       check++
+                    ENDIF
+                    printf,66,linenumber()+'FAT_FIT: We are currently at iteration number '+strtrim(string(iterno),2)
+                    IF iterno GT 75000 then begin
+                       printf,66,linenumber()+'FAT_FIT: The current difference is '+strtrim(STRJOIN(div[*]/totp[*]*100.,' '),2)
+                       printf,66,linenumber()+'FAT_FIT: And we have satisfied '+strtrim(string(gftim),2)+' times.'
+                    ENDIF
+                    close,66
+                 ENDIF ELSE BEGIN
+                    IF check EQ 0 then begin
+                       print,'FAT_FIT: Using a large number of iterations.'
+                       check++
+                    ENDIF
+                    print,'FAT_FIT: We are currently at iteration number '+strtrim(string(iterno),2)
+                    IF iterno GT 75000 then begin
+                       print,'FAT_FIT: The current difference is '+strtrim(STRJOIN(div[*]/totp[*]*100.,' '),2)
+                       print,'FAT_FIT: And we have satisfied '+strtrim(string(gftim),2)+' times.'
+                    ENDIF
+                 ENDELSE
+              ENDIF
            ENDIF
            p=tmatr#weight#y#invmatr
            chp=WHERE(FINITE(p))

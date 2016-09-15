@@ -961,8 +961,16 @@ noconfig:
            tmp=where(nummask EQ double(vals[sofia_locations[0]]))
            nummask[tmp]=1.
         ENDIF
+                                ;We want to expand this mask as it is
+                                ;usually a bit tight
+        pixelsizeRA=ABS(sxpar(header,'CDELT1'))
+      
+        newmask=fat_smooth(nummask,catmajbeam[i]/(pixelsizeRA*3600.*2.),/MASK)
+        
         sxaddpar,header,'BITPIX',-32
-        writefits,currentfitcube+'_6.0_binmask.fits',float(nummask),header
+        writefits,currentfitcube+'_6.0_binmask.fits',float(newmask),header
+        nummask=0.
+        newmask=0.
         catmaskname[i]=currentfitcube+'_6.0_binmask'
         IF FILE_TEST(currentfitcube+'_cont.png') then spawn,'rm -f '+currentfitcube+'_cont.png'
         IF FILE_TEST(currentfitcube+'_mask.fits') then spawn,'rm -f '+currentfitcube+'_mask.fits'
@@ -1539,7 +1547,7 @@ noconfig:
                                 ;account
      case 1 of
         cutoffcorrection GT 1.03 :norings=maxrings-4-floor(ringcorrection/2.)
-        cutoffcorrection LT 0.981:norings=maxrings-4+1          
+        newinclination[0] GT 80:norings=maxrings-2          
         else:norings=maxrings-4
      endcase
      IF norings LT 3 then norings=3
@@ -1994,24 +2002,24 @@ noconfig:
                        ' INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
                        string(catinc[i]+catincdev[i]+10),string(catinc[i]-catincdev[i]-10),string(0.2),string(0.1),string(5.0),string(0.1),'5','70','70']
            ;We put this inside might not work then take it out again
-           IF INCLinput1[2] LT 0.1 then INCLinput1[2]=0.1
-           IF INCLinput1[2] GT 60 then INCLinput1[2]=60
+           IF INCLinput1[2] LT 5 then INCLinput1[2]='5'
+           IF INCLinput1[2] GT 60 then INCLinput1[2]='60'
         end
         catinc[i] LT 75: begin
            INCLinput1=['INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                        ' INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
                        string(catinc[i]+catincdev[i]+10),string(catinc[i]-catincdev[i]-10),string(1.),string(0.1),string(0.5),string(0.1),'3','70','70']
           
-           IF INCLinput1[2] LT 0.1 then INCLinput1[2]=0.1
-           IF INCLinput1[2] GT 60 then INCLinput1[2]=60
+           IF INCLinput1[2] LT 5 then INCLinput1[2]='5'
+           IF INCLinput1[2] GT 60 then INCLinput1[2]='60'
         end
         else:INCLinput1=['INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                          ' INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
                          string(catinc[i]+catincdev[i]),string(catinc[i]-catincdev[i]),string(0.2),string(0.01),string(0.5),string(0.001),'3','70','70']
      endcase
                                 ; have to ensure that the parameters are within the limits
-     IF INCLinput1[1] GT 90. then INCLinput1[1]=90.
-     IF INCLinput1[1] LT 30.then INCLinput1[1]=30.
+     IF INCLinput1[1] GT 90. then INCLinput1[1]='90.'
+     IF INCLinput1[1] LT 30.then INCLinput1[1]='30.'
    
                                 ;Set the input for the PA
      
@@ -2258,10 +2266,10 @@ noconfig:
         INCLinput1=['INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                     ' INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
                     string(catinc[i]+catincdev[i]+20),string(catinc[i]-catincdev[i]-20),string(0.5),string(0.1),string(5.),string(0.1),'3','70','70']
-        IF INCLinput1[1] GT 90. then INCLinput1[1]=90
-        IF INCLinput1[1] LT 30 then INCLinput1[1]=30
-        IF INCLinput1[2] LT 0 then INCLinput1[2]=0
-        IF INCLinput1[2] GT 60 then INCLinput1[2]=60
+        IF INCLinput1[1] GT 90. then INCLinput1[1]='90'
+        IF INCLinput1[1] LT 30 then INCLinput1[1]='30'
+        IF INCLinput1[2] LT 5 then INCLinput1[2]='5'
+        IF INCLinput1[2] GT 60 then INCLinput1[2]='60'
         PAinput1=['PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                   ' PA_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
                   string((catPA[i])+catPAdev[i]+30.),string((catPA[i])-catPAdev[i]-30),string(2.5),string(0.1),string(0.05),string(0.01),'3','70','70']
@@ -2398,11 +2406,11 @@ noconfig:
                     ' INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
                     string(catinc[i]+catincdev[i]+10),string(catinc[i]-catincdev[i]-10),string(0.2),string(0.1),string(1.),string(0.1),'3','70','70']
 
-        IF INCLinput1[1] GT 90. then INCLinput1[1]=90
-        IF INCLinput1[1] LT 30 then INCLinput1[1]=30
+        IF INCLinput1[1] GT 90. then INCLinput1[1]='90'
+        IF INCLinput1[1] LT 30 then INCLinput1[1]='30'
         
-        IF INCLinput1[2] LT 0.1 then INCLinput1[2]=0.1
-        IF INCLinput1[2] GT 60 then INCLinput1[2]=60
+        IF INCLinput1[2] LT 0.1 then INCLinput1[2]='5'
+        IF INCLinput1[2] GT 60 then INCLinput1[2]='60'
                                 ;and the vrot values
         
         VROTmax=catmaxrotdev[i]
@@ -2561,11 +2569,11 @@ noconfig:
                           string(catinc[i]+catincdev[i]+20),string(catinc[i]-catincdev[i]-20),string(0.2),string(0.1),string(1.),string(0.1),'3','70','70']
            END
         endcase
-        IF INCLinput1[1] GT 90. then INCLinput1[1]=90
-        IF INCLinput1[1] LT 30 then INCLinput1[1]=30
+        IF INCLinput1[1] GT 90. then INCLinput1[1]='90'
+        IF INCLinput1[1] LT 30 then INCLinput1[1]='30'
         IF catinc[i] LT 75 then begin
-           IF INCLinput1[2] LT 0.1 then INCLinput1[2]=0.1
-           IF INCLinput1[2] GT 60 then INCLinput1[2]=60
+           IF INCLinput1[2] LT 5 then INCLinput1[2]='5'
+           IF INCLinput1[2] GT 60 then INCLinput1[2]='60'
         endif
                                 ;and the vrot values
         VROTmax=catmaxrotdev[i]
@@ -3174,7 +3182,22 @@ noconfig:
                     printf,66,linenumber()+"The new amount of rings ("+strtrim(string(fix(newrings)),2)+") deviates too much from the sofia estimate ("+string(sofiarings)+")."
                     close,66
                  ENDIF
-                 newrings=norings[0] 
+                 IF newrings LT norings[0] then begin
+                    IF norings[0] GT sofiarings-2 then newrings=norings[0]-1 else newrings=sofiarings-2
+                    IF size(log,/TYPE) EQ 7 then begin
+                       openu,66,log,/APPEND
+                       printf,66,linenumber()+"We set the number of rings to "+strtrim(string(fix(newrings)),2)
+                       close,66
+                    ENDIF
+                 endif Else begin
+                    IF norings[0] LT sofiarings+2 then newrings=norings[0]+1 else newrings=sofiarings+2
+                    IF size(log,/TYPE) EQ 7 then begin
+                       openu,66,log,/APPEND
+                       printf,66,linenumber()+"We set the number of rings to "+strtrim(string(fix(newrings)),2)
+                       close,66
+                    ENDIF
+                 ENDELSE
+             
               ENDIF
            ENDIF
            IF newrings LT norings[0] AND constring NE 1 then begin 
@@ -3351,9 +3374,9 @@ noconfig:
            print,linenumber()+"We shall now smooth the rotation curve."
         ENDELSE
         IF VROTarr[1] LT 120. AND VROTarr[2] LT 120. then begin
-           revised_regularisation_rot,VROTarr,SBRarr, firstfitvalues[*,9],/REVERSE,fixedrings=norings[0]-fix(norings[0]*3./4.),difference=verror,cutoff=cutoff,arctan=0.,order=polorder,max_par=VROTmax,min_par=channelwidth,log=log
+           revised_regularisation_rot,VROTarr,SBRarr, firstfitvalues[*,9],/REVERSE,fixedrings=norings[0]-fix(norings[0]*3./4.),difference=verror,cutoff=cutoff,arctan=0.,order=polorder,max_par=VROTmax,min_par=channelwidth,log=log,/debug
         ENDIF ELSE Begin
-           revised_regularisation_rot,VROTarr,SBRarr, firstfitvalues[*,9],/REVERSE,fixedrings=norings[0]-fix(norings[0]*3./4.),difference=verror,cutoff=cutoff,arctan=0.,order=polorder,max_par=VROTmax,min_par=channelwidth,/NOCENTRAL,log=log
+           revised_regularisation_rot,VROTarr,SBRarr, firstfitvalues[*,9],/REVERSE,fixedrings=norings[0]-fix(norings[0]*3./4.),difference=verror,cutoff=cutoff,arctan=0.,order=polorder,max_par=VROTmax,min_par=channelwidth,/NOCENTRAL,log=log,/debug
         ENDELSE
         tmp0check=WHERE(VROTarr LT 0)
         IF tmp0check[0] NE -1 then VROTarr[tmp0check]=3.*channelwidth
@@ -3693,9 +3716,9 @@ noconfig:
                                 ;inclination
      IF catinc[i] GT 80 then begin
         INCLinput1[1]=catinc[i]+catincdev[i]
-        IF INCLinput1[1] GT 90. then INCLinput1[1]=90
+        IF INCLinput1[1] GT 90. then INCLinput1[1]='90'
         INCLinput1[2]=catinc[i]-catincdev[i] 
-        IF INCLinput1[2] LT 0.1 then INCLinput1[2]=0.1
+        IF INCLinput1[2] LT 5 then INCLinput1[2]='5'
      ENDIF
                                 ;PA
      PAinput2=[PAinput1,' ']
@@ -3939,7 +3962,13 @@ noconfig:
                                 ;last ring that isn't affected
      boundaryadjustment=0.
      lastreliablerings=n_elements(INCLang)
-     IF double(INCLinput2[1]) LT 90. OR  double(INCLinput3[1]) LT 90.  OR double(INCLinput1[1]) LT 90. AND norings[0] GT 4 then begin
+     INCLrings=0
+     PArings=0
+
+     print,'edges'
+     print,INCLinput1[1],INCLinput2[1],INCLinput3[1]
+     print,INCLinput1[2],INCLinput2[2],INCLinput3[2]
+     IF double(INCLinput1[1]) LT 90. OR double(INCLinput2[1]) LT 90. OR  double(INCLinput3[1]) LT 90.  AND norings[0] GT 4 then begin
         tmp=WHERE(INCLang GE (double(INCLinput2[1])-double(INCLinput2[3])))
         tmp2=WHERE(INCLang2 GE (double(INCLinput3[1])-double(INCLinput3[3])))      
         IF n_elements(tmp) GE 2 OR n_elements(tmp2) GT 2 then begin
@@ -3950,9 +3979,10 @@ noconfig:
            IF tmp[0] EQ -1 then tmp[0]=n_elements(INCLang)
            IF tmp2[0] EQ -1 then tmp2[0]=n_elements(INCLang)
            tmp=MAX([tmp,tmp2],min=lastreliablerings)
+           INCLrings++
         ENDIF
      ENDIF
-     IF double(INCLinput1[2]) GT 0. OR double(INCLinput2[2]) GT 0 OR double(INCLinput3[2]) GT 0 then begin
+     IF double(INCLinput1[2]) GT 5 OR double(INCLinput2[2]) GT 5 OR double(INCLinput3[2]) GT 5 then begin
         IF norings[0] LE 4 then begin
            tmp=WHERE(INCLang LE (double(INCLinput1[2])+double(INCLinput1[3])))
            tmp2=WHERE(INCLang2 LE (double(INCLinput1[2])+double(INCLinput1[3])))
@@ -3962,15 +3992,18 @@ noconfig:
         ENDELSE
         IF n_elements(tmp) GE 2 OR n_elements(tmp2) GT 2 then begin
            boundaryadjustment=1
-           IF double(INCLinput1[2]-5.) GT 0. then INCLinput1[2]=strtrim(strcompress(string(double(INCLinput1[2]-5.))),2) else INCLinput1[2]='0.'
-           IF double(INCLinput2[2]-5.) GT 0. then INCLinput2[2]=strtrim(strcompress(string(double(INCLinput2[2]-5.))),2) else INCLinput2[2]='0.'
-           IF double(INCLinput3[2]-5.) GT 0. then INCLinput3[2]=strtrim(strcompress(string(double(INCLinput3[2]-5.))),2) else INCLinput3[2]='0.'
+           IF double(INCLinput1[2]-5.) GT 5. then INCLinput1[2]=strtrim(strcompress(string(double(INCLinput1[2]-5.))),2) else INCLinput1[2]='5.'
+           IF double(INCLinput2[2]-5.) GT 5. then INCLinput2[2]=strtrim(strcompress(string(double(INCLinput2[2]-5.))),2) else INCLinput2[2]='5.'
+           IF double(INCLinput3[2]-5.) GT 5. then INCLinput3[2]=strtrim(strcompress(string(double(INCLinput3[2]-5.))),2) else INCLinput3[2]='5.'
            IF tmp[0] EQ -1 then tmp[0]=n_elements(INCLang)
            IF tmp2[0] EQ -1 then tmp2[0]=n_elements(INCLang)
            tmp=MAX([tmp,tmp2,lastreliablerings],min=lastreliablerings)
+           INCLrings++
         ENDIF
      ENDIF
-     IF ABS(double(PAinput1[1])-double(PAinput1[2])) LT 400. OR  ABS(double(PAinput2[1])-double(PAinput2[2])) LT 400 OR  ABS(double(PAinput3[1])-double(PAinput3[2])) LT 400 AND norings[0] GT 4 then begin
+     print,PAinput1[1],PAinput2[1],PAinput3[1]
+     print,PAinput1[2],PAinput2[2],PAinput3[2]
+     IF ABS(double(PAinput1[1])-double(PAinput1[2])) LT 400 OR ABS(double(PAinput2[1])-double(PAinput2[2])) LT 400 OR  ABS(double(PAinput3[1])-double(PAinput3[2])) LT 400 AND norings[0] GT 4 then begin
         tmp=WHERE(PAang GE (double(PAinput2[1])-double(PAinput2[3])))
         tmp2=WHERE(PAang2 GE (double(PAinput2[1])-double(PAinput2[3])))
         IF n_elements(tmp) GE 2 OR n_elements(tmp2) GT 2 then begin
@@ -3978,6 +4011,7 @@ noconfig:
            PAinput1[1]=strtrim(strcompress(string(double(PAinput1[1]+10.))),2)
            PAinput2[1]=strtrim(strcompress(string(double(PAinput2[1]+10.))),2)
            PAinput3[1]=strtrim(strcompress(string(double(PAinput3[1]+10.))),2)
+           PArings++
         ENDIF
         IF norings[0] LE 4 or finishafter EQ 1.1 then begin
            tmp=WHERE(PAang LE (double(PAinput1[2])+double(PAinput1[3])))
@@ -3994,26 +4028,30 @@ noconfig:
            IF tmp[0] EQ -1 then tmp[0]=n_elements(INCLang)
            IF tmp2[0] EQ -1 then tmp2[0]=n_elements(INCLang)
            tmp=MAX([tmp,tmp2,lastreliablerings],min=lastreliablerings)
+           PArings++
         ENDIF
      ENDIF
                                 ;If we determined that the boundaries should be updated than we need
                                 ;to check SBR and reset the values, as
                                 ;well as smooth the INCL, PAand VROT
      IF boundaryadjustment then begin
+        IF lastreliablerings EQ 0 then lastreliablerings=1
         for j=n_elements(SBRarr)-1,0,-1 do begin
            IF SBRarr[j] LE cutoff[j] then begin
               SBRarr[j]=cutoff[j]*2.
            ENDIF else break
         endfor
-        IF lastreliablerings EQ 0 then lastreliablerings=1
+       
         IF lastreliablerings LT n_elements(SBRarr)-1 then begin
-           INCLang[lastreliablerings:n_elements(SBRarr)-1]=INCLang[lastreliablerings-1]
-           PAang[lastreliablerings:n_elements(SBRarr)-1]=PAang[lastreliablerings-1]
+           ;It is also important to give the outer rings a lot of flux
+           SBRarr[lastreliablerings:n_elements(SBRarr)-1]=cutoff[lastreliablerings:n_elements(SBRarr)-1]*6.
+           INCLang[lastreliablerings:n_elements(SBRarr)-1]=INCLang[lastreliablerings-1+INCLrings]
+           PAang[lastreliablerings:n_elements(SBRarr)-1]=PAang[lastreliablerings-1+PArings]
            IF lastreliablerings EQ 1 then VROTarr[lastreliablerings:n_elements(SBRarr)-1]=MEAN(VROTarr[1:n_elements(VROTarr)-1]) else VROTarr[lastreliablerings:n_elements(SBRarr)-1]=VROTarr[lastreliablerings-1]
            comin=[[PAang],[INCLang]]
            errors=[[0.],[0.]]
            
-           revised_regularisation_com,comin,SBRarror,RADarr,fixedrings=3,difference=[1.,8.*exp(-catinc[i]^2.5/10^3.5)+2],cutoff=cutoff,arctan=1,order=polorder,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[1./4.,1.],error=errors ,gdlidl=gdlidl,log=log
+           revised_regularisation_com,comin,SBRarror,RADarr,fixedrings=3,difference=[1.,8.*exp(-catinc[i]^2.5/10^3.5)+2],cutoff=cutoff,arctan=1,order=polorder,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[1./4.,1.],error=errors ,gdlidl=gdlidl,log=log,/debug
            PAang=comin[*,0]
            INCLang=comin[*,1]
            sigmapa1=errors[*,0]
@@ -4032,12 +4070,14 @@ noconfig:
         endfor
        
         IF lastreliablerings LT n_elements(SBRarr)-1 then begin
-           INCLang2[lastreliablerings:n_elements(SBRarr2)-1]=INCLang2[lastreliablerings-1]
-           PAang2[lastreliablerings:n_elements(SBRarr2)-1]=PAang2[lastreliablerings-1]
+             ;It is also important to give the outer rings a lot of flux
+           SBRarr2[lastreliablerings:n_elements(SBRarr2)-1]=cutoff[lastreliablerings:n_elements(SBRarr2)-1]*6.
+           INCLang2[lastreliablerings:n_elements(SBRarr2)-1]=INCLang2[lastreliablerings-1+INCLrings]
+           PAang2[lastreliablerings:n_elements(SBRarr2)-1]=PAang2[lastreliablerings-1+PArings]
            IF lastreliablerings EQ 1 then VROTarr2[lastreliablerings:n_elements(SBRarr)-1]=MEAN(VROTarr2[1:n_elements(VROTarr2)-1]) else VROTarr2[lastreliablerings:n_elements(SBRarr2)-1]=VROTarr2[lastreliablerings-1]
             comin=[[PAang2],[INCLang2]]
            errors=[[0.],[0.]]
-           revised_regularisation_com,comin,SBRarr2or,RADarr,fixedrings=3,difference=[1.,8.*exp(-catinc[i]^2.5/10^3.5)+2],cutoff=cutoff,arctan=1,order=polorder,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[1./4.,1.],error=errors ,gdlidl=gdlidl,log=log
+           revised_regularisation_com,comin,SBRarr2or,RADarr,fixedrings=3,difference=[1.,8.*exp(-catinc[i]^2.5/10^3.5)+2],cutoff=cutoff,arctan=1,order=polorder,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[1./4.,1.],error=errors ,gdlidl=gdlidl,log=log,/debug
            PAang2=comin[*,0]
            INCLang2=comin[*,1]
            sigmapa2=errors[*,0]
@@ -4053,9 +4093,9 @@ noconfig:
         tmpSBR=(SBRarror+SBRarr2or)/2.
         verror=MAX([5.,channelwidth/2.*(1.+vresolution)/SQRT(sin(catinc[i]*!DtoR))])
         IF double(VROTarr[1]) LT 120. AND  double(VROTarr[2]) LT 120. then begin
-           revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=1,order=polorder,error=sigmarot,log=log 
+           revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=1,order=polorder,error=sigmarot,log=log,/debug 
         ENDIF ELSE BEGIN
-           revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=1,/NOCENTRAL,error=sigmarot,log=log 
+           revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=1,/NOCENTRAL,error=sigmarot,log=log,/debug 
         ENDELSE
 
         stringVROT='VROT= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
@@ -4149,7 +4189,7 @@ noconfig:
            printf,66,linenumber()+"The inner" +string(fixedrings)+" rings are fixed."
            Close,66
         ENDIF
-        revised_regularisation_com,comin,SBRarror,RADarr,fixedrings=3,difference=[padiv,8.*exp(-catinc[i]^2.5/10^3.5)+2.],cutoff=cutoff,arctan=prefunc,order=polorder1,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[accuracy/4.,accuracy],error=errors ,gdlidl=gdlidl,log=log,sloped=prevslopedrings[1]
+        revised_regularisation_com,comin,SBRarror,RADarr,fixedrings=3,difference=[padiv,8.*exp(-catinc[i]^2.5/10^3.5)+2.],cutoff=cutoff,arctan=prefunc,order=polorder1,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[accuracy/4.,accuracy],error=errors ,gdlidl=gdlidl,log=log,sloped=prevslopedrings[1],/debug
            
                             
         PAang=comin[*,0]
@@ -4172,7 +4212,7 @@ noconfig:
            printf,66,linenumber()+"The inner" +string(fixedrings)+" rings are fixed."
            Close,66
         ENDIF
-        revised_regularisation_com,comin,SBRarr2or,RADarr,fixedrings=3,difference=[padiv,8.*exp(-catinc[i]^2.5/10^3.5)+2],cutoff=cutoff,arctan=prefunc,order=polorder2,max_par=[PAinput3[1],INCLinput3[1]],min_par=[PAinput3[2],INCLinput3[2]],accuracy=[accuracy/4.,accuracy],error=errors ,gdlidl=gdlidl,log=log,sloped=prevslopedrings[1]
+        revised_regularisation_com,comin,SBRarr2or,RADarr,fixedrings=3,difference=[padiv,8.*exp(-catinc[i]^2.5/10^3.5)+2],cutoff=cutoff,arctan=prefunc,order=polorder2,max_par=[PAinput3[1],INCLinput3[1]],min_par=[PAinput3[2],INCLinput3[2]],accuracy=[accuracy/4.,accuracy],error=errors ,gdlidl=gdlidl,log=log,sloped=prevslopedrings[1],/debug
                             
         PAang2=comin[*,0]
         INCLang2=comin[*,1]
@@ -4277,7 +4317,7 @@ noconfig:
            set_vrotv6,vrotslopinput,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,start=start,centralexclude=centralexclude,finish_after=finishafter,slope=slope 
            INCLinputall=['INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' '+$
                     'INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
-                    '90','0',string(0.5),string(0.1),string(0.5),string(0.1),'3','70','70'] 
+                    '90','5',string(0.5),string(0.1),string(0.5),string(0.1),'3','70','70'] 
            Writefittingvariables,tirificsecond,INCLinputall,vrotslopinput
            openw,1,maindir+'/'+catdirname[i]+'/tirific.def'
            for index=0,n_elements(tirificsecond)-1 do begin
@@ -4309,6 +4349,7 @@ noconfig:
      
         vmaxdev=MAX([30.,7.5*channelwidth*(1.+vresolution)])
         verror=MAX([5.,channelwidth/2.*(1.+vresolution)/SQRT(sin(INCLang[0]*!DtoR))])
+        IF ~(FINITE(verror)) then verror=channelwidth/2.*(1.+vresolution)/SQRT(sin(5.*!DtoR))
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+"This is VROT."
@@ -4325,9 +4366,9 @@ noconfig:
                                 ;we want to take the central ring into
                                 ;account otherwise not
         IF double(VROTarr[1]) LT 120. AND  double(VROTarr[2]) LT 120. then begin
-           revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=prefunc,order=polorder,max_par=tmphigh[0],min_par=tmplow[0],accuracy=accuracy,error=sigmarot,log=log 
+           revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=prefunc,order=polorder,max_par=tmphigh[0],min_par=tmplow[0],accuracy=accuracy,error=sigmarot,log=log,/debug 
         ENDIF ELSE BEGIN
-           revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=prefunc,/NOCENTRAL,order=polorder,max_par=tmphigh[0],min_par=tmplow[0],accuracy=accuracy,error=sigmarot,log=log 
+           revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=prefunc,/NOCENTRAL,order=polorder,max_par=tmphigh[0],min_par=tmplow[0],accuracy=accuracy,error=sigmarot,log=log,/debug 
         ENDELSE
         tmp0check=WHERE(VROTarr LT 0)
         IF tmp0check[0] NE -1 then VROTarr[tmp0check]=tmplow[0]
@@ -4441,6 +4482,32 @@ noconfig:
            printf,66,linenumber()+"We found this as rings = "+strtrim(string(fix(norings[0])),2)+"  new="+strtrim(string(fix(newrings)),2)
            close,66
         ENDIF
+        IF NOT sofiafail then begin
+           IF newrings GT sofiarings+3 OR newrings LT sofiarings-3 then begin        
+              IF size(log,/TYPE) EQ 7 then begin
+                 openu,66,log,/APPEND
+                 printf,66,linenumber()+"The new amount of rings ("+strtrim(string(fix(newrings)),2)+") deviates too much from the sofia estimate ("+string(sofiarings)+")."
+                 close,66
+              ENDIF
+              IF newrings LT norings[0] then begin
+                 IF norings[0] GT sofiarings-3 then newrings=norings[0]-1 else newrings=sofiarings-3
+                 IF size(log,/TYPE) EQ 7 then begin
+                    openu,66,log,/APPEND
+                    printf,66,linenumber()+"We set the number of rings to "+strtrim(string(fix(newrings)),2)
+                    close,66
+                 ENDIF
+              endif Else begin
+                 IF norings[0] LT sofiarings+3 then newrings=norings[0]+1 else newrings=sofiarings+3
+                 IF size(log,/TYPE) EQ 7 then begin
+                    openu,66,log,/APPEND
+                    printf,66,linenumber()+"We set the number of rings to "+strtrim(string(fix(newrings)),2)
+                    close,66
+                 ENDIF
+              ENDELSE
+              
+           ENDIF
+        ENDIF
+        
                                 ;Not previously fitted. If it has been
                                 ;than fix to this number of rings.
         tmp=WHERE(prevrings EQ newrings)
@@ -4620,7 +4687,7 @@ noconfig:
               printf,66,linenumber()+"The inner" +string(fixedrings)+" rings are fixed."
               Close,66
            ENDIF
-           revised_regularisation_com,comin,tmpsbr,RADarr,fixedrings=fixedrings,difference=[2.,6.*exp(-catinc[i]^2.5/10^3.5)+4.],cutoff=cutoff,arctan=prefunc,order=polorder,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],gdlidl=gdlidl,log=log,/extending 
+           revised_regularisation_com,comin,tmpsbr,RADarr,fixedrings=fixedrings,difference=[2.,6.*exp(-catinc[i]^2.5/10^3.5)+4.],cutoff=cutoff,arctan=prefunc,order=polorder,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],gdlidl=gdlidl,log=log,/extending,/debug 
         
            tmp2=PAang
            PAang=dblarr(n_elements(RADarr))
@@ -4641,7 +4708,7 @@ noconfig:
               printf,66,linenumber()+"The inner" +string(fixedrings)+" rings are fixed."
               Close,66
            ENDIF
-           revised_regularisation_com,comin,tmpsbr2,RADarr,fixedrings=fixedrings,difference=[2.,6.*exp(-catinc[i]^2.5/10^3.5)+4.],cutoff=cutoff,arctan=prefunc,order=polorder2,max_par=[PAinput3[1],INCLinput3[1]],min_par=[PAinput3[2],INCLinput3[2]],gdlidl=gdlidl,log=log,/extending 
+           revised_regularisation_com,comin,tmpsbr2,RADarr,fixedrings=fixedrings,difference=[2.,6.*exp(-catinc[i]^2.5/10^3.5)+4.],cutoff=cutoff,arctan=prefunc,order=polorder2,max_par=[PAinput3[1],INCLinput3[1]],min_par=[PAinput3[2],INCLinput3[2]],gdlidl=gdlidl,log=log,/extending,/debug 
           
            tmp2=PAang2
            PAang2=dblarr(n_elements(RADarr))
@@ -4889,7 +4956,7 @@ noconfig:
                                 ;INCL
         INCLinput1=['INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' '+$
                     'INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
-                    '90','0',string(0.5),string(0.1),string(0.5),string(0.1),'3','70','70']
+                    '90','5',string(0.5),string(0.1),string(0.5),string(0.1),'3','70','70']
  
         VROTinput1=['VROT 2:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' VROT_2 2:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)$
                     ,'500',string(channelwidth),string(channelwidth*0.5),string(0.1*channelwidth),string(0.5*channelwidth),string(0.1*channelwidth),'3','70','70',' ']

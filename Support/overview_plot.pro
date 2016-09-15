@@ -188,8 +188,18 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
            oplot,ModArrays[*,0],ModArrays[*,2],psym=8,color=204,linestyle=2,symsize=ssize
         ENDIF
      ENDIF ELSE begin
-        plotvariable=Arrays[tmp,plotstart[i,0]]
-        plotVariableErr=Arrays[tmp,plotstart[i,0]+plotstart[i,2]]
+        IF plotstart[i,0] NE plotstart[i,1] then begin
+           plotvariable=Arrays[tmp,plotstart[i,0]]
+           plotVariableErr=Arrays[tmp,plotstart[i,0]+plotstart[i,2]]
+        ENDIF ELSE BEGIN
+           IF tmp[n_elements(tmp)-1] GT tmp2[n_elements(tmp2)-1] then begin
+              plotvariable=Arrays[tmp,plotstart[i,0]]
+              plotVariableErr=Arrays[tmp,plotstart[i,0]+plotstart[i,2]]
+           ENDIF ELSE BEGIN
+              plotvariable=Arrays[tmp2,plotstart[i,0]]
+              plotVariableErr=Arrays[tmp2,plotstart[i,0]+plotstart[i,2]]
+           ENDELSE
+        ENDELSE
         loadct,0,/silent
         IF TOTAL(plotVariableErr) NE 0. then begin
            xerr=dblarr(n_elements(plotVariableErr))

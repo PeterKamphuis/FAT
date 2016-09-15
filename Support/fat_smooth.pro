@@ -1,4 +1,4 @@
-Function FAT_SMOOTH,map,sigma,GAUSSIAN=Gaussian,BOX=box
+Function FAT_SMOOTH,map,sigma,GAUSSIAN=Gaussian,BOX=box,MASK=mask
 
 ;+
 ; NAME:
@@ -24,7 +24,8 @@ Function FAT_SMOOTH,map,sigma,GAUSSIAN=Gaussian,BOX=box
 ;
 ; KEYWORD PARAMETERS:
 ;       /GAUSSIAN - Gaussian Smoothing
-;       /BOX      - Box averaging  
+;       /BOX      - Box averaging
+;       /MASK     - Input is a mask cube instead of image.     
 ;
 ; OUTPUTS:
 ;       Result = the smoothed map 
@@ -38,7 +39,8 @@ Function FAT_SMOOTH,map,sigma,GAUSSIAN=Gaussian,BOX=box
 ; EXAMPLE:
 ;      
 ;
-; MODIFICATION HISTORY: 
+; MODIFICATION HISTORY:
+;               10-09-2016: Added a mask expansion routine  
 ;       Written 29-12-2016 by P.Kamphuis
 ;
 ; NOTE:
@@ -46,8 +48,7 @@ Function FAT_SMOOTH,map,sigma,GAUSSIAN=Gaussian,BOX=box
 ;-
   
 mapor=map
-print,'We are doing a fat_smooth',sigma
-if not keyword_set(gaussian) and not keyword_set(box) then gaussian=1
+if not keyword_set(gaussian) and not keyword_set(box) and not keyword_set(mask) then gaussian=1
 
 if keyword_set(gaussian) then begin
    xgauss=fltarr(fix(3*2.3548*sigma))
@@ -98,5 +99,16 @@ if keyword_set(box) then begin
    endfor
    return,map
 endif
-   
+if keyword_set(mask) then begin
+ 
+   for z=0,n_elements(map[0,0,*])-1 do begin
+      for x=3,n_elements(map[*,0,0])-4 do begin
+         for y=3,n_elements(map[0,*,0])-4 do begin
+            IF mapor[x,y,z] EQ 1 then map[x-sigma:x+sigma,y-sigma:y+sigma,z]=1
+         endfor
+      endfor
+   endfor
+   return,map
+endif
+
 end
