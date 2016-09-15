@@ -1068,7 +1068,7 @@ noconfig:
                                 ;If we do not have a noise map we make
                                 ;one
         IF veltype EQ 'M/S' then channelwidthkm=channelwidth/1000. else channelwidthkm=channelwidth
-        noisemap=fltarr(n_elements(mask[*,0,0]),n_elements(mask[*,0,0]))
+        noisemap=fltarr(n_elements(mask[*,0,0]),n_elements(mask[0,*,0]))
         for j=0,n_elements(mask[0,0,*])-1 do begin
            noisemap=noisemap+(mask[*,*,j]*catnoise[i]*channelwidthkm)^2
         endfor
