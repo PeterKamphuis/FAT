@@ -10,7 +10,7 @@ Requirements
 ------------
 The code requires full installation of:
 
-    IDL 7.0 or higher with astrolib (http://idlastro.gsfc.nasa.gov/, note the Coyote Library Dependencies for newer versions)
+    IDL 7.0 or higher with astrolib (http://idlastro.gsfc.nasa.gov/, note the Coyote Library Dependencies for newer versions) or GDL 0.9.6 or higher
     TiRiFiC v2.2.3 or higher (http://gigjozsa.github.io/tirific/download_and_installation.html)
     SoFiA v 0.4.0 or higher  (https://github.com/SoFiA-Admin/SoFiA)
     Standard unix commands pwd, mkdir, rm, cp, ls, python
@@ -18,7 +18,7 @@ The code requires full installation of:
 IDL needs to be able to execute tirific, sofia, rename and the standard unix commands from a spawn command. All other dependencies should be in IDL and available with the normal IDL distributions. 
 
 To run under GDL you will additionally need the package mpfit for GDL by Ole Streicher (https://packages.debian.org/sid/all/gdl-mpfit/download)
-The GDL version is tested under Ubuntu and runs after running the command
+The GDL version is tested under Ubuntu 16.04 and runs after running the command
 
 	sudo apt-get install gnudatalanguage gdl-astrolib gdl-mpfit libplplot-dev
 
@@ -26,7 +26,7 @@ Under ubuntu the astrolib package and mpfit package were not found after install
 
 	!PATH=!PATH+':usr/share/gnudatalanguage/astrolib:usr/share/gnudatalanguage/coyote:usr/share/gnudatalanguage/mpfit'
 
-Please note that due to the limited availability of the Z-buffer in GDL FAT will create a small widget window for plotting when run under GDL.
+Please note that due to the limited availability of the Z-buffer in GDL FAT will create a small widget window for plotting when run under GDL. This also means that GDL should run PLplot with wxwidgets properly.
 
 ------------
 !!!!-- The version in the Branch FAT-GDL-Beta is under development and not guaranteed to give the results as given in Kamphuis et al. 2015. Use with extreme caution and please file bug reports. --!!!!
@@ -48,11 +48,11 @@ Running FAT
 -----------
 FAT is currently run under IDL. It is called as a regular IDL program, i.e. in IDL:
 
-    IDL >.r FAT_vx.x
+    IDL >.r FAT_EXP_2.pro
 
 where x.x is the version number
 
-    IDL >FAT,configfile='pathtodir/configfile.config',support='pathtosupportfilesdir'
+    IDL >FAT_EXP_2,configuration_file='pathtodir/configfile.config',support='pathtosupportfilesdir'
     
 All information that the code needs about output directories fitting steps and input parameters are taken from the configfile.
 If a config file is not given it will look for the file 'FAT_INPUT.config' in the directory from which FAT is run.
