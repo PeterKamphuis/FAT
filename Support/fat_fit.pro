@@ -180,11 +180,14 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
                                 ;flat.
                     
                     if locmax[n_elements(locmax)-1] GT n_elements(yor)/2. then newy[0:fixedrings]=TOTAL(y[0:fixedrings])/n_elements(y[0:fixedrings])
+                    endch=floor(n_elements(yor)/3.)
+                    IF endch GT 3 then endch=3
                     decline=0
-                    for ch=1,3 do begin
-                       if newy[ch-1] lt newy[ch] then decline=ch else break
+                    for ch=1,endch do begin
+                       if newy[ch-1] lt newy[ch]*0.9 then decline=ch else break
                     endfor
-                    if decline gt 0. then newy[0:ch-1]=newy[ch]
+                    if decline gt 0. then newy[0:ch-1]=newy[ch]*0.9
+                  
                  ENDELSE
               ENDIF
               
@@ -301,6 +304,14 @@ skippenalize:
                                 ;flat.
                
               if locmax[n_elements(locmax)-1] GT n_elements(yor)/2. then newy[0:fixedrings]=TOTAL(y[0:fixedrings])/n_elements(y[0:fixedrings])
+              endch=floor(n_elements(yor)/3.)
+              IF endch GT 3 then endch=3
+              decline=0
+              for ch=1,endch do begin
+                 if newy[ch-1] lt newy[ch]*0.9 then decline=ch else break
+              endfor
+              if decline gt 0. then newy[0:ch-1]=newy[ch]*0.9
+             
            ENDELSE
         ENDIF
           
@@ -349,11 +360,14 @@ skippenalize:
                                 ;flat.
            
            if locmax[n_elements(locmax)-1] GT n_elements(yor)/2. then newy[0:fixedrings]=TOTAL(y[0:fixedrings])/n_elements(y[0:fixedrings])
+           endch=floor(n_elements(yor)/3.)
+           IF endch GT 3 then endch=3
            decline=0
-           for ch=1,3 do begin
-              if newy[ch-1] lt newy[ch] then decline=ch else break
+           for ch=1,endch do begin
+              if newy[ch-1] lt newy[ch]*0.9 then decline=ch else break
            endfor
-           if decline gt 0. then newy[0:ch-1]=newy[ch]
+           if decline gt 0. then newy[0:ch-1]=newy[ch]*0.9
+          
         ENDELSE
      ENDIF
                                 ;calculate chi-squares    

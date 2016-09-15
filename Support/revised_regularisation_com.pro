@@ -650,13 +650,15 @@ refit:
                                 ;If all reliable rings are fixed we
                                 ;can skip the fitting of polynomials
                                 ;and just want to use a straight line
+                                ;the same if at this point all values are the same
  
   newPA=PA
   newPA[*]=0.
   coefffound=dblarr(6,n_Elements(PA[0,*]))
   for par=0,n_Elements(PA[0,*])-1 do begin
      newPAcoeff=0.
-     IF fixedrings[par] GE cutoffring+1 then begin           
+     tmp=WHERE(PA[0,par] EQ PA[*,par])
+     IF fixedrings[par] GE cutoffring+1 OR n_elements(tmp) EQ n_elements(PA[*,par]) then begin           
         IF keyword_set(debug) then begin
            print,'As all rings above the cutoff are fixed we fit a straight line'             
         ENDIF
