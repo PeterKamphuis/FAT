@@ -1025,19 +1025,19 @@ noconfig:
    
 
                                 ;Convert pixel coordinates to Degrees
-     DECdeg=sxpar(header,'CRVAL2')+(DECpix-sxpar(header,'CRPIX2'))*sxpar(header,'CDELT2')
-     RAdeg=sxpar(header,'CRVAL1')+(RApix-sxpar(header,'CRPIX1'))*sxpar(header,'CDELT1')/COS(DECdeg*(!pi/180.))
-     DECboundeg=sxpar(header,'CRVAL2')+(DECpixboun-sxpar(header,'CRPIX2'))*sxpar(header,'CDELT2')
-     RAboundeg=sxpar(header,'CRVAL1')+((RApixboun-sxpar(header,'CRPIX1'))*sxpar(header,'CDELT1'))/COS(DECboundeg*(!pi/180.))
+     DECdeg=sxpar(header,'CRVAL2')+(DECpix-sxpar(header,'CRPIX2')+1)*sxpar(header,'CDELT2')
+     RAdeg=sxpar(header,'CRVAL1')+(RApix-sxpar(header,'CRPIX1')+1)*sxpar(header,'CDELT1')/COS(DECdeg*(!pi/180.))
+     DECboundeg=sxpar(header,'CRVAL2')+(DECpixboun-sxpar(header,'CRPIX2')+1)*sxpar(header,'CDELT2')
+     RAboundeg=sxpar(header,'CRVAL1')+((RApixboun-sxpar(header,'CRPIX1')+1)*sxpar(header,'CDELT1'))/COS(DECboundeg*(!pi/180.))
      RAboundeg=RAboundeg[SORT(RAboundeg)]
      DECboundeg=DECboundeg[SORT(DECboundeg)]
      IF strupcase(veltype) EQ 'M/S' then begin
-        catVSYS[i]=sxpar(header,'CRVAL3')/1000.+(VSYSpix-sxpar(header,'CRPIX3'))*sxpar(header,'CDELT3')/1000.
-        ROTboun=sxpar(header,'CRVAL3')/1000.+(ROTpixboun-sxpar(header,'CRPIX3'))*sxpar(header,'CDELT3')/1000.
+        catVSYS[i]=sxpar(header,'CRVAL3')/1000.+(VSYSpix-sxpar(header,'CRPIX3')+1)*sxpar(header,'CDELT3')/1000.
+        ROTboun=sxpar(header,'CRVAL3')/1000.+(ROTpixboun-sxpar(header,'CRPIX3')+1)*sxpar(header,'CDELT3')/1000.
         ROTboun=ROTboun[SORT(ROTboun)]
      ENDIF else begin
-        catVSYS[i]=sxpar(header,'CRVAL3')+(VSYSpix-sxpar(header,'CRPIX3'))*sxpar(header,'CDELT3')
-        ROTboun=sxpar(header,'CRVAL3')+(ROTpixboun-sxpar(header,'CRPIX3'))*sxpar(header,'CDELT3')
+        catVSYS[i]=sxpar(header,'CRVAL3')+(VSYSpix-sxpar(header,'CRPIX3')+1)*sxpar(header,'CDELT3')
+        ROTboun=sxpar(header,'CRVAL3')+(ROTpixboun-sxpar(header,'CRPIX3')+1)*sxpar(header,'CDELT3')
         ROTboun=ROTboun[SORT(ROTboun)]
      ENDELSE
      mask=readfits(maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'.fits',headermask,/NOSCALE,/SILENT)
