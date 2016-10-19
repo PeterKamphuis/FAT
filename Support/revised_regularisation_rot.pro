@@ -275,7 +275,8 @@ restartall:
      tmp=MAX(ratio,min=norm)
      tmp=WHERE(ratio EQ norm)
      ratio=ratio/norm
-     ratio[0:tmp]=1
+;     ratio[0:tmp]=1
+     IF tmp[0] LT n_elements(ratio)-1 then ratio[tmp[0]+1:n_elements(ratio)-1]=1.
      for i=0,n_elements(ddiv)-1 do errors[*]=ddiv*ratio[*]
      tmp=WHERE(FINITE(errors) EQ 0.)
      maxer=MAX(errors)
@@ -412,7 +413,7 @@ restartall:
            errors[j+1]=errors[j+1]*fact
         ENDWHILE
      endfor
-     
+     IF SBR[0] LT cutoff[0] then errors[0]=MAX([MAX(errors),2.*ddiv])
   ENDELSE
   IF keyword_set(debug) then begin
      print,'The final errors are:'
@@ -532,11 +533,19 @@ refit:
   newendorder:
   IF endorder GT maxendorder then endorder=maxendorder
   fitPA=fitPAoriginal
-     
-  Chi=dblarr(endorder-1)
-  mcerrors=dblarr(n_elements(PA[*]),endorder-1)
-  finalcoeff=dblarr(6,endorder-1)
-  for order=endorder,2,-1 do begin
+                                ;IF the galaxy is large then we do not
+                                ;want the lower orders as the are
+                                ;often pushing the rotation curve in
+                                ;the wrong direction
+  if n_elements(PAin) GT 15 then begin
+     if keyword_set(nocentral) then beginorder=3 else beginorder=2
+  endif else
+  beginorder=2
+  
+  Chi=dblarr(endorder-beginorder+1)
+  mcerrors=dblarr(n_elements(PA[*]),endorder-beginorder+1)
+  finalcoeff=dblarr(6,endorder-beginorder+1)
+  for order=endorder,beginorder,-1 do begin
      shifterrors=shifterrorsor
      tmp=dblarr(1)
      IF keyword_set(debug) then begin
@@ -549,13 +558,13 @@ refit:
                            mc_y_min=pamin,mc_y_max=pamax,mc_ddiv=ddiv,nocentral=nocentral,mc_maxfails=100.,log=log)
            
      newPA[*]=fitPA[*]   
-     if fitstat EQ 1 then Chi[order-2]=!values.f_nan else begin
-        IF tmp GT 1e9 then Chi[order-2]=1e9 else Chi[order-2]=tmp
+     if fitstat EQ 1 then Chi[order-beginorder]=!values.f_nan else begin
+        IF tmp GT 1e9 then Chi[order-beginorder]=1e9 else Chi[order-beginorder]=tmp
         for j=0,order do begin
-           finalcoeff[j,order-2]=newPAcoeff[j]
+           finalcoeff[j,order-beginorder]=newPAcoeff[j]
         endfor
             
-        mcerrors[*,order-2]=shifterrors[*]
+        mcerrors[*,order-beginorder]=shifterrors[*]
      endelse
      IF keyword_set(debug) then begin
         print,'Printing reduced chi, order'
@@ -577,7 +586,12 @@ refit:
      attempts++
      fitPAoriginal=PAsmooth[*]
      shifterrorsor=errors[*]
-     IF attempts LT 2 then goto,newendorder
+     IF attempts LT 2 then goto,newendorder else begin
+        fitstat=-1.
+        arctan=1
+        finorder=!values.f_nan
+        goto,cleanup
+     ENDELSE
   ENDIF
        
   maxchi=MAX(Chi,MIN=minchi)
@@ -595,7 +609,12 @@ refit:
            attempts++
            fitPAoriginal=PAsmooth[*]
            shifterrorsor=errors[*]
-           goto,newendorder
+           IF attempts LT 2 then goto,newendorder else begin
+              fitstat=-1.
+              arctan=1
+              finorder=!values.f_nan
+              goto,cleanup
+           ENDELSE
         ENDIF ELSE BEGIN
            fiterrors=fiterrors*1.2
            IF keyword_set(debug) then begin
@@ -707,7 +726,7 @@ refit:
   order=intarr(1)
   order=tmp[0]
   newPAcoeff=dblarr(order)
-  newPAcoeff=finalcoeff[0:order,order-2]
+  newPAcoeff=finalcoeff[0:order,order-beginorder]
     
   IF fitstat LT 1 then begin
      finorder=order
@@ -724,7 +743,7 @@ refit:
         if newPA[ch-1] lt newPA[ch]*0.9 then decline=ch else break
      endfor
      if decline gt 0. then newPA[0:ch-1]=newPA[ch]*0.9    
-     errors[*]=mcerrors[*,order-2] 
+     errors[*]=mcerrors[*,order-beginorder] 
   ENDIF Else begin
      IF attempts GE 1 then begin
         finorder=!values.f_nan
@@ -770,10 +789,10 @@ refit:
   endif
   IF SBRin[n_elements(PAin[*])-1] LT cutoff[n_elements(PAin[*])-1] then errors[0]=MAX(errors[*])
   If errors[0] LT errors[1] then errors[0]=errors[1]
-  IF n_elements(pamax) gt 0 then tmp=WHERE(newPA[*]+errors[*] GT pamax) else tmp=-1
-  IF tmp[0] NE -1 then errors[tmp]=pamax-PA[tmp]
-  IF n_elements(pamin) gt 0 and n_elements(pamax) gt 0 then tmp=WHERE(errors[*] LT 0) else tmp=-1
-  IF tmp[0] NE -1 AND n_elements(errorin) NE 0 then errorin[tmp]=pamax-pamin
+  ;IF n_elements(pamax) gt 0 then tmp=WHERE(newPA[*]+errors[*] GT pamax) else tmp=-1
+  ;IF tmp[0] NE -1 then errors[tmp]=pamax-PA[tmp]
+  ;IF n_elements(pamin) gt 0 and n_elements(pamax) gt 0 then tmp=WHERE(errors[*] LT 0) else tmp=-1
+  ;IF tmp[0] NE -1 AND n_elements(errorin) NE 0 then errorin[tmp]=pamax-pamin
   IF n_elements(errorin) NE 0 then errorin=REVERSE(errors)
   
   order=finorder

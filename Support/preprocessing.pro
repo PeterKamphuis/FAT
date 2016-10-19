@@ -355,7 +355,10 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
                                 ;SoFiA not being able to deal with
                                 ;infinites in the noise estimates
                                 ;setting blanks to 0
+                                ;This causes problems with a central source of absorption
+  
   tmp=WHERE(FINITE(cube) EQ 0)
+  tmp[0]=-1   ;This problem appears to be fixed now
   IF tmp[0] NE -1 then begin
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND

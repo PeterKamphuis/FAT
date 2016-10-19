@@ -101,4 +101,7 @@ Pro get_fixedringsv8,Parametersin,rings
   IF rings GT fix(n_elements(Parameters[*,0])/2.) then begin
      IF fix(n_elements(Parameters[*,0])/2.) GE 3 then rings=fix(n_elements(Parameters[*,0])/2.) else rings=3
   ENDIF
+  IF n_elements(Parameters[*,0]) GT 12 then begin
+     IF rings LT n_elements(Parameters[*,0])/4. then ring=ceil(n_elements(Parameters[*,0])/4.)
+  ENDIF
 end

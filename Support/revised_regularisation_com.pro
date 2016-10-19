@@ -924,9 +924,9 @@ refit:
                                 ;the original input is fairly flat
                                 ;else we just penalize the higher orders
    
-     if par EQ 1 then begin
+     if par EQ 1  then begin
         devflatin=TOTAL(ABS(PA[*,par]-PA[0,par]))/(n_elements(PA[*,par])-fixedrings[par])
-        IF devflatin LT 4.*ddiv[par] then begin
+        IF devflatin LT 4.*ddiv[par]and n_elements(PAin[*,0]) LT 15 then begin
                                 ;first we normalize the deviations from flat
            if keyword_set(debug) then begin
               print,'this is devflat before normalising'
