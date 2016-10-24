@@ -965,7 +965,7 @@ noconfig:
                                 ;usually a bit tight
         pixelsizeRA=ABS(sxpar(header,'CDELT1'))
       
-        newmask=fat_smooth(nummask,catmajbeam[i]/(pixelsizeRA*3600.*2.),/MASK)
+        newmask=fat_smooth(nummask,catmajbeam[i]/(pixelsizeRA*3600.),/MASK)
         
         sxaddpar,header,'BITPIX',-32
         writefits,currentfitcube+'_6.0_binmask.fits',float(newmask),header
@@ -4051,7 +4051,7 @@ noconfig:
            comin=[[PAang],[INCLang]]
            errors=[[0.],[0.]]
            
-           revised_regularisation_com,comin,SBRarror,RADarr,fixedrings=3,difference=[1.,8.*exp(-catinc[i]^2.5/10^3.5)+2],cutoff=cutoff,arctan=1,order=polorder,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[1./4.,1.],error=errors ,gdlidl=gdlidl,log=log,/debug
+           revised_regularisation_com,comin,SBRarror,RADarr,fixedrings=3,difference=[1.,4.*exp(-catinc[i]^2.5/10^3.5)+1.5],cutoff=cutoff,arctan=1,order=polorder,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[1./4.,1.],error=errors ,gdlidl=gdlidl,log=log,/debug
            PAang=comin[*,0]
            INCLang=comin[*,1]
            sigmapa1=errors[*,0]
@@ -4077,7 +4077,7 @@ noconfig:
            IF lastreliablerings EQ 1 then VROTarr2[lastreliablerings:n_elements(SBRarr)-1]=MEAN(VROTarr2[1:n_elements(VROTarr2)-1]) else VROTarr2[lastreliablerings:n_elements(SBRarr2)-1]=VROTarr2[lastreliablerings-1]
             comin=[[PAang2],[INCLang2]]
            errors=[[0.],[0.]]
-           revised_regularisation_com,comin,SBRarr2or,RADarr,fixedrings=3,difference=[1.,8.*exp(-catinc[i]^2.5/10^3.5)+2],cutoff=cutoff,arctan=1,order=polorder,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[1./4.,1.],error=errors ,gdlidl=gdlidl,log=log,/debug
+           revised_regularisation_com,comin,SBRarr2or,RADarr,fixedrings=3,difference=[1.,4.*exp(-catinc[i]^2.5/10^3.5)+1.5],cutoff=cutoff,arctan=1,order=polorder,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[1./4.,1.],error=errors ,gdlidl=gdlidl,log=log,/debug
            PAang2=comin[*,0]
            INCLang2=comin[*,1]
            sigmapa2=errors[*,0]
@@ -4189,7 +4189,7 @@ noconfig:
            printf,66,linenumber()+"The inner" +string(fixedrings)+" rings are fixed."
            Close,66
         ENDIF
-        revised_regularisation_com,comin,SBRarror,RADarr,fixedrings=fixedrings,difference=[padiv,8.*exp(-catinc[i]^2.5/10^3.5)+2.],cutoff=cutoff,arctan=prefunc,order=polorder1,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[accuracy/4.,accuracy],error=errors ,gdlidl=gdlidl,log=log,sloped=prevslopedrings[1],/debug
+        revised_regularisation_com,comin,SBRarror,RADarr,fixedrings=fixedrings,difference=[padiv,4.*exp(-catinc[i]^2.5/10^3.5)+1.5],cutoff=cutoff,arctan=prefunc,order=polorder1,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[accuracy/4.,accuracy],error=errors ,gdlidl=gdlidl,log=log,sloped=prevslopedrings[1],/debug
            
                             
         PAang=comin[*,0]
@@ -4212,7 +4212,7 @@ noconfig:
            printf,66,linenumber()+"The inner" +string(fixedrings)+" rings are fixed."
            Close,66
         ENDIF
-        revised_regularisation_com,comin,SBRarr2or,RADarr,fixedrings=fixedrings,difference=[padiv,8.*exp(-catinc[i]^2.5/10^3.5)+2],cutoff=cutoff,arctan=prefunc,order=polorder2,max_par=[PAinput3[1],INCLinput3[1]],min_par=[PAinput3[2],INCLinput3[2]],accuracy=[accuracy/4.,accuracy],error=errors ,gdlidl=gdlidl,log=log,sloped=prevslopedrings[1],/debug
+        revised_regularisation_com,comin,SBRarr2or,RADarr,fixedrings=fixedrings,difference=[padiv,4.*exp(-catinc[i]^2.5/10^3.5)+1.5],cutoff=cutoff,arctan=prefunc,order=polorder2,max_par=[PAinput3[1],INCLinput3[1]],min_par=[PAinput3[2],INCLinput3[2]],accuracy=[accuracy/4.,accuracy],error=errors ,gdlidl=gdlidl,log=log,sloped=prevslopedrings[1],/debug
                             
         PAang2=comin[*,0]
         INCLang2=comin[*,1]

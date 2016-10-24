@@ -232,12 +232,12 @@ Pro revised_regularisation_com,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
      PAsmooth[n_elements(PA[*,0])-1,i]=(PA[n_elements(PA[*,0])-2,i]+PA[n_elements(PA[*,0])-1,i])/2.
   endfor
                                 ;If arctan is 1 then we only want smooth and return the new values
-  IF arctan EQ 1 OR n_elements(PA) LE 5 then begin
+  IF arctan EQ 1 OR n_elements(PA[*,0]) LE 5 then begin
      newPA=dblarr(n_elements(PAin[*,0]),n_elements(PAin[0,*]))
      errors=dblarr(n_elements(PAin[*,0]),n_elements(PAin[0,*]))
                                 ;We do not smooth small profiles as
                                 ;this supresseses warps too much
-     IF n_elements(PAin) LT 15 then begin
+     IF n_elements(PAin[*,0]) LT 15 then begin
         for i=0,n_elements(PAin[0,*])-1 do begin
            newPA[*,i]=PAin[*,i]
            errors[*,i]=ABS(PA[*,i]-PAsmooth[*,i])
@@ -254,11 +254,70 @@ Pro revised_regularisation_com,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
      fixedrings=[fixedrings,fixedrings]
      goto,cleanup
   ENDIF        
+                               
+restartall:
+
+;IF we have maxdev then first we are going to do a small check on
+;ridiculous outliers.
+  
+  IF n_elements(maxdev) GT 0. then begin
+     for j=0,n_elements(PA[0,*])-1 do begin
+        lastmod=1
+        start=n_elements(PA[*,0])-1
+        for i=1,n_elements(PA[*,0])-2 do begin
+           diff1=ABS(PAin[i,j]-PAin[i-1,j])
+           diff2=ABS(PAin[i,j]-PAin[i+1,j])
+           diff3=ABS(PAin[i+1,j]-PAin[i-1,j])
+           IF diff1 GT maxdev[j] AND  diff2 GT maxdev[j] AND diff3 LT (diff1+diff2)/2. then begin
+              if keyword_set(debug) then begin
+                 print,"These are the differences from ring to ring +the value +maxdev"
+                 print,diff1,diff2,diff3,i,PA[i],maxdev
+              ENDIF
+              PA[i,j]=(PAin[i-1,j]+PAin[i+1,j])/2
+              lastmod=i
+           ENDIF ELSE start=i
+        endfor
+        IF ABS(PA[n_elements(PA[*,0])-1,j]-PA[n_elements(PA[*,0])-2,j]) GT maxdev[j] then begin
+           diff1=(PAin[n_elements(PA[*,0])-2,j]-PAin[n_elements(PA[*,0])-3,j])
+           diff2=(PAin[n_elements(PA[*,0])-3,j]-PAin[n_elements(PA[*,0])-4,j])
+           IF diff1/diff2 LT 0 then PA[n_elements(PA[*,0])-1,j]=(PAin[n_elements(PA[*,0])-2,j]+PAin[n_elements(PA[*,0])-3,j])/2. else $
+              PA[n_elements(PA[*,0])-1,j]=PAin[n_elements(PA[*,0])-2,j]+(PAin[n_elements(PA[*,0])-2,j]-PAin[n_elements(PA[*,0])-3,j])
+           resetlasterror=1
+           if keyword_set(debug) then print,'last value is out of bounds'
+        ENDIF
+        IF keyword_set(debug) then begin
+           print,start,lastmod,n_elements(PA),PA,fixedrings
+        ENDIF
+                                ;if we have these extremes untill the last point just take the average
+        if lastmod EQ n_elements(PA[*,0])-2 AND (start LT n_elements(PA[*,0])-3 OR start LE n_elements(PA[*,0])-fixedrings AND  start+1 LE n_elements(PA[*,0])-1) then begin
+           IF keyword_set(debug) then begin
+              print,'big jigs till the end adjusting before'
+              print, PA[start+1:n_elements(PA)-1]
+           ENDIF
+           PA[start+1:n_elements(PA[*,0])-1,j]=TOTAL(PAin[start+1:n_elements(PA[*,0])-1,j])/n_elements(PAin[start+1:n_elements(PA[*,0])-1,j])
+           IF keyword_set(debug) then begin
+              print,'big jigs till the end adjusting'
+              print, PA[start+1:n_elements(PA)-1]
+           ENDIF
+        ENDIF
+     ENDFOR
+  ENDIF
+
+  IF keyword_set(debug) then begin
+     print,'The Profiles after adjusting for big fluctuation'
+     print,PA
+  ENDIF
+
+
+
+
+
+
                                 ;Then we will calculate the
                                 ;errors. The base for this is the
                                 ;ratio between SBR and the cutoff and
                                 ;the accuracy
-restartall:
+  
   errors=dblarr(n_elements(radii),n_elements(ddiv))
   IF keyword_set(noweight) then begin
      errors[*,0]=ddiv[0]
@@ -383,6 +442,7 @@ restartall:
            if Keyword_set(debug) then begin
               print,'We obtained these values'
               print,adjust,sawtooth,deltasign[i],trend[i],deltaslope[i],maxdev[i],ddiv[i],sign,j
+              help,adjust,sawtooth,deltasign[i],trend[i],deltaslope[i],maxdev[i],ddiv[i],sign,j
            endif
         endfor
         
@@ -479,7 +539,34 @@ restartall:
         errors[i,*]=MAX([errors[i,*]*1.75,errors[i-1,*]*1.75])
      endfor
   ENDIF
+                                ; the maximum error allowed is maxdev
+                                ; except when SBR is less than cutoff
+                                 ;No errors can be larger then maxdev
+  IF n_elements(maxdev) GT 0 then begin
+     for i=0,1 do begin
+        tmp=WHERE(errors[*,i] GT 2*maxdev[i])
+        if tmp[0] NE -1 then begin
+           for j=0,n_elements(tmp)-1 do begin
+              IF cutoff[tmp[j]] LT SBR[tmp[j]] then errors[tmp[j],i]=2*maxdev[i]
+           endfor
+           tmp=WHERE(errors[*,i] GT 3.*maxdev[i])
+           IF tmp[0] NE -1 then errors[tmp,i]=3*maxdev[i]
+        ENDIF
+     endfor
+  ENDIF
+                                ;Where the ratios SBR/cutoff is less then 1.5 we want the 3*maxdev
+  for i=0,1 do begin
+     j=n_elements(errors[*,i])-1
+     
+     WHILE SBR[j]/cutoff[j] LT 1.5 do begin
+        print,'Here we are penalising low SBR rings'
+        print,j,SBR[j],cutoff[j],SBR[j]/cutoff[j]
+        errors[j,i]=3*maxdev[i]/(SBR[j]/cutoff[j])
+        j--
+     ENDWHILE
+  endfor
   
+        
   IF keyword_set(extending) then errors[n_elements(errors[*,0])-1,*]=errors[n_elements(errors[*,0])-2,*]
 ; There can't be zeros in the errors let's check
   for i=0,1 do begin
@@ -496,56 +583,7 @@ restartall:
      print,errors
   ENDIF
   
-;IF we have maxdev then first we are going to do a small check on
-;ridiculous outliers.
-  
-  IF n_elements(maxdev) GT 0. then begin
-     for j=0,n_elements(PA[0,*])-1 do begin
-        lastmod=1
-        start=n_elements(PA[*,0])-1
-        for i=1,n_elements(PA[*,0])-2 do begin
-           diff1=ABS(PAin[i,j]-PAin[i-1,j])
-           diff2=ABS(PAin[i,j]-PAin[i+1,j])
-           diff3=ABS(PAin[i+1,j]-PAin[i-1,j])
-           IF diff1 GT maxdev[j] AND  diff2 GT maxdev[j] AND diff3 LT (diff1+diff2)/2. then begin
-              if keyword_set(debug) then begin
-                 print,"These are the differences from ring to ring +the value +maxdev"
-                 print,diff1,diff2,diff3,i,PA[i],maxdev
-              ENDIF
-              PA[i,j]=(PAin[i-1,j]+PAin[i+1,j])/2
-              lastmod=i
-           ENDIF ELSE start=i
-        endfor
-        IF ABS(PA[n_elements(PA[*,0])-1,j]-PA[n_elements(PA[*,0])-2,j]) GT maxdev[j] then begin
-           diff1=(PAin[n_elements(PA[*,0])-2,j]-PAin[n_elements(PA[*,0])-3,j])
-           diff2=(PAin[n_elements(PA[*,0])-3,j]-PAin[n_elements(PA[*,0])-4,j])
-           IF diff1/diff2 LT 0 then PA[n_elements(PA[*,0])-1,j]=(PAin[n_elements(PA[*,0])-2,j]+PAin[n_elements(PA[*,0])-3,j])/2. else $
-              PA[n_elements(PA[*,0])-1,j]=PAin[n_elements(PA[*,0])-2,j]+(PAin[n_elements(PA[*,0])-2,j]-PAin[n_elements(PA[*,0])-3,j])
-           resetlasterror=1
-           if keyword_set(debug) then print,'last value is out of bounds'
-        ENDIF
-        IF keyword_set(debug) then begin
-           print,start,lastmod,n_elements(PA),PA,fixedrings
-        ENDIF
-                                ;if we have these extremes untill the last point just take the average
-        if lastmod EQ n_elements(PA[*,0])-2 AND (start LT n_elements(PA[*,0])-3 OR start LE n_elements(PA[*,0])-fixedrings AND  start+1 LE n_elements(PA[*,0])-1) then begin
-           IF keyword_set(debug) then begin
-              print,'big jigs till the end adjusting before'
-              print, PA[start+1:n_elements(PA)-1]
-           ENDIF
-           PA[start+1:n_elements(PA[*,0])-1,j]=TOTAL(PAin[start+1:n_elements(PA[*,0])-1,j])/n_elements(PAin[start+1:n_elements(PA[*,0])-1,j])
-           IF keyword_set(debug) then begin
-              print,'big jigs till the end adjusting'
-              print, PA[start+1:n_elements(PA)-1]
-           ENDIF
-        ENDIF
-     ENDFOR
-  ENDIF
 
-  IF keyword_set(debug) then begin
-     print,'The Profiles after adjusting for big fluctuation'
-     print,PA
-  ENDIF
                                 ;we need to determine where the profile falls below the cutoff
   IF n_elements(cutoff) GT 0. then begin
      for i=n_elements(SBR)-1,0,-1 do begin
@@ -646,6 +684,9 @@ refit:
      print,'error'
      print,errors
      help,errors
+     print,'SBR/cutoff'
+     print,SBR/cutoff
+    
   ENDIF
                                 ;If all reliable rings are fixed we
                                 ;can skip the fitting of polynomials
@@ -744,7 +785,7 @@ refit:
            errors=dblarr(n_elements(PAin[*,0]),n_elements(PAin[0,*]))
                                 ;We do not smooth small profiles as
                                 ;this supresseses warps too much
-           IF n_elements(PAin) LT 15 then begin
+           IF n_elements(PAin[*,0]) LT 15 then begin
               for i=0,n_elements(PAin[0,*])-1 do begin
                  newPA[*,i]=PAin[*,i]
                  errors[*,i]=ABS(PA[*,i]-PAsmooth[*,i])
@@ -789,7 +830,7 @@ refit:
                  errors=dblarr(n_elements(PAin[*,0]),n_elements(PAin[0,*]))
                                 ;We do not smooth small profiles as
                                 ;this supresseses warps too much
-                 IF n_elements(PAin) LT 15 then begin
+                 IF n_elements(PAin[*,0]) LT 15 then begin
                     for i=0,n_elements(PAin[0,*])-1 do begin
                        newPA[*,i]=PAin[*,i]
                        errors[*,i]=ABS(PA[*,i]-PAsmooth[*,i])

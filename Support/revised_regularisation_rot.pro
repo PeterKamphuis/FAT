@@ -415,6 +415,20 @@ restartall:
      endfor
      IF SBR[0] LT cutoff[0] then errors[0]=MAX([MAX(errors),2.*ddiv])
   ENDELSE
+                                ;No errors can be larger then maxdev
+  IF n_elements(maxdev) GT 0 then begin
+     tmp=WHERE(errors GT 2*maxdev[0])
+     print,tmp,maxdev
+     print,'here here'
+     if tmp[0] NE -1 then begin
+        for j=0,n_elements(tmp)-1 do begin
+           IF cutoff[tmp[j]] LT SBR[tmp[j]] then errors[tmp[j]]=2*maxdev[0]
+        endfor
+        tmp=WHERE(errors GT 3.*maxdev[0])
+        IF tmp[0] NE -1 then errors[tmp]=3*maxdev[0]
+     ENDIF
+  ENDIF
+  IF ~keyword_set(nocentral) then errors[n_elements(errors)-2:n_elements(errors)-1]=maxdev[0]
   IF keyword_set(debug) then begin
      print,'The final errors are:'
      print,errors
@@ -518,33 +532,44 @@ refit:
  
   newPA=PA
   newPA[*]=0.
-  endorder=n_elements(PA[*])
-        
-  IF keyword_set(debug) then begin
-     print,'this is the fixedrings',fixedrings
-     print,'This is our endorder',endorder
-  ENDIF
-  IF endorder LT 2 then endorder=2
-  IF endorder GT 5 then endorder=5
-  maxendorder=endorder
   fitPAoriginal=PA[*]
   fiterrors=errors[*]
   shifterrorsor=errors[*]
-  newendorder:
-  IF endorder GT maxendorder then endorder=maxendorder
-  fitPA=fitPAoriginal
                                 ;IF the galaxy is large then we do not
                                 ;want the lower orders as the are
                                 ;often pushing the rotation curve in
                                 ;the wrong direction
   if n_elements(PAin) GT 15 then begin
+     endorder=n_elements(PA[*])-fixedrings
+     maxendorder=endorder
+     IF endorder LT 3 then endorder=3
+     IF endorder GT 8 then endorder=8
      if keyword_set(nocentral) then beginorder=3 else beginorder=2
-  endif else
-  beginorder=2
+     IF keyword_set(debug) then begin
+        print,'this is the fixedrings',fixedrings
+        print,'This is our endorder',endorder
+        print,'This is our beginorder',beginorder
+     ENDIF
+  endif else begin
+     endorder=n_elements(PA[*])
+     maxendorder=endorder
+     IF endorder LT 2 then endorder=2
+     IF endorder GT 5 then endorder=5
+     beginorder=2
+     IF keyword_set(debug) then begin
+        print,'this is the fixedrings',fixedrings
+        print,'This is our endorder',endorder
+        print,'This is our beginorder',beginorder
+     ENDIF
+  ENDELSE
+  newendorder:
+  fitPA=fitPAoriginal
+  IF endorder GT maxendorder then endorder=maxendorder
+
   
   Chi=dblarr(endorder-beginorder+1)
   mcerrors=dblarr(n_elements(PA[*]),endorder-beginorder+1)
-  finalcoeff=dblarr(6,endorder-beginorder+1)
+  finalcoeff=dblarr(endorder+1,endorder-beginorder+1)
   for order=endorder,beginorder,-1 do begin
      shifterrors=shifterrorsor
      tmp=dblarr(1)
@@ -566,6 +591,7 @@ refit:
             
         mcerrors[*,order-beginorder]=shifterrors[*]
      endelse
+     IF order GT 5 then  Chi[order-beginorder]=tmp*order
      IF keyword_set(debug) then begin
         print,'Printing reduced chi, order'
         print,tmp,order
@@ -720,7 +746,7 @@ refit:
                                 ;rotation curve
      
     
-           
+           print,'This is minchi',minchi
   order=WHERE(Chi EQ minchi)+2
   tmp=order
   order=intarr(1)
@@ -769,7 +795,10 @@ refit:
   IF fixedrings GT n_elements(newPA)-1 then fixedrings=n_elements(newPA)-1
   IF fixedrings GT 0. and order NE 0 then begin
      locmax=WHERE(MAX(REVERSE(PAin)) EQ REVERSE(PAin))
-     if locmax[n_elements(locmax)-1] GT fixedrings then newPA[0:fixedrings]=TOTAL(newPA[0:fixedrings])/n_elements(newPA[0:fixedrings])
+     if locmax[n_elements(locmax)-1] LT fixedrings then newPA[0:fixedrings]=TOTAL(newPA[0:fixedrings])/n_elements(newPA[0:fixedrings]) else begin
+        IF locmax[n_elements(locmax)-1] LT fix(n_elements(PAin)/2.) then newPA[0:locmax[n_elements(locmax)-1]]=newPA[locmax[n_elements(locmax)-1]]
+        print,locmax[n_elements(locmax)-1],fix(n_elements(PAin)/2.),newPA[locmax[n_elements(locmax)-1]]
+     ENDELSE
   ENDIF
  
   
