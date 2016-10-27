@@ -50,9 +50,10 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
 ; NOTE:
 ;     
 ;-
+
   
   arrays=1.
-  IF gdlidl then SET_PLOT,'X' else SET_PLOT, 'Z'
+  IF gdlidl then SET_PLOT,'PS' else SET_PLOT, 'Z'
 ;  SET_PLOT,'Z'
   plotpara=['RADI','SBR','SBR_2','VROT','VROT_ERR','PA','PA_ERR','PA_2','PA_2_ERR','INCL','INCL_ERR','INCL_2','INCL_2_ERR','BMAJ','SDIS','XPOS','YPOS','VSYS']
   plotstart=[[1,3,5,9],[2,3,7,11],[0,1,1,1]]
@@ -122,14 +123,10 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
                                 ;not accept the decomposed keyword and
                                 ;because we do not want to be screen
                                 ;size depndent we need a widget.
-     device,decomposed=0
-     base=widget_base()
-     draw=WIDGET_DRAW(base,X_SCROLL_SIZE=250,Y_SCROLL_SIZE=250,XSIZE=scrdim[0],ysize=scrdim[1],/scroll,sensitive=0)
-     WIDGET_CONTROL,base,/REALIZE
-     WIDGET_CONTROL,draw,GET_VALUE=drawID,DRAW_XSIZE=scrdim[0],DRAW_YSIZE=scrdim[1]
-     WSET,drawID
-     plot,[0]
-     XMANAGER,'draw_scroll',base,/NO_BLOCK
+     !p.charsize=0.4
+     charthick=0.7
+     ssize=0.3
+     DEVICE,xsize=scrdim[0]/200.,ysize=scrdim[1]/200,FILENAME='Overview.ps',/color,/PORTRAIT,/ENCAPSULATED,SET_FONT='Times', /TT_FONT 
   endif else  $
      DEVICE,SET_FONT='Times',/TT_FONT,SET_RESOLUTION=[scrdim[0],scrdim[1]],DECOMPOSED=0,SET_PIXEL_DEPTH=24
   plotradii=Arrays[*,0]
@@ -371,10 +368,15 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.08,'PV-Diagram Contours start are at -3, -1.5, 1.5, 3, 6, 12, 24 x rms.',color=0,/normal,charthick=charthick
   XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.1,'rms = '+strtrim(string(noise,format='(F10.5)'),2)+' Jy bm!E-1!N.',color=0,/normal,charthick=charthick
   XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.12,'The distance used for conversions = '+strtrim(string(Distance,format='(F10.1)'),2)+' Mpc',color=0,/normal,charthick=charthick
-  image=tvrd(/true)
-  IF ~(gdlidl) THEN DEVICE,/CLOSE ELSE BEGIN
-     WIDGET_CONTROL,base,/DESTROY
-  ENDELSE
-  write_png,'Overview.png',image
-
+  
+  IF ~(gdlidl) then image = tvrd(/true)
+  DEVICE,/CLOSE  
+  IF ~(gdlidl) then  write_png,'Overview.png',image
+  IF gdlidl then begin
+     spawn,'gs -help',result
+     if n_elements(result) GT 1 then begin
+        spawn,'gs -r300  -dEPSCrop -dTextAlphaBits=4 -sDEVICE=png16m -sOutputFile="Overview.png" -dBATCH -dNOPAUSE "Overview.ps"'
+        spawn,'rm -f Overview.ps'
+     ENDIF
+  ENDIF
 end
