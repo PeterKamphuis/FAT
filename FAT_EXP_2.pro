@@ -5304,7 +5304,7 @@ noconfig:
      finishthisgalaxy:
    
      IF optimized then begin
-        catcubename[i]= noptname[0]
+        catcubename[i]= noptname[0]       
      ENDIF
   
      cd, new_dir

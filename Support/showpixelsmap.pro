@@ -187,12 +187,12 @@ pro showpixelsmap, xaxis, yaxis, int, BLANK_VALUE=blankval,RANGE=range, PLOT_ALL
            ypix = yaxis[j]+yblock
            if keyword_set(plotall) then begin
               IF int[i,j] NE blankval AND FINITE(int[i,j]) then begin
-                 POLYFILL, xpix, ypix, COLOR=(int[i,j]-intmin)/colorrange*255<255>0
+                 POLYFILL, xpix, ypix, COLOR=(int[i,j]-intmin)/colorrange*254<254>0
               endif
            endif else begin
               IF int[i,j] NE blankval AND int[i,j] GE Range[0] $
                  AND int[i,j] LE Range[1] AND FINITE(int[i,j]) then begin
-                 POLYFILL, xpix, ypix, COLOR=(int[i,j]-intmin)/colorrange*255<255>0
+                 POLYFILL, xpix, ypix, COLOR=(int[i,j]-intmin)/colorrange*254<254>0
               endif
            endelse
         endif
