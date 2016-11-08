@@ -804,6 +804,7 @@ noconfig:
               '8,'+string(39B)+'b'+string(39B),'16,'+string(39B)+'b'+string(39B)]
      sofia[sofiatriggers[0]]='import.inFile = '+currentfitcube+'.fits'
      sofia[sofiatriggers[1]]='steps.doReliability             =       false'
+     sofia[sofiatriggers[2]]='parameters.dilatePixMax	= '+string(int(pixfwhm))
   ;   sofia[sofiatriggers[2]]='SCfind.kernels= [[ 0, 0, 0,'+string(39B)+'b'+string(39B)+'],[ 0, 0, 2,'+string(39B)+'b'+string(39B)+$
     ;                         '],[ 0, 0, 4,'+string(39B)+'b'+string(39B)+'],[ 0, 0, 8,'+string(39B)+'b'+string(39B)+'],[ 0, 0,16,'$
      ;                        +string(39B)+'b'+string(39B)+'],'$
@@ -965,10 +966,11 @@ noconfig:
                                 ;usually a bit tight
         pixelsizeRA=ABS(sxpar(header,'CDELT1'))
       
-        newmask=fat_smooth(nummask,catmajbeam[i]/(pixelsizeRA*3600.),/MASK)
+        ;newmask=fat_smooth(nummask,catmajbeam[i]/(pixelsizeRA*3600.),/MASK)
+
         
         sxaddpar,header,'BITPIX',-32
-        writefits,currentfitcube+'_6.0_binmask.fits',float(newmask),header
+        writefits,currentfitcube+'_6.0_binmask.fits',float(nummask),header
         nummask=0.
         newmask=0.
         catmaskname[i]=currentfitcube+'_6.0_binmask'
@@ -1640,7 +1642,7 @@ noconfig:
            rings[10:norings[0]-1]=(findgen(fix(tmpring/2.)))*catmajbeam[i]*2+catmajbeam[i]/5.+11.*catmajbeam[i]
            norings[0]=norings[0]+1.
            rad=[0.,rings[0:9],(findgen(fix((maxrings-10.)/2.)))*catmajbeam[i]*2+catmajbeam[i]/5.+11.*catmajbeam[i]]
-           finishafter=2.1
+           IF finishafter GT 1 then finishafter=2.1
            maxrings=10.+fix((maxrings-10.)/2.)
            calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i]],cutoffor
            cutoff=cutoffor*cutoffcorrection
@@ -1790,10 +1792,14 @@ noconfig:
      IF finishafter EQ 0. then begin
         if setfinishafter NE 1 then begin 
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,A12,A80)', catDirname[i],'You have chosen to skip the fitting process after all preparations for the fit'
+           printf,1,format='(A60,A80)', catDirname[i],'You have chosen to skip the fitting process after all preparations for the fit'
            close,1
         ENDIF
-        bookkeeping=5
+        if optimized then begin
+           tmp=str_sep(strtrim(strcompress(currentfitcube),2),'_opt')
+           currentfitcube=tmp[0]
+        endif
+ ;       bookkeeping=0
         goto,finishthisgalaxy
      ENDIF
                                 ;build up moment 0 axis
@@ -4265,8 +4271,8 @@ noconfig:
                                 ;like a mistake but as this
                                 ;combination gives good results
                                 ;let's leave it like this.
-     SBRav=(SBRarr+SBRarr2)
-     get_newringsv9,SBRav,SBRav,3.5*cutoff,velconstused    
+     SBRav=(SBRarr+SBRarr2)/2.
+     get_newringsv9,SBRav,SBRav,2.*cutoff,velconstused    
      IF double(norings[0]) GT 15. then begin
         IF velconstused GT norings[0]-ceil(norings[0]/10.) then velconstused=norings[0]-ceil(norings[0]/10.)
      ENDIF
@@ -4274,12 +4280,7 @@ noconfig:
      IF norings[0]-velconstused LT 2 then velconstused=norings[0]-1
      IF norings[0] GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
      if finalsmooth LE 1 then begin
-                                ;it is important to use the original
-                                ;non centrallly modified profiles here
-                                ;for the error weighing. For PA and
-                                ;INCL it doesn't matter as
-                                ;those errors are set to 1
-      ;  IF finalsmooth EQ 1 AND finishafter NE 1.1 AND norings[0] GT 4 then prefunc=0 else prefunc=1
+                         
         IF finalsmooth EQ 1 AND norings[0] GT 4 then prefunc=0 else prefunc=1
                                 ; IF finalsmooth EQ 1 then we first
                                 ; want to refit the rotation curve
@@ -4343,6 +4344,13 @@ noconfig:
         ENDIF
 
 ;this is where we end this experiment
+
+                                ;it is important to use the original
+                                ;non centrallly modified profiles here
+                                ;for the error weighing. For PA and
+                                ;INCL it doesn't matter as
+                                ;those errors are set to 1
+      
         tmpSBR=(SBRarror+SBRarr2or)/2.
         tmphigh=str_sep(strtrim(strcompress(VROTinput1[1]),2),' ')
         tmplow=str_sep(strtrim(strcompress(VROTinput1[2]),2),' ')
@@ -5302,7 +5310,7 @@ noconfig:
 
      
      finishthisgalaxy:
-   
+     
      IF optimized then begin
         catcubename[i]= noptname[0]       
      ENDIF

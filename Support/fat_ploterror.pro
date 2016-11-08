@@ -58,7 +58,6 @@ PRO fat_ploterror,plotradii,plotVariable,xerr,yerr,ERRCOLOR = errcolor, ERRTHICK
   IF n_elements(hatlength) EQ 0 then hatlength=[(!Y.CRANGE[1]-!Y.CRANGE[0])/100.,(!X.CRANGE[1]-!X.CRANGE[0])/100.]
   for i=0,n_elements(plotVariable)-1 do begin
      IF xerr[i] NE 0 then begin
-        print,i
         oplot,[plotradii[i]-xerr[i],plotradii[i]+xerr[i]],[PlotVariable[i],PlotVariable[i]],thick=errthick,color=errcolor
                                 ;plot a hat
         oplot,[plotradii[i]-xerr[i],plotradii[i]-xerr[i]],[PlotVariable[i]-hatlength[0],PlotVariable[i]+hatlength[0]],thick=errthick,color=errcolor

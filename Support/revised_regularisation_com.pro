@@ -328,8 +328,9 @@ restartall:
      tmp=WHERE(ratio EQ norm)
      ratio=ratio/norm
      ratio[0:tmp]=1
-  
+     
      for i=0,n_elements(ddiv)-1 do begin
+       
         errors[*,i]=ddiv[i]*ratio[*]*accuracy[i]
         tmp=WHERE(FINITE(errors[*,i]) EQ 0.)
         maxer=MAX(errors[*,i])
@@ -781,26 +782,24 @@ refit:
            IF keyword_set(debug) then begin
               print,'We return the smoothed profile as all Chis are infinite'
            ENDIF
-           newPA=dblarr(n_elements(PAin[*,0]),n_elements(PAin[0,*]))
-           errors=dblarr(n_elements(PAin[*,0]),n_elements(PAin[0,*]))
+           IF n_elements(newPA) EQ 0 then newPA=dblarr(n_elements(PAin[*,0]),n_elements(PAin[0,*]))
+           IF n_elements(errors) EQ 0 then errors=dblarr(n_elements(PAin[*,0]),n_elements(PAin[0,*]))
                                 ;We do not smooth small profiles as
                                 ;this supresseses warps too much
-           IF n_elements(PAin[*,0]) LT 15 then begin
-              for i=0,n_elements(PAin[0,*])-1 do begin
-                 newPA[*,i]=PAin[*,i]
-                 errors[*,i]=ABS(PA[*,i]-PAsmooth[*,i])
-              endfor
+           IF n_elements(PAin[*,0])-fixedrings[0] LT 5 then begin
+             
+                 newPA[*,par]=PAin[*,par]
+                 errors[*,par]=ABS(PA[*,par]-PAsmooth[*,par])
+                
            endif else begin
-              for i=0,n_elements(PAin[0,*])-1 do begin
-                 newPA[*,i]=PAsmooth[*,i]
-                 errors[*,i]=ABS(PA[*,i]-PAsmooth[*,i])
-              endfor
+                 newPA[*,par]=PAsmooth[*,par]
+                 errors[*,par]=ABS(PA[*,par]-PAsmooth[*,par])
            endelse
            fitstat=-1.
            arctan=1
-           finorder[*]=!values.f_nan
-           fixedrings=[fixedrings,fixedrings]
-           goto,cleanup
+           finorder[par]=!values.f_nan
+           fixedrings[par]=fixedrings[par]
+           goto,cleanuppar
         ENDELSE
      ENDIF
        
@@ -1097,7 +1096,7 @@ refit:
         print,'With the order '+string(finorder[par])
      endif
      erroradjusted=0
-     
+     cleanuppar:
   endfor   
   
   cleanup:
@@ -1119,7 +1118,8 @@ refit:
         ENDELSE
      ENDIF
   endfor
-  
+  print,'What up?'
+  print,errors[*,0]
   for i=0,n_elements(PA[0,*])-1 do begin
      for j=0,n_elements(PA[*,i])-1 do begin
         errors[j,i]=MAX([errors[j,i]*1.5,ABS(PAin[j,i]-newPA[j,i]),ddiv[i]])        

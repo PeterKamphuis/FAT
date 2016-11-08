@@ -71,7 +71,7 @@ Pro read_template, name, array, variables,SOFIA=sofia
               case tmp[0] of
                  'import.inFile':variables[0]=j
                  'steps.doReliability':variables[1]=j
-                 'SCfind.kernels':variables[2]=j
+                 'parameters.dilatePixMax':variables[2]=j
                  else:
               endcase
            ENDIF
