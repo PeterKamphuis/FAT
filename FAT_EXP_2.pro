@@ -804,7 +804,7 @@ noconfig:
               '8,'+string(39B)+'b'+string(39B),'16,'+string(39B)+'b'+string(39B)]
      sofia[sofiatriggers[0]]='import.inFile = '+currentfitcube+'.fits'
      sofia[sofiatriggers[1]]='steps.doReliability             =       false'
-     sofia[sofiatriggers[2]]='parameters.dilatePixMax	= '+string(int(pixfwhm))
+     sofia[sofiatriggers[2]]='parameters.dilatePixMax	= '+string(fix(pixfwhm))
   ;   sofia[sofiatriggers[2]]='SCfind.kernels= [[ 0, 0, 0,'+string(39B)+'b'+string(39B)+'],[ 0, 0, 2,'+string(39B)+'b'+string(39B)+$
     ;                         '],[ 0, 0, 4,'+string(39B)+'b'+string(39B)+'],[ 0, 0, 8,'+string(39B)+'b'+string(39B)+'],[ 0, 0,16,'$
      ;                        +string(39B)+'b'+string(39B)+'],'$

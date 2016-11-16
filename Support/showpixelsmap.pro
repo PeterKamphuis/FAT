@@ -47,6 +47,7 @@ pro showpixelsmap, xaxis, yaxis, int, BLANK_VALUE=blankval,RANGE=range, PLOT_ALL
 ;         /PLOT_ALL - Set this keyword to ensure that all values are
 ;                     plotted.
 ;              /WCS - Axis labels are WCS coordinates
+;        /HEX_COLOR - IF set use hexadecimal colors for plotting the maps  
 ;  
 ; OUTPUTS:
 ;       The map (Likely fits image) defined by xaxis,yaxis,int is
@@ -62,10 +63,13 @@ pro showpixelsmap, xaxis, yaxis, int, BLANK_VALUE=blankval,RANGE=range, PLOT_ALL
 ;      
 ;
 ; MODIFICATION HISTORY:
-;       08-02-2011 P.Kamphuis; Can now deal with input map larger than range and larger
-;                  range than input map in wcs coord. Non finite and blankvalues are not plotted.
-;       22-09-2009 P.Kamphuis; Added an error message, enabled
-;                  axis' that are larger than the cube.  
+;      15-11-2016 P.Kamphuis; Added the hex_color keyword for color
+;                             plotting in GDL PS  
+;      08-02-2011 P.Kamphuis; Can now deal with input map larger than
+;                             range and larger range than input map in
+;                             wcs coord. Non-finite and blankvalues are not plotted.
+;      22-09-2009 P.Kamphuis; Added an error message, enabled
+;                             axes that are larger than the cube.  
 ;       03-09-2009 Written by P.Kamphuis; 
 ;
 ; NOTE:
@@ -118,8 +122,8 @@ pro showpixelsmap, xaxis, yaxis, int, BLANK_VALUE=blankval,RANGE=range, PLOT_ALL
   endelse
   maxx = max(xrng, MIN=minx)
   maxy = max(yrng, MIN=miny)
+  TVLCT, Rin, Gin, Bin, /GET
   if keyword_set(blackw) then begin
-     TVLCT, Rin, Gin, Bin, /GET
      loadct,0,/SILENT 
   endif
   
@@ -129,9 +133,9 @@ pro showpixelsmap, xaxis, yaxis, int, BLANK_VALUE=blankval,RANGE=range, PLOT_ALL
   IF yrng[0] LT yrng[1] then begin 
      yrng=[miny-(0.5*pixelsizey), maxy+(0.5*pixelsizey)]
   ENDIF ELSE  yrng=[ maxy+(0.5*pixelsizey),miny-(0.5*pixelsizey)]
-
-  If not keyword_set(wcs) then begin 
-     PLOT, xrng, yrng, /NODATA,/XSTYLE,/YSTYLE, _EXTRA=ex,COLOR=0,xrange=xrng,yrange=yrng,$
+  if keyword_set(hex_color) then black='000000'x else black=0
+  If not keyword_set(wcs) then begin
+     PLOT, xrng, yrng, /NODATA,/XSTYLE,/YSTYLE, _EXTRA=ex,COLOR=black,xrange=xrng,yrange=yrng,$
            xticks =n_ticksx, yticks =n_ticksy,xtickname=xtn,ytickname=ytn
   endif else begin
      if n_elements(xtn) GT 0 then begin
@@ -158,7 +162,7 @@ pro showpixelsmap, xaxis, yaxis, int, BLANK_VALUE=blankval,RANGE=range, PLOT_ALL
      PLOT, xrng,yrng,/NODATA,/XSTYLE,/YSTYLE, _EXTRA=ex, xtickname = xtn,        $
            ytickname = ytn, xticks = n_elements(xtv)-2,           $
            yticks = n_elements(ytv)-2,xminor = 4, yminor = 4,     $
-           ytickv = ytv, xtickv = xtv,COLOR=0,xrange=xrng,yrange=yrng
+           ytickv = ytv, xtickv = xtv,COLOR=black,xrange=xrng,yrange=yrng
   endelse
 
   if keyword_set(blackw) then begin
@@ -185,14 +189,24 @@ pro showpixelsmap, xaxis, yaxis, int, BLANK_VALUE=blankval,RANGE=range, PLOT_ALL
            
            xpix = xaxis[i]+xblock
            ypix = yaxis[j]+yblock
+           if keyword_set(hex_color) then begin
+              tmp=(int[i,j]-intmin)/colorrange*254<254>0
+              hex=to_hex([Bin[tmp],Gin[tmp],Rin[tmp]])
+              for x=0,2 do begin
+                 IF STRLEN(hex[x]) LT 2 then  hex[x]='0'+hex[x]
+              ENDFOR
+              hexad=STRJOIN(hex,'')
+              color=0LL
+              reads,hexad,color,format='(Z)'
+           endif else color=(int[i,j]-intmin)/colorrange*254<254>0
            if keyword_set(plotall) then begin
               IF int[i,j] NE blankval AND FINITE(int[i,j]) then begin
-                 POLYFILL, xpix, ypix, COLOR=(int[i,j]-intmin)/colorrange*254<254>0
+                 POLYFILL, xpix, ypix, COLOR=color
               endif
            endif else begin
               IF int[i,j] NE blankval AND int[i,j] GE Range[0] $
                  AND int[i,j] LE Range[1] AND FINITE(int[i,j]) then begin
-                 POLYFILL, xpix, ypix, COLOR=(int[i,j]-intmin)/colorrange*254<254>0
+                 POLYFILL, xpix, ypix, COLOR=color
               endif
            endelse
         endif

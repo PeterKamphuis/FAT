@@ -1,4 +1,4 @@
-Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filenames=filenames
+Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filenames=filenames,splined=splined
 
 ;+
 ; NAME:
@@ -22,17 +22,30 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
 ;   finishafter = key for what kind of fitting was done.
 ;   filenames   = nams of the created files   
 ; KEYWORD PARAMETERS:
-;       -
+;       /SPLINED - Plot with spline interpolation between the points.
 ;
 ; OUTPUTS:
 ;
-; OPTIONAL OUTPUTS:
+; OPTIONAL OUTPUTS:00B4FF
 ;       -
 ; 
 ; PROCEDURES CALLED:
 ;       AXIS,COLORMAPS,COLOUR_BAR,COLUMNDENSITY,CONTOUR,DEVICE,FILE_TEST(),LOADCT,MAX(),N_ELEMENTS(),OPLOT,PLOT,FAT_PLOTERR,READFITS(),SET_PLOT,SHOWPIXELSMAP,WRITENEWTOTEMPLATE,XYOUTS
 ;
 ; MODIFICATION HISTORY:
+;       15-11-2016 P.Kamphuis; Fixed a bounding Box issue in GDL  
+;       15-11-2016 P.Kamphuis; Introduced hexadecimal plotting for
+;                              color in idl and gdl. In idl and gdl
+;                              this is coded as RGB colors converting
+;                              to hex(B)+hex(G)+hex(R).   
+;       08-11-2016 P.Kamphuis; Added the splined keyword to have the
+;                              variables plotted in a spline
+;                              interpolation
+;       08-11-2016 P.Kamphuis; Removed the plotting through the X
+;                              widget for GDL as it cannot be run in
+;                              screen in that case. However this
+;                              results in black and white plots. Need
+;                              to move to hexidecimal plotting   
 ;       01-08-2016 P.Kamphuis; Updated the GDL plotting to use png as
 ;                              well. This now happens through the X
 ;                              buffer which unfortunately means that
@@ -54,7 +67,6 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   
   arrays=1.
   IF gdlidl then SET_PLOT,'PS' else SET_PLOT, 'Z'
-;  SET_PLOT,'Z'
   plotpara=['RADI','SBR','SBR_2','VROT','VROT_ERR','PA','PA_ERR','PA_2','PA_2_ERR','INCL','INCL_ERR','INCL_2','INCL_2_ERR','BMAJ','SDIS','XPOS','YPOS','VSYS']
   plotstart=[[1,3,5,9],[2,3,7,11],[0,1,1,1]]
   Template=1.
@@ -111,7 +123,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   scrdim = [8.27*300.,11.69*300]
   A = FIndGen(16) * (!PI*2/16.) 
   UserSym, cos(A), sin(A), /fill
-  ssize=1.3
+  ssize=2.5
   IF gdlidl then begin
 
 ;                                ;Currently GDL does not recognize true
@@ -126,9 +138,9 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
      !p.charsize=0.4
      charthick=0.7
      ssize=0.3
-     DEVICE,xsize=scrdim[0]/200.,ysize=scrdim[1]/200,FILENAME='Overview.ps',/color,/PORTRAIT,/ENCAPSULATED,SET_FONT='Times', /TT_FONT 
+     DEVICE,xsize=scrdim[0]/200.,ysize=scrdim[1]/200,FILENAME='Overview.ps',/color,/PORTRAIT,/DECOMPOSED,/ENCAPSULATED
   endif else  $
-     DEVICE,SET_FONT='Times',/TT_FONT,SET_RESOLUTION=[scrdim[0],scrdim[1]],DECOMPOSED=0,SET_PIXEL_DEPTH=24
+     DEVICE,SET_FONT='Times',/TT_FONT,SET_RESOLUTION=[scrdim[0],scrdim[1]],/DECOMPOSED,SET_PIXEL_DEPTH=24
   plotradii=Arrays[*,0]
   tmp=WHERE(Arrays[*,1] GT 1.1E-16)
   tmp2=WHERE(Arrays[*,2] GT 1.1E-16)
@@ -141,10 +153,18 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         plotvariable=Arrays[tmp,1]
         loadct,0,/silent
         plot,plotradii,plotVariable,position=[0.15,0.9-4*ysize,0.55,0.9-3*ysize],xtitle='Radius (arcmin)',$
-             xrange=[0.,maxradii],yrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]],ytickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xticklayout=1,background='ffffff'x,color=254
-        oplot,plotradii,plotVariable,color=0,linestyle=0,symsize=ssize
+             xrange=[0.,maxradii],yrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]],ytickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xticklayout=1,background='ffffff'x,color='ffffff'x,/nodata
+        if keyword_set(splined) then begin
+           newrad=dblarr((n_elements(plotradii)-1)*10.+1)
+           for h=1,n_elements(plotradii)-1 do begin
+              newrad[(h-1)*10:h*10-1]=findgen(10)*(plotradii[h]-plotradii[h-1])/10.+plotradii[h-1]
+           endfor
+           newrad[(h-1)*10]=plotradii[h-1]
+           newvar=spline(plotradii,plotVariable,newrad)
+           oplot,newrad,newvar,color='000000'x,linestyle=0,symsize=ssize
+        ENDIF ELSE oplot,plotradii,plotVariable,color='000000'x,linestyle=0,symsize=ssize      
         levelsrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]]*1000.
-        oplot,plotradii,plotVariable,psym=8,color=0,linestyle=2,symsize=ssize
+        oplot,plotradii,plotVariable,psym=8,color='000000'x,linestyle=2,symsize=ssize
         columndensity,levelsrange,Arrays[0,14],[1.,1.],vwidth=1.,/arcsquare
         levelsranges=levelsrange/1e20
         reset=1e20
@@ -166,23 +186,26 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         newlevels=[levelsranges[0],midrange,levelsranges[1]]
         jynewlevels=newlevels*reset
         columndensity,jynewlevels,double(vsys),[1.,1.],vwidth=1.,/NCOLUMN,/arcsquare
-        AXIS,YAXIS=0,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,color=0
-        AXIS,YAXIS=1,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,ytickv=jynewlevels/1000.,ytickname=[strtrim(strcompress(string(newlevels[0],format='(I3)')),2),strtrim(strcompress(string(fix(newlevels[1]),format='(I2)')),2),strtrim(strcompress(string(fix(newlevels[2]),format='(I2)')),2)],yticks=2,yminor=3,color=0
-        XYOUTs,0.60,0.9-3.5*ysize,'N!IH',/NORMAL,alignment=0.5,ORIENTATION=90, CHARTHICK=charthick,charsize=!p.charsize*1.25,color=0
-        XYOUTs,0.63,0.9-3.5*ysize,'('+adst+' cm!E-2!N)' ,/NORMAL,alignment=0.5,ORIENTATION=90, CHARTHICK=charthick,charsize=charsize,color=0
-        AXIS,XAXIS=0,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,color=0 ,XTITLE='Radius (arcsec)'
-        AXIS,XAXIS=1,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,XRANGE = convertskyanglefunction(!X.CRANGE,distance),xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],color=0 
+        AXIS,YAXIS=0,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,color='000000'x
+        AXIS,YAXIS=1,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,ytickv=jynewlevels/1000.,ytickname=[strtrim(strcompress(string(newlevels[0],format='(I3)')),2),strtrim(strcompress(string(fix(newlevels[1]),format='(I2)')),2),strtrim(strcompress(string(fix(newlevels[2]),format='(I2)')),2)],yticks=2,yminor=3,color='000000'x
+        XYOUTs,0.60,0.9-3.5*ysize,'N!IH',/NORMAL,alignment=0.5,ORIENTATION=90, CHARTHICK=charthick,charsize=!p.charsize*1.25,color='000000'x
+        XYOUTs,0.63,0.9-3.5*ysize,'('+adst+' cm!E-2!N)' ,/NORMAL,alignment=0.5,ORIENTATION=90, CHARTHICK=charthick,charsize=charsize,color='000000'x
+        AXIS,XAXIS=0,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,color='000000'x ,XTITLE='Radius (arcsec)'
+        AXIS,XAXIS=1,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,XRANGE = convertskyanglefunction(!X.CRANGE,distance),xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],color='000000'x 
         loadct,40,/silent
-        oplot,plotradii,Arrays[tmp2,2],thick=lthick,color=254,linestyle=2
-        oplot,plotradii,Arrays[tmp2,2],psym=8,color=254,linestyle=2,symsize=ssize
-        XYOUTs,0.05,0.9-3.5*ysize,plotpara[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,charsize=!p.charsize*1.25,color=0,charthick=charthick
-        XYOUTs,0.08,0.9-3.5*ysize,varunits[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,color=0,charthick=charthick
+        if keyword_set(splined) then begin
+           newvar=spline(plotradii,Arrays[tmp2,2],newrad)
+           oplot,newrad,newvar,color='0000FF'x,linestyle=2,symsize=ssize
+        ENDIF ELSE oplot,plotradii,Arrays[tmp2,2],thick=lthick,color='0000FF'x,linestyle=2
+        oplot,plotradii,Arrays[tmp2,2],psym=8,color='0000FF'x,linestyle=2,symsize=ssize
+        XYOUTs,0.05,0.9-3.5*ysize,plotpara[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,charsize=!p.charsize*1.25,color='000000'x,charthick=charthick
+        XYOUTs,0.08,0.9-3.5*ysize,varunits[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,color='000000'x,charthick=charthick
         
         IF FILE_TEST('ModelInput.def') then begin
-           oplot,ModArrays[*,0],ModArrays[*,1],thick=lthick,color=54
-           oplot,ModArrays[*,0],ModArrays[*,1],psym=8,color=54,symsize=ssize
-           oplot,ModArrays[*,0],ModArrays[*,2],thick=lthick,color=204,linestyle=2
-           oplot,ModArrays[*,0],ModArrays[*,2],psym=8,color=204,linestyle=2,symsize=ssize
+           oplot,ModArrays[*,0],ModArrays[*,1],thick=lthick,color='FF0010'x
+           oplot,ModArrays[*,0],ModArrays[*,1],psym=8,color='FF0010'x,symsize=ssize
+           oplot,ModArrays[*,0],ModArrays[*,2],thick=lthick,color='00B4FF'x,linestyle=2
+           oplot,ModArrays[*,0],ModArrays[*,2],psym=8,color='00B4FF'x,linestyle=2,symsize=ssize
         ENDIF
      ENDIF ELSE begin
         IF plotstart[i,0] NE plotstart[i,1] then begin
@@ -202,38 +225,46 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
            xerr=dblarr(n_elements(plotVariableErr))
            fat_ploterror,plotradii,plotVariable,xerr,plotVariableErr,position=[0.15,0.9-(4-i)*ysize,0.55,0.9-(3-i)*ysize],$
                      xrange=[0.,maxradii],yrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]],xthick=xthick,ythick=ythick,xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xticklayout=1,charthick=charthick,thick=thick,charsize=charsize,linestyle=0,$
-                     /noerase,color=0,ERRCOLOR = 0, ERRTHICK=!p.thick*0.4
+                     /noerase,color='000000'x,ERRCOLOR = '000000'x, ERRTHICK=!p.thick*0.4,psym=8,symsize=ssize
         ENDIF ELSE BEGIN
            plot,plotradii,plotVariable,position=[0.15,0.9-(4-i)*ysize,0.55,0.9-(3-i)*ysize],$
                 xrange=[0.,maxradii],yrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]],xthick=xthick,ythick=ythick,xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xticklayout=1,charthick=charthick,thick=thick,charsize=charsize,linestyle=0,$
-                /noerase,color=0
+                /noerase,color='000000'x,psym=8,symsize=ssize
         ENDELSE
-        oplot,plotradii,plotVariable,psym=8,color=0,linestyle=2,symsize=ssize
+        if keyword_set(splined) then begin
+           newvar=spline(plotradii,plotVariable,newrad)
+           oplot,newrad,newvar,color='000000'x,linestyle=0,symsize=ssize
+        ENDIF ELSE oplot,plotradii,plotVariable,thick=lthick,color='000000'x,linestyle=0
+      
         IF i EQ 3 then begin
-           AXIS,XAXIS=1,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,XRANGE = convertskyanglefunction(!X.CRANGE,distance),XTITLE='Radius (kpc)',color=0 
+           AXIS,XAXIS=1,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,XRANGE = convertskyanglefunction(!X.CRANGE,distance),XTITLE='Radius (kpc)',color='000000'x 
         endif else begin
-           AXIS,XAXIS=1,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,XRANGE = convertskyanglefunction(!X.CRANGE,distance),xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],color=0 
+           AXIS,XAXIS=1,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,XRANGE = convertskyanglefunction(!X.CRANGE,distance),xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],color='000000'x 
         endelse
-        XYOUTs,0.05,0.9-(3.5-i)*ysize,plotpara[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,charsize=!p.charsize*1.25,color=0,charthick=charthick
-        XYOUTs,0.08,0.9-(3.5-i)*ysize,varunits[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,color=0,charthick=charthick
+        XYOUTs,0.05,0.9-(3.5-i)*ysize,plotpara[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,charsize=!p.charsize*1.25,color='000000'x,charthick=charthick
+        XYOUTs,0.08,0.9-(3.5-i)*ysize,varunits[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,color='000000'x,charthick=charthick
         loadct,40,/silent
         IF plotstart[i,0] NE plotstart[i,1] then begin
            plotvariable=Arrays[tmp2,plotstart[i,1]]
            plotVariableErr=Arrays[tmp2,plotstart[i,1]+plotstart[i,2]]          
            IF TOTAL(plotVariableErr) NE 0. then begin
               xerr=dblarr(n_elements(plotVariableErr))
-              fat_ploterror,plotradii,plotVariable,xerr,plotVariableErr,thick=lthick,color=254,linestyle=2,ERRCOLOR = 254, ERRTHICK=!p.thick*0.4,/over_plot
+              fat_ploterror,plotradii,plotVariable,xerr,plotVariableErr,thick=lthick,color='0000FF'x,linestyle=2,ERRCOLOR = '0000FF'x, ERRTHICK=!p.thick*0.4,/over_plot,psym=8,symsize=ssize
            ENDIF ELSE BEGIN
-              oplot,plotradii,plotVariable,thick=lthick,color=254,linestyle=2
+              oplot,plotradii,plotVariable,thick=lthick,color='0000FF'x,linestyle=2,psym=8,symsize=ssize
            ENDELSE
-           oplot,plotradii,plotVariable,psym=8,color=254,linestyle=2,symsize=ssize
+           if keyword_set(splined) then begin
+              newvar=spline(plotradii,plotVariable,newrad)
+              oplot,newrad,newvar,color='0000FF'x,linestyle=2,symsize=ssize
+           ENDIF ELSE  oplot,plotradii,plotVariable,thick=lthick,color='0000FF'x,linestyle=2
+      
         ENDIF
         IF FILE_TEST('ModelInput.def') then begin
-           oplot,ModArrays[*,0],ModArrays[*,plotstart[i,0]],thick=lthick,color=54
-           oplot,ModArrays[*,0],ModArrays[*,plotstart[i,0]],psym=8,color=54,symsize=ssize
+           oplot,ModArrays[*,0],ModArrays[*,plotstart[i,0]],thick=lthick,color='FF0010'x
+           oplot,ModArrays[*,0],ModArrays[*,plotstart[i,0]],psym=8,color='FF0010'x,symsize=ssize
            IF plotstart[i,0] NE plotstart[i,1] then begin
-              oplot,ModArrays[*,0],ModArrays[*,plotstart[i,1]],thick=lthick,color=204,linestyle=2
-              oplot,ModArrays[*,0],ModArrays[*,plotstart[i,1]],psym=8,color=204,linestyle=2,symsize=ssize
+              oplot,ModArrays[*,0],ModArrays[*,plotstart[i,1]],thick=lthick,color='00B4FF'x,linestyle=2
+              oplot,ModArrays[*,0],ModArrays[*,plotstart[i,1]],psym=8,color='00B4FF'x,linestyle=2,symsize=ssize
            ENDIF
         ENDIF
      ENDELSE
@@ -291,23 +322,23 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   mapmax=MAX(mom0,min=mapmin)
   buildaxii,mom0hed,xaxis,yaxis
   colormaps,'heat',/invert
-  showpixelsmap,xaxis,yaxis,mom0,position=[0.15,0.1,0.35,0.1+0.2*scrdim[0]/scrdim[1]],/WCS, xtitle='RA (J2000)',ytitle='DEC (J2000)',BLANK_VALUE=0.,range=[0.,mapmax],/NOERASE,charthick=charthick,thick=thick,/black
+  showpixelsmap,xaxis,yaxis,mom0,position=[0.15,0.1,0.35,0.1+0.2*scrdim[0]/scrdim[1]],/WCS, xtitle='RA (J2000)',ytitle='DEC (J2000)',BLANK_VALUE=0.,range=[0.,mapmax],/NOERASE,charthick=charthick,thick=thick,/black,/hex_color
   levels=[1E20, 2E20, 4E20, 8E20,16E20,32E20]
   beam=[sxpar(mom0hed,'BMAJ')*3600.,sxpar(mom0hed,'BMIN')*3600.]
   IF sxpar(mom0hed,'BPA') then bpa=sxpar(mom0hed,'BPA') else bpa=0
   columndensity,levels,double(vsys),beam,vwidth=1.,/NCOLUMN
   levels=levels/1000.
   loadct,0,/SILENT
-  Contour,mom0,xaxis,yaxis,levels=levels,/overplot,c_colors=[0]
-  loadct,40
-  Contour,mom0mod,xaxis,yaxis,levels=levels,/overplot,c_colors=[254]
-  beam_plot,beam[0],beam[1],bpa=bpa,center=[xaxis[0]-beam[0]/3600.,yaxis[0]+beam[0]/3600.],/fill,color=0
+  Contour,mom0,xaxis,yaxis,levels=levels,/overplot,c_colors=['000000'x]
+  loadct,40,/SILENT
+  Contour,mom0mod,xaxis,yaxis,levels=levels,/overplot,c_colors=['0000FF'x]
+  beam_plot,beam[0],beam[1],bpa=bpa,center=[xaxis[0]-beam[0]/3600.,yaxis[0]+beam[0]/3600.],/fill,color='000000'x,/transparent
   colormaps,'heat',/invert
-  colour_bar,[0.37,0.39],[0.12,0.1+0.2*scrdim[0]/scrdim[1]-0.02],strtrim(string(0,format='(F10.1)'),2),strtrim(string(mapmax,format='(F10.1)'),2),/OPPOSITE_LABEL,/BLACK,TITLE='(Jy bm!E-1!N x km s!E-1!N)',/VERTICAL,charthick=charthick
+  colour_bar,[0.37,0.39],[0.12,0.1+0.2*scrdim[0]/scrdim[1]-0.02],strtrim(string(0,format='(F10.1)'),2),strtrim(string(mapmax,format='(F10.1)'),2),/OPPOSITE_LABEL,/BLACK,TITLE='(Jy bm!E-1!N x km s!E-1!N)',/VERTICAL,charthick=charthick,/hex_color
   loadct,0,/SILENT
-  XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1],'Velocity Field, Moment0 and PV-Diagram along the major axis.',color=0,/normal,charthick=charthick
-  XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.02,'Black Contours: Data, White/Red Contours: Final Model',color=0,/normal,charthick=charthick
-  XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.04,'Moment 0 Contours are at 1, 2, 4, 8, 16, 32 x 10!E20!N cm!E-2',color=0,/normal,charthick=charthick
+  XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1],'Velocity Field, Moment0 and PV-Diagram along the major axis.',color='000000'x,/normal,charthick=charthick
+  XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.02,'Black Contours: Data, White/Red Contours: Final Model',color='000000'x,/normal,charthick=charthick
+  XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.04,'Moment 0 Contours are at 1, 2, 4, 8, 16, 32 x 10!E20!N cm!E-2',color='000000'x,/normal,charthick=charthick
 
 ;Velocity Field
   tmpstr=strtrim(strsplit(filenames[2],'/',/extract),2)
@@ -319,24 +350,27 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
 
   mom0mod=readfits('Moments/Finalmodel_mom1.fits',mom0hedmod,/SILENT)
   tmp=WHERE(FINITE(mom0mod))
-  velext=1.25*maxvrot*SIN(ceninc*!DtoR)
+  ;Too low inclination can result in a too small range
+  ceninc=ceninc+12.5
+  IF ceninc GT 90 then ceninc=90.
+  velext=1.25*maxvrot*SIN((ceninc)*!DtoR)
   mapmax=double(vsys[0]+velext[0])
   mapmin=double(vsys[0]-velext[0])
   buildaxii,mom0hed,xaxis,yaxis
   colormaps,'sauron_colormap'
-  showpixelsmap,xaxis,yaxis,mom0,position=[0.15,0.1+0.2*scrdim[0]/scrdim[1],0.35,0.1+0.4*scrdim[0]/scrdim[1]],/WCS,ytitle='DEC (J2000)',BLANK_VALUE=0.,range=[mapmin,mapmax],/NOERASE,charthick=charthick,thick=thick,xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' ']
+  showpixelsmap,xaxis,yaxis,mom0,position=[0.15,0.1+0.2*scrdim[0]/scrdim[1],0.35,0.1+0.4*scrdim[0]/scrdim[1]],/WCS,ytitle='DEC (J2000)',BLANK_VALUE=0.,range=[mapmin,mapmax],/NOERASE,charthick=charthick,thick=thick,xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],/hex_color
   IF mapmax-mapmin LT 100 then levels=(findgen(20)+1)*10.+mapmin else levels=(findgen(30)+1)*25.+mapmin
   loadct,0,/SILENT
-  Contour,mom0,xaxis,yaxis,levels=levels,/overplot,c_colors=[0]
-  Contour,mom0mod,xaxis,yaxis,levels=levels,/overplot,c_colors=[254]
-  beam_plot,beam[0],beam[1],bpa=bpa,center=[xaxis[0]-beam[0]/3600.,yaxis[0]+beam[0]/3600.],/fill,/transparent,color=0
-  colormaps,'sauron_colormap'
-  colour_bar,[0.37,0.39],[0.1+0.2*scrdim[0]/scrdim[1]+0.02,0.1+0.4*scrdim[0]/scrdim[1]-0.02],strtrim(string(mapmin,format='(I10)'),2),strtrim(string(mapmax,format='(I10)'),2),/OPPOSITE_LABEL,/BLACK,TITLE='(km s!E-1!N)',/VERTICAL,charthick=charthick
+  Contour,mom0,xaxis,yaxis,levels=levels,/overplot,c_colors=['000000'x]
+  Contour,mom0mod,xaxis,yaxis,levels=levels,/overplot,c_colors=['ffffff'x]
+  beam_plot,beam[0],beam[1],bpa=bpa,center=[xaxis[0]-beam[0]/3600.,yaxis[0]+beam[0]/3600.],/fill,/transparent,color='000000'x
+  colormaps,'sauron_colormap',/invert
+  colour_bar,[0.37,0.39],[0.1+0.2*scrdim[0]/scrdim[1]+0.02,0.1+0.4*scrdim[0]/scrdim[1]-0.02],strtrim(string(mapmin,format='(F10.1)'),2),strtrim(string(mapmax,format='(F10.1)'),2),/OPPOSITE_LABEL,/BLACK,TITLE='(km s!E-1!N)',/VERTICAL,charthick=charthick,/hex_color
   loadct,0,/SILENT
   IF mapmax-mapmin LT 100 then begin
-     XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.06,'Velocity Field Contours start at '+strtrim(string(mapmin+10.,format='(I10)'),2)+' km s!E-1!N and increase with 10 km s!E-1!N.',color=0,/normal,charthick=charthick
+     XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.06,'Velocity Field Contours start at '+strtrim(string(mapmin+10.,format='(I10)'),2)+' km s!E-1!N and increase with 10 km s!E-1!N.',color='000000'x,/normal,charthick=charthick
   ENDIF ELSE BEGIN
-     XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.06,'Velocity Field Contours start at '+strtrim(string(mapmin+25.,format='(I10)'),2)+' km s!E-1!N and increase with 25 km s!E-1!N.',color=0,/normal,charthick=charthick
+     XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.06,'Velocity Field Contours start at '+strtrim(string(mapmin+25.,format='(I10)'),2)+' km s!E-1!N and increase with 25 km s!E-1!N.',color='000000'x,/normal,charthick=charthick
   ENDELSE
   
 ;PV Diagram along major axis
@@ -353,7 +387,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   IF mapmin-velbuf LT yaxis[0] then tmpmin=yaxis[0] else tmpmin=mapmin-velbuf
   yrange=[tmpmin,tmp]
   colormaps,'heat',/invert
-  showpixelsmap,xaxis*3600.,yaxis,mom0,position=[0.65,0.1+0.2*scrdim[0]/scrdim[1],0.85,0.1+0.4*scrdim[0]/scrdim[1]], xtitle='Offset (arcsec)',ytitle='Velocity (km s!E-1!N)',BLANK_VALUE=0.,range=[mapinmin,mapinmax],/NOERASE,charthick=charthick,thick=thick,/black,yrange=yrange
+  showpixelsmap,xaxis*3600.,yaxis,mom0,position=[0.65,0.1+0.2*scrdim[0]/scrdim[1],0.85,0.1+0.4*scrdim[0]/scrdim[1]], xtitle='Offset (arcsec)',ytitle='Velocity (km s!E-1!N)',BLANK_VALUE=0.,range=[mapinmin,mapinmax],/NOERASE,charthick=charthick,thick=thick,/black,yrange=yrange,/hex_color
   if n_elements(noise) LT 1 then noise=STDDEV(mom0[0:10,0:10])
   levels=[1,2,4,8,16,32,64,128]*1.5*noise
   levelsneg=([-2,-1])*1.5*noise
@@ -361,18 +395,18 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   Contour,mom0,xaxis*3600.,yaxis,levels=levels,/overplot,c_colors=['000000'x]
   Contour,mom0,xaxis*3600,yaxis,levels=levelsneg,/overplot,c_colors=['999999'x],c_linestyle=2
   loadct,40,/silent
-  Contour,mom0mod,xaxis*3600,yaxis,levels=levels,/overplot,c_colors=['0000F9'x]
+  Contour,mom0mod,xaxis*3600,yaxis,levels=levels,/overplot,c_colors=['0000FF'x]
   colormaps,'heat',/invert
-  colour_bar,[0.87,0.89],[0.1+0.2*scrdim[0]/scrdim[1]+0.02,0.1+0.4*scrdim[0]/scrdim[1]-0.02],strtrim(string(mapinmin,format='(F10.4)'),2),strtrim(string(mapinmax,format='(F10.4)'),2),/OPPOSITE_LABEL,/BLACK,TITLE='(Jy bm!E-1!N)',/VERTICAL,charthick=charthick
+  colour_bar,[0.87,0.89],[0.1+0.2*scrdim[0]/scrdim[1]+0.02,0.1+0.4*scrdim[0]/scrdim[1]-0.02],strtrim(string(mapinmin,format='(F10.4)'),2),strtrim(string(mapinmax,format='(F10.4)'),2),/OPPOSITE_LABEL,/BLACK,TITLE='(Jy bm!E-1!N)',/VERTICAL,charthick=charthick,/hex_color
   loadct,0,/SILENT
-  XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.08,'PV-Diagram Contours start are at -3, -1.5, 1.5, 3, 6, 12, 24 x rms.',color=0,/normal,charthick=charthick
-  XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.1,'rms = '+strtrim(string(noise,format='(F10.5)'),2)+' Jy bm!E-1!N.',color=0,/normal,charthick=charthick
-  XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.12,'The distance used for conversions = '+strtrim(string(Distance,format='(F10.1)'),2)+' Mpc',color=0,/normal,charthick=charthick
-  
+  XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.08,'PV-Diagram Contours start are at -3, -1.5, 1.5, 3, 6, 12, 24 x rms.',color='000000'x,/normal,charthick=charthick
+  XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.1,'rms = '+strtrim(string(noise,format='(F10.5)'),2)+' Jy bm!E-1!N.',color='000000'x,/normal,charthick=charthick
+  XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.12,'The distance used for conversions = '+strtrim(string(Distance,format='(F10.1)'),2)+' Mpc',color='000000'x,/normal,charthick=charthick
   IF ~(gdlidl) then image = tvrd(/true)
   DEVICE,/CLOSE  
   IF ~(gdlidl) then  write_png,'Overview.png',image
   IF gdlidl then begin
+     spawn,"sed -i -- 's/1186 669/506 679/g' Overview.ps"
      spawn,'gs -help',result
      if n_elements(result) GT 1 then begin
         spawn,'gs -r300  -dEPSCrop -dTextAlphaBits=4 -sDEVICE=png16m -sOutputFile="Overview.png" -dBATCH -dNOPAUSE "Overview.ps"'
