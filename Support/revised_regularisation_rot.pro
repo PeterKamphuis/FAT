@@ -540,7 +540,7 @@ refit:
                                 ;often pushing the rotation curve in
                                 ;the wrong direction
   if n_elements(PAin) GT 15 then begin
-     endorder=n_elements(PA[*])-fixedrings
+     endorder=n_elements(PA[*])-fixedrings-2
      maxendorder=endorder
      IF endorder LT 3 then endorder=3
      IF endorder GT 8 then endorder=8
@@ -551,7 +551,7 @@ refit:
         print,'This is our beginorder',beginorder
      ENDIF
   endif else begin
-     endorder=n_elements(PA[*])
+     endorder=n_elements(PA[*])-2
      maxendorder=endorder
      IF endorder LT 2 then endorder=2
      IF endorder GT 5 then endorder=5

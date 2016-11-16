@@ -3158,6 +3158,7 @@ noconfig:
 
                                 ;let's see if the model has the right size           
            IF secondtime then norings=newrings else get_newringsv9,SBRarr,SBRarr2,cutoff,newrings
+                                ;cannot have newsize smaller than 3
            if newrings LT 3 then begin
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
@@ -3175,6 +3176,14 @@ noconfig:
               ENDIF       
               newrings=maxrings 
            ENDIF
+                                ;If we have a small size we do not
+                                ;vary by more that a single ring
+           IF norings[0] LE 8 OR newrings LE 8 then begin
+              IF newrings LT norings[0]-1 then newrings=norings[0]-1
+              IF newrings GT norings[0]+1 then newrings=norings[0]+1
+           ENDIF
+
+
            
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
