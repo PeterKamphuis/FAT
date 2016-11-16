@@ -406,6 +406,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   DEVICE,/CLOSE  
   IF ~(gdlidl) then  write_png,'Overview.png',image
   IF gdlidl then begin
+     spawn,"sed -i -- 's/1185 669/506 679/g' Overview.ps"
      spawn,"sed -i -- 's/1186 669/506 679/g' Overview.ps"
      spawn,'gs -help',result
      if n_elements(result) GT 1 then begin

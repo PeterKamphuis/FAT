@@ -60,7 +60,7 @@ function isnumeric,input
   for i=0,tmp-1 do begin
      tmpcheck=STRMID(input,i,1)
      case 1 of
-        STRUPCASE(tmpcheck) EQ '+' AND pluscount LT 1:pluscount++
+        STRUPCASE(tmpcheck) EQ '+' AND pluscount LT 2:pluscount++
         STRUPCASE(tmpcheck) EQ '-' AND minuscount LT 2:minuscount++
         STRUPCASE(tmpcheck) EQ '.' AND dotcount LT 2:dotcount++
         STRUPCASE(tmpcheck) EQ 'E' AND Ecount LT 1:Ecount++
