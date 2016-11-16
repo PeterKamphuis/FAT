@@ -408,6 +408,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   IF gdlidl then begin
      spawn,"sed -i -- 's/1185 669/506 679/g' Overview.ps"
      spawn,"sed -i -- 's/1186 669/506 679/g' Overview.ps"
+     IF FILE_TEST('Overview.ps--') then spawn,'rm -f Overview.ps--'
      spawn,'gs -help',result
      if n_elements(result) GT 1 then begin
         spawn,'gs -r300  -dEPSCrop -dTextAlphaBits=4 -sDEVICE=png16m -sOutputFile="Overview.png" -dBATCH -dNOPAUSE "Overview.ps"'
