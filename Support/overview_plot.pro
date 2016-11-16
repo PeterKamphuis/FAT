@@ -275,36 +275,36 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
      convertradec,RAmod,DECmod
      vsysmod=strtrim(string(double(ModArrays[0,n_elements(plotpara)-1]),format='(F10.1)'),2)
      dispermod=strtrim(string(double(ModArrays[0,n_elements(plotpara)-4]),format='(F10.1)'),2)
-     XYOUTS,0.60,0.89,'Systemic Velocity= '+vsys+' ('+vsysmod+') km s!E-1',/normal,alignment=0.,charthick=charthick
-     XYOUTS,0.60,0.87,'R.A.= '+RA+' ('+RAmod+')',/normal,alignment=0.,charthick=charthick
-     XYOUTS,0.60,0.85,'DEC.= '+DEC+' ('+DECmod+')',/normal,alignment=0.,charthick=charthick
-     XYOUTS,0.60,0.83,'Dispersion= '+disper+' ('+dispermod+') km s!E-1',/normal,alignment=0.,charthick=charthick
-     XYOUTS,0.60,0.81,'Black lines: approaching side parameters.',/normal,alignment=0.,charthick=charthick
-     XYOUTS,0.60,0.79,'Red lines: receding side parameters.',/normal,alignment=0.,charthick=charthick
-     XYOUTS,0.60,0.77,'Blue lines: approaching side input model parameters.',/normal,alignment=0.,charthick=charthick
-     XYOUTS,0.60,0.75,'Yellow lines: receding side input model parameters.',/normal,alignment=0.,charthick=charthick
+     XYOUTS,0.60,0.89,'Systemic Velocity= '+vsys+' ('+vsysmod+') km s!E-1',/normal,alignment=0.,charthick=charthick,color='000000'x
+     XYOUTS,0.60,0.87,'R.A.= '+RA+' ('+RAmod+')',/normal,alignment=0.,charthick=charthick,color='000000'x
+     XYOUTS,0.60,0.85,'DEC.= '+DEC+' ('+DECmod+')',/normal,alignment=0.,charthick=charthick,color='000000'x
+     XYOUTS,0.60,0.83,'Dispersion= '+disper+' ('+dispermod+') km s!E-1',/normal,alignment=0.,charthick=charthick,color='000000'x
+     XYOUTS,0.60,0.81,'Black lines: approaching side parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
+     XYOUTS,0.60,0.79,'Red lines: receding side parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
+     XYOUTS,0.60,0.77,'Blue lines: approaching side input model parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
+     XYOUTS,0.60,0.75,'Yellow lines: receding side input model parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
      if fix(finishafter)/finishafter NE 1 OR finishafter EQ 1 then begin
-        XYOUTS,0.60,0.73,'The inclination and PA were not allowed to vary',/normal
-        XYOUTS,0.60,0.71,'The major FWHM beam is '+majbeam+' arcsec',/normal
-        XYOUTS,0.60,0.69,'We used rings of size '+ringsize+' arcsec',/normal
+        XYOUTS,0.60,0.73,'The inclination and PA were not allowed to vary',/normal,color='000000'x
+        XYOUTS,0.60,0.71,'The major FWHM beam is '+majbeam+' arcsec',/normal,color='000000'x
+        XYOUTS,0.60,0.69,'We used rings of size '+ringsize+' arcsec',/normal,color='000000'x
      ENDIF ELSE BEGIN
-        XYOUTS,0.60,0.73,'The major FWHM beam is '+majbeam+' arcsec',/normal
-        XYOUTS,0.60,0.71,'We used rings of size '+ringsize+' arcsec',/normal
+        XYOUTS,0.60,0.73,'The major FWHM beam is '+majbeam+' arcsec',/normal,color='000000'x
+        XYOUTS,0.60,0.71,'We used rings of size '+ringsize+' arcsec',/normal,color='000000'x
      ENDELSE
   ENDIF ELSE BEGIN
-     XYOUTS,0.60,0.89,'Systemic Velocity= '+vsys+' km s!E-1',/normal,alignment=0.,charthick=charthick
-     XYOUTS,0.60,0.87,'R.A.= '+RA,/normal,alignment=0.,charthick=charthick
-     XYOUTS,0.60,0.85,'DEC.= '+DEC,/normal,alignment=0.,charthick=charthick
-     XYOUTS,0.60,0.83,'Dispersion= '+disper+' km s!E-1',/normal,alignment=0.,charthick=charthick
-     XYOUTS,0.60,0.81,'Black lines: approaching side parameters.',/normal,alignment=0.,charthick=charthick
-     XYOUTS,0.60,0.79,'Red lines: receding side parameters.',/normal,alignment=0.,charthick=charthick
+     XYOUTS,0.60,0.89,'Systemic Velocity= '+vsys+' km s!E-1',/normal,alignment=0.,charthick=charthick,color='000000'x
+     XYOUTS,0.60,0.87,'R.A.= '+RA,/normal,alignment=0.,charthick=charthick,color='000000'x
+     XYOUTS,0.60,0.85,'DEC.= '+DEC,/normal,alignment=0.,charthick=charthick,color='000000'x
+     XYOUTS,0.60,0.83,'Dispersion= '+disper+' km s!E-1',/normal,alignment=0.,charthick=charthick,color='000000'x
+     XYOUTS,0.60,0.81,'Black lines: approaching side parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
+     XYOUTS,0.60,0.79,'Red lines: receding side parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
       if fix(finishafter)/finishafter NE 1 OR finishafter EQ 1 then begin
-        XYOUTS,0.60,0.77,'The inclination and PA were not allowed to vary',/normal,charthick=charthick
-        XYOUTS,0.60,0.75,'The major FWHM beam is '+majbeam+' arcsec',/normal,charthick=charthick
-        XYOUTS,0.60,0.73,'We used rings of size '+ringsize+' arcsec',/normal,charthick=charthick
+        XYOUTS,0.60,0.77,'The inclination and PA were not allowed to vary',/normal,charthick=charthick,color='000000'x
+        XYOUTS,0.60,0.75,'The major FWHM beam is '+majbeam+' arcsec',/normal,charthick=charthick,color='000000'x
+        XYOUTS,0.60,0.73,'We used rings of size '+ringsize+' arcsec',/normal,charthick=charthick,color='000000'x
      Endif ELSE BEGIN
-        XYOUTS,0.60,0.77,'The major FWHM beam is '+majbeam+' arcsec',/normal,charthick=charthick
-        XYOUTS,0.60,0.75,'We used rings of size '+ringsize+' arcsec',/normal,charthick=charthick
+        XYOUTS,0.60,0.77,'The major FWHM beam is '+majbeam+' arcsec',/normal,charthick=charthick,color='000000'x
+        XYOUTS,0.60,0.75,'We used rings of size '+ringsize+' arcsec',/normal,charthick=charthick,color='000000'x
      ENDELSE
   ENDELSE
                                 ;Currently GDL does not recognize true

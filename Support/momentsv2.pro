@@ -41,6 +41,8 @@ Pro momentsv2,Cube,Momentmap,header,map
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       16-11-2016 P.Kamphuis; Now dealing with the (non-)presence of
+;                              CUNIT3 properly   
 ;       01-06-2016 P.Kamphuis; Added a condition to check that datamax
 ;                              and datamin are finite.   
 ;       07-01-2016 P.Kamphuis; Replaced SUM commands with the proper
@@ -62,7 +64,7 @@ IF map EQ 0 then begin
    IF blank[0] NE -1 then Cube[blank]=0
    Momentmap=fltarr(n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]))
    Momentmap[*,*]=TOTAL(Cube,3)*ABS(sxpar(header,'CDELT3'))
-   IF isnumeric(sxpar(header,'CUNIT3')) then begin
+   IF ~(sxpar(header,'CUNIT3')) then begin
       IF sxpar(header,'CDELT3') GT 500. then sxaddpar,header,'CUNIT3','M/S' else sxaddpar,header,'CUNIT3','KM/S'
    ENDIF
    IF STRUPCASE(strtrim(sxpar(header,'CUNIT3'),2)) EQ 'M/S' then begin
@@ -80,7 +82,7 @@ IF map EQ 1 then begin
    buildaxii,header,xaxis,yaxis,zaxis=zaxis
    blank=WHERE(FINITE(Cube) NE 1.)
    IF blank[0] NE -1 then Cube[blank]=0  
-   IF isnumeric(sxpar(header,'CUNIT3')) then begin
+   IF ~(sxpar(header,'CUNIT3')) then begin
       IF sxpar(header,'CDELT3') GT 500. then sxaddpar,header,'CUNIT3','M/S' else sxaddpar,header,'CUNIT3','KM/S'
    ENDIF
    IF STRUPCASE(strtrim(sxpar(header,'CUNIT3'),2)) EQ 'M/S' then begin
