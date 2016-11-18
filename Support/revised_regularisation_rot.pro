@@ -747,7 +747,7 @@ refit:
      
     
            print,'This is minchi',minchi
-  order=WHERE(Chi EQ minchi)+2
+  order=WHERE(Chi EQ minchi)+beginorder
   tmp=order
   order=intarr(1)
   order=tmp[0]
