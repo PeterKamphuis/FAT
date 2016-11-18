@@ -111,19 +111,20 @@ for i=0,n_elements(tirifictemplate)-1 do begin
          for j=0,n_elements(tmpsep1)-1 do begin
             tmpsep2=str_sep(strtrim(strcompress(tmpsep1[j]),2),' ')
             for x=0,n_elements(tmpsep2)-1 do begin 
-               IF isnumeric(tmpsep2[x]) then begin
-                  tmpsep3=str_sep(strtrim(strcompress(tmpsep2[x]),2),':')
-                  IF tmpsep3[0] EQ -1 then begin
+               tmpsep3=str_sep(strtrim(strcompress(tmpsep2[x]),2),':')
+               IF tmpsep3[0] EQ -1 then begin
+                  IF isnumeric(tmpsep2[x]) then begin
                      IF Double(tmpsep2[x]) GE double(oldrings) then tmpsep2[x]=strtrim(strcompress(string(numberofrings,format='(F7.4)')),1)
-                  endif ELSE BEGIN
-                     for y=0,n_elements(tmpsep3)-1 do begin
-                        IF isnumeric(tmpsep3[y]) then begin
-                           IF Double(tmpsep3[y]) GE double(oldrings) then tmpsep3[y]=strtrim(strcompress(string(numberofrings,format='(F7.4)')),1)
-                        ENDIF
-                        IF y EQ 0 then tmpsep2[x]=tmpsep3[y] else tmpsep2[x]=tmpsep2[x]+':'+tmpsep3[y]
-                     endfor
-                  ENDELSE
-               ENDIF
+                  ENDIF
+               endif ELSE BEGIN
+                  for y=0,n_elements(tmpsep3)-1 do begin
+                     IF isnumeric(tmpsep3[y]) then begin
+                        IF Double(tmpsep3[y]) GE double(oldrings) then tmpsep3[y]=strtrim(strcompress(string(numberofrings,format='(F7.4)')),1)
+                     ENDIF
+                     IF y EQ 0 then tmpsep2[x]=tmpsep3[y] else tmpsep2[x]=tmpsep2[x]+':'+tmpsep3[y]
+                  endfor
+               ENDELSE
+              
                IF x EQ 0 then tmpsep1[j]=tmpsep2[x] else tmpsep1[j]=tmpsep1[j]+' '+tmpsep2[x]
             endfor
             IF j EQ 0 then tirifictemplate[i]=tirifictemplate[i]+tmpsep1[j] else tirifictemplate[i]=tirifictemplate[i]+','+tmpsep1[j]

@@ -112,7 +112,7 @@ Pro extract_pv,Cube,header,pa,xv,CENTER=center,XVHEADER=new_header
      sxaddpar,new_header,'CUNIT2',sxpar(inheader,'CUNIT3'),after='CTYPE2'
      sxdelpar,new_header,'CUNIT3'
   ENDIF
-  IF isnumeric(sxpar(new_header,'CUNIT2')) then begin
+  IF ~(sxpar(new_header,'CUNIT2')) then begin
      IF sxpar(new_header,'CDELT2') GT 500. then sxaddpar,new_header,'CUNIT2','M/S',after='CTYPE2' else sxaddpar,new_header,'CUNIT2','KM/S',after='CTYPE2'
   ENDIF
   IF STRUPCASE(strtrim(sxpar(new_header,'CUNIT2'),2)) EQ 'M/S' then begin
