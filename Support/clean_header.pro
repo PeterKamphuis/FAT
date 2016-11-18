@@ -104,7 +104,7 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
      writecube=2 
      goto,finishup	 
   ENDIF
-  IF isnumeric(veltype) then begin
+  IF ~(sxpar(header,'CUNIT3')) then begin
      IF channelwidth GT 100. then begin
         veltype='M/S'
         sxaddpar,header,'CUNIT3','M/S',after='CDELT3'
