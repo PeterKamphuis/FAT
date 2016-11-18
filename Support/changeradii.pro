@@ -112,7 +112,7 @@ for i=0,n_elements(tirifictemplate)-1 do begin
             tmpsep2=str_sep(strtrim(strcompress(tmpsep1[j]),2),' ')
             for x=0,n_elements(tmpsep2)-1 do begin 
                tmpsep3=str_sep(strtrim(strcompress(tmpsep2[x]),2),':')
-               IF tmpsep3[0] EQ -1 then begin
+               IF n_elements(tmpsep3) EQ 1 then begin
                   IF isnumeric(tmpsep2[x]) then begin
                      IF Double(tmpsep2[x]) GE double(oldrings) then tmpsep2[x]=strtrim(strcompress(string(numberofrings,format='(F7.4)')),1)
                   ENDIF
