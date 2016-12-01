@@ -1,4 +1,4 @@
-Pro set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,log=log,initial=initial
+Pro set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,log=log,initial=initial,doubled=doubled
 
 ;+
 ; NAME:
@@ -54,6 +54,7 @@ Pro set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,c
   startstep=strtrim(strcompress(string(5.*cutoff[norings[0]-1],format='(E8.1)')),1)
   if keyword_set(initial) then satlevel=strtrim(strcompress(string(5.*double(startstep),format='(E8.1)')),1) else satlevel=strtrim(strcompress(string(2.*double(startstep),format='(E8.1)')),1)
   SBRinput1=['!SBR '+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+':3','1',strtrim(strcompress(string(cutoff[n_elements(cutoff)-1],format='(E12.5)')),1),startstep,minstep,satlevel,minstep,'3','70','70']
+  IF doubled then sbrinput1[2]=strtrim(strcompress(string(cutoff[norings[0]]/1.2,format='(E8.1)')),1)
                                 ;Then copy the array into multiple arrays
   SBRinput2=SBRinput1
   SBRinput3=SBRinput1

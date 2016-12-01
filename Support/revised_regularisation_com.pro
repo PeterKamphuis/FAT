@@ -1,4 +1,4 @@
-Pro revised_regularisation_com,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixedringsin,REVERSE=rev,NOWEIGHT=noweight,Difference=DDivin,cutoff=cutoffin,arctan=arctanin,debug=debug,nocentral=nocentral,order=order,max_deviation=maxdevin,max_par=PAmaxin,min_par=PAminin,accuracy=accuracy,extending=extending,gdlidl=gdlidl,sloped=slopedrings,log=log
+Pro revised_regularisation_com,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixedringsin,REVERSE=rev,NOWEIGHT=noweight,Difference=DDivin,cutoff=cutoffin,arctan=arctanin,debug=debug,order=order,max_deviation=maxdevin,max_par=PAmaxin,min_par=PAminin,accuracy=accuracy,extending=extending,gdlidl=gdlidl,sloped=slopedrings,log=log
 
 ;+
 ; NAME:
@@ -739,9 +739,10 @@ refit:
         ENDIF
     
         fitfailed=0.
+       
         newPAcoeff=FAT_FIT(RADII,fitPA,order,RCHI_SQR=tmp,errors=fiterrors,STATUS=fitstat,/Monte_Carlo,mc_iters=150000.,$
-                           mc_errors=shifterrors,maximum_deviation=maxdev,accuracy=accuracy,fixedrings=fixedrings[par],$
-                           mc_y_min=pamin,mc_y_max=pamax,nocentral=nocentral,mc_maxfails=100.,log=log,newy=ReturnPA,/debug)
+                           mc_errors=shifterrors,maximum_deviation=maxdev[par],accuracy=accuracy[par],fixedrings=fixedrings[par],$
+                           mc_y_min=pamin[par],mc_y_max=pamax[par],mc_maxfails=100.,log=log,newy=ReturnPA,/debug)
       
         newPA[*,par]=fitPA[*]
                                 ;let's calculate how much our
@@ -760,7 +761,6 @@ refit:
            print,'Printing reduced chi, order'
            print,tmp,order
            print,'Finished this order'
-              
         ENDIF
      endfor
      doneorder:
@@ -1007,7 +1007,7 @@ refit:
            endif
         
         endif else begin
-           Chi[*]=Chi[*]*SQRT(findgen(endorder-1)+1.)
+         ;  IF Chi[*]=Chi[*]*SQRT(findgen(endorder-1)+1.)
         endelse
         ;However we will reduce the Chi's if the PA is not 0.
         
@@ -1024,6 +1024,11 @@ refit:
      adjustederr=0.
      straighterrors=fiterrors
      againzero:
+     IF keyword_set(debug) then begin
+     
+        print,'These errors were used for straight'
+        print,straighterrors
+     ENDIF
      newPAcoeff=FAT_FIT(RADII,fitPA,0.,RCHI_SQR=redChi,errors= straighterrors,STATUS=fitstat,log=log)      
      IF redChi LT 1 then begin
         tmpeq=WHERE(fitPA NE PA[0])
@@ -1088,11 +1093,41 @@ refit:
            goto,newendorder
         ENDELSE
      ENDELSE
-     if order GT 0 then coefffound[0:order,par]=finalcoeff[0:order,order-2] else  coefffound[0,par]=newPA[0,par]
-     allfixed:
+
+  
      if keyword_set(debug) then begin
-        print,'We find this as the new profile'
+        print,'We find this as the new profile without checking the variations'
         print,newPA[*,par]
+        print,'With the order '+string(finorder[par])
+     endif
+
+     
+                                ;we will check the newPA against ddiv
+                                ;again if changes are continuously
+                                ;smaller then the order =0
+     if order GT 0 then begin
+        IF n_elements(DDiv) NE 0 then begin
+           
+           diff=dblarr(n_elements(PA[*,0]))
+           diff[*]=newPA[*,par]-newPA[0,par]
+           tmpchange=WHERE(ABS(diff) LT DDiv[par])
+           IF n_elements(tmpchange) EQ n_elements(newPA[*,par]) then begin
+              order=0
+              finorder[par]=order
+              newPA[*,par]=PAin[0,par]
+              coefffound[0,par]=PAin[0,par]
+              errors[*,par]=straighterrors[*]
+           ENDIF ELSE coefffound[0:order,par]=finalcoeff[0:order,order-2]
+        ENDIF ELSE coefffound[0:order,par]=finalcoeff[0:order,order-2]
+     ENDIF else  coefffound[0,par]=newPA[0,par]
+     allfixed:
+                                ;we will check the newPA against ddiv
+                                ;again if changes are continuously
+                                ;smaller then the order =0
+     
+     if keyword_set(debug) then begin
+        print,'We find this as the new profile',ddiv[par]
+        print,newPA
         print,'With the order '+string(finorder[par])
      endif
      erroradjusted=0

@@ -94,7 +94,7 @@ Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
 ;-
   COMPILE_OPT IDL2 
 
-; First thing is to check all the input whetehr it is reasonable
+; First thing is to check all the input whether it is reasonable
   IF KEYWORD_SET(NOCENTRAL) then begin 
      SBR=SBRin[1:n_elements(SBRin)-1]
      RADII=RADIIin[1:n_elements(SBRin)-1]
@@ -428,7 +428,7 @@ restartall:
         IF tmp[0] NE -1 then errors[tmp]=3*maxdev[0]
      ENDIF
   ENDIF
-  IF ~keyword_set(nocentral) then errors[n_elements(errors)-2:n_elements(errors)-1]=maxdev[0]
+  IF ~keyword_set(nocentral) then errors[n_elements(errors)-2:n_elements(errors)-1]=maxdev[0]/2.
   IF keyword_set(debug) then begin
      print,'The final errors are:'
      print,errors
@@ -436,20 +436,24 @@ restartall:
   
 ;IF we have maxdev then first we are going to do a small check on
 ;ridiculous outliers.
-  
+  IF keyword_set(debug) then begin
+     print,'Before Adjusting Big Jigs'
+     print, PA
+  ENDIF
+  PAtmp=PA
   IF n_elements(maxdev) GT 0. then begin
      lastmod=1
      start=n_elements(PA[*])-2
      for i=n_elements(PA[*])-4,1,-1 do begin
-        diff1=ABS(PAin[i]-PAin[i-1])
-        diff2=ABS(PAin[i]-PAin[i+1])
-        diff3=ABS(PAin[i+1]-PAin[i-1])
+        diff1=ABS(PAtmp[i]-PAtmp[i-1])
+        diff2=ABS(PAtmp[i]-PAtmp[i+1])
+        diff3=ABS(PAtmp[i+1]-PAtmp[i-1])
         IF diff1 GT maxdev AND  diff2 GT maxdev AND diff3 LT (diff1+diff2)/2. then begin
            if keyword_set(debug) then begin
               print,"These are the differences from ring to ring +the value +maxdev"
               print,diff1,diff2,diff3,i,PA[i],maxdev
            ENDIF
-           PA[i]=(PAin[i-1]+PAin[i+1])/2
+           PA[i]=((PAtmp[i-1]+PAtmp[i+1])/2+PAtmp[i])/2.
            lastmod=i
         ENDIF ELSE start=i
      endfor
@@ -761,7 +765,7 @@ refit:
         newPA[*]= newPA[*]+newPAcoeff[i]*RADII[*]^i 
      endfor
      locmax=WHERE(MAX(PA) EQ PA)
-     if locmax[n_elements(locmax)-1] GT n_elements(PA)/2. then newPA[0:fixedrings]=TOTAL(PA[0:fixedrings])/n_elements(PA[0:fixedrings])
+     if locmax[n_elements(locmax)-1] GT n_elements(PA)/2. then newPA[0:fixedrings]=newPA[fixedrings+1]
      endch=floor(n_elements(PA)/3.)
      IF endch GT 3 then endch=3
      decline=0
@@ -795,10 +799,12 @@ refit:
   IF fixedrings GT n_elements(newPA)-1 then fixedrings=n_elements(newPA)-1
   IF fixedrings GT 0. and order NE 0 then begin
      locmax=WHERE(MAX(REVERSE(PAin)) EQ REVERSE(PAin))
-     if locmax[n_elements(locmax)-1] LT fixedrings then newPA[0:fixedrings]=TOTAL(newPA[0:fixedrings])/n_elements(newPA[0:fixedrings]) else begin
+  ;   if locmax[n_elements(locmax)-1] LT fixedrings then newPA[0:fixedrings]=newPA[fixedrings+1] else begin
+  ;      IF locmax[n_elements(locmax)-1] LT fix(n_elements(PAin)/2.) then newPA[0:locmax[n_elements(locmax)-1]]=newPA[locmax[n_elements(locmax)-1]]
+     if locmax[n_elements(locmax)-1] GT fixedrings then begin
         IF locmax[n_elements(locmax)-1] LT fix(n_elements(PAin)/2.) then newPA[0:locmax[n_elements(locmax)-1]]=newPA[locmax[n_elements(locmax)-1]]
-        print,locmax[n_elements(locmax)-1],fix(n_elements(PAin)/2.),newPA[locmax[n_elements(locmax)-1]]
-     ENDELSE
+     
+     ENDIF
   ENDIF
  
   
@@ -814,7 +820,13 @@ refit:
   IF tmp[0] NE -1 then newPA[WHERE(FINITE(newPA) EQ 0.)]=PAin[WHERE(FINITE(newPA) EQ 0.)]
   IF n_elements(pamin) gt 0 then tmp=WHERE(PA[*]-errors[*] LT pamin) else tmp=-1
   IF tmp[0] NE -1  then begin
-     errors[tmp]=PAin[tmp]-pamin
+     for j=0,n_elements(tmp)-1 do begin
+        IF tmp[j] NE n_elements(errors)-1 then begin
+           print,errors[tmp[j]]
+           errors[tmp[j]]=PA[tmp[j]]-pamin
+           print,errors[tmp[j]],PAin[tmp[j]],pamin
+        ENDIF
+     ENDFOR
   endif
   IF SBRin[n_elements(PAin[*])-1] LT cutoff[n_elements(PAin[*])-1] then errors[0]=MAX(errors[*])
   If errors[0] LT errors[1] then errors[0]=errors[1]

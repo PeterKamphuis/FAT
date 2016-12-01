@@ -526,6 +526,7 @@ noconfig:
      finishafter=finishafterold
      allnew=allnewin
      bookkeeping=bookkeepingin
+     doubled=0
      currentfitcube=catcubename[i]
      noisemapname=currentfitcube+'_6.0_noisemap'
      close,1
@@ -1234,14 +1235,16 @@ noconfig:
         yhandle=MAX(maxy-miny)
         
         maxrings=round(SQRT((xhandle/2.)^2+(yhandle/2.)^2)/(catmajbeam[i]/(ABS(sxpar(header,'cdelt1'))*3600.))+3)
+     
         IF NOT smallexists then begin
-           IF xhandle[0] GT yhandle[0] then begin
-              IF xhandle[0]/(catmajbeam[i]/(ABS(sxpar(header,'cdelt1'))*3600.)) LE 6 then newsize=fix(round(xhandle[0]+(10.+sofiacount)*catmajbeam[i]/(ABS(sxpar(header,'cdelt1'))*3600.))) else $
-                 newsize=fix(round(xhandle[0]+(8.+sofiacount)*catmajbeam[i]/(ABS(sxpar(header,'cdelt1'))*3600.)))
-           ENDIF ELSE BEGIN
-              IF yhandle[0]/(catmajbeam[i]/(ABS(sxpar(header,'cdelt2'))*3600.)) LE 6 then newsize=fix(round(yhandle[0]+(10.+sofiacount)*catmajbeam[i]/(ABS(sxpar(header,'cdelt2'))*3600.))) else $
-                 newsize=fix(round(yhandle[0]+(8.+sofiacount)*catmajbeam[i]/(ABS(sxpar(header,'cdelt2'))*3600.)))
-           ENDELSE
+           newsize=fix((2.*(maxrings+1.)*catmajbeam[i])/(ABS(sxpar(header,'cdelt1'))*3600.))
+;           IF xhandle[0] GT yhandle[0] then begin
+;              IF xhandle[0]/(catmajbeam[i]/(ABS(sxpar(header,'cdelt1'))*3600.)) LE 6 then newsize=fix(round(xhandle[0]+(10.+sofiacount)*catmajbeam[i]/(ABS(sxpar(header,'cdelt1'))*3600.))) else $
+;                 newsize=fix(round(xhandle[0]+(8.+sofiacount)*catmajbeam[i]/(ABS(sxpar(header,'cdelt1'))*3600.)))
+;           ENDIF ELSE BEGIN
+;              IF yhandle[0]/(catmajbeam[i]/(ABS(sxpar(header,'cdelt2'))*3600.)) LE 6 then newsize=fix(round(yhandle[0]+(10.+sofiacount)*catmajbeam[i]/(ABS(sxpar(header,'cdelt2'))*3600.))) else $
+;                 newsize=fix(round(yhandle[0]+(8.+sofiacount)*catmajbeam[i]/(ABS(sxpar(header,'cdelt2'))*3600.)))
+;           ENDELSE
            IF floor(RApix-newsize/2.) GE 0. AND floor(RApix+newsize/2.) LT  sxpar(header,'NAXIS1') AND $
               floor(DECpix-newsize/2.) GE 0. AND floor(DECpix+newsize/2.) LT sxpar(header,'NAXIS2') AND $
               not smallexists then begin
@@ -1530,8 +1533,10 @@ noconfig:
                                 ;declined and below that increased
      cutoffcorrection=SIN(75.*!DtoR)/SIN((newinclination[0]+newinclination[1]/2.)*!DtoR)
      IF newinclination[0]+newinclination[1]/2. GT 50 then cutoffcorrection=1.
-     IF newinclination[0]+newinclination[1]/2. LT 50 AND newinclination[0]+newinclination[1]/2. GT 40  then cutoffcorrection=1.+(50-(newinclination[0]+newinclination[1]/2.))*0.05
+     IF newinclination[0]+newinclination[1]/2. LT 50 AND newinclination[0]+newinclination[1]/2. GT 40  then cutoffcorrection=1.+(50-(newinclination[0]+newinclination[1]/2.))*0.05    
      IF cutoffcorrection GT 2.5 then cutoffcorrection=2.5
+     IF doubled and cutoffcorrection GT 1. then cutoffcorrection=SQRT(cutoffcorrection)
+  
      ringcorrection=cutoffcorrection
  ;    ringcorrection=0.
      WHILE maxrings-4-floor(ringcorrection/2.) LT 4 AND ringcorrection GT 1.03 do ringcorrection=ringcorrection-0.25
@@ -1635,7 +1640,9 @@ noconfig:
         Endelse  
      ENDIF ELSE BEGIN
         IF maxrings GT 25 then begin
+           doubled=1
            tmpring=norings[0]-10.
+           IF newinclination[0] LT 40 then tmpring=tmpring+2
            norings=10.+fix(tmpring/2.)
            rings=dblarr(norings[0])
            rings[0:9]=(findgen(10))*catmajbeam[i]+catmajbeam[i]/5.
@@ -2371,7 +2378,8 @@ noconfig:
      ;   IF newinclination[0] GT 50 then cutoffcorrection=1.
      ;   IF newinclination[0] LT 50 AND newinclination[0] GT 40  then cutoffcorrection=1.+(50-newinclination[0])*0.05
         IF cutoffcorrection GT 2.5 then cutoffcorrection=2.5
-       
+        IF doubled and cutoffcorrection GT 1. then cutoffcorrection=SQRT(cutoffcorrection)
+  
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+"Cutoff values will be adjusted for inclination by multiplying them with"+string(cutoffcorrection)
@@ -2507,6 +2515,8 @@ noconfig:
         ;   IF newinclination[0] GT 50 then cutoffcorrection=1.
         ;   IF newinclination[0] LT 50 AND newinclination[0] GT 40  then cutoffcorrection=1.+(50-newinclination[0])*0.05
            IF cutoffcorrection GT 2.5 then cutoffcorrection=2.5
+           IF doubled and cutoffcorrection GT 1. then cutoffcorrection=SQRT(cutoffcorrection)
+  
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
               printf,66,linenumber()+"Cutoff values will be adjusted for inclination by multiplying them with"+string(cutoffcorrection)
@@ -2655,7 +2665,7 @@ noconfig:
      for j=norings[0]-1,2,-1 do begin
         string1=string1+','+'SBR '+strtrim(strcompress(string(j,format='(I3)')),1)+' SBR_2 '+strtrim(strcompress(string(j,format='(I3)')),1)
         string2=string2+' 1' 
-        string3=string3+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/2.,format='(E12.5)')),1)
+        IF doubled then string3=string3+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/4.,format='(E12.5)')),1) else string3=string3+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/2.,format='(E12.5)')),1)
         string4=string4+' '+startstep
         string5=string5+' '+minstep
         string6=string6+' '+strtrim(strcompress(string(5.*double(startstep),format='(E8.1)')),1)
@@ -2911,7 +2921,8 @@ noconfig:
     ; IF catinc[i] GT 50 then cutoffcorrection=1.
     ; IF catinc[i] LT 50 AND catinc[i] GT 40  then cutoffcorrection=1.+(50-catinc[i])*0.05
      IF cutoffcorrection GT 2.5 then cutoffcorrection=2.5
-   
+     IF doubled and cutoffcorrection GT 1. then cutoffcorrection=SQRT(cutoffcorrection)
+  
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         printf,66,linenumber()+"Cutoff values will be adjusted for inclination by multiplying them with "+string(cutoffcorrection)
@@ -3034,8 +3045,9 @@ noconfig:
      newxpos=firstfitvalues[0,3] 
      newypos=firstfitvalues[0,4]
      newvsys=firstfitvalues[0,5]
-     maxchangeRA=ABS(0.15*catmajbeam[i])/3600.
-     maxchangeDEC=ABS(0.15*catmajbeam[i])/3600.
+     IF doubled then beamfrac=0.3 else beamfrac=0.15
+     maxchangeRA=ABS(beamfrac*catmajbeam[i])/3600.
+     maxchangeDEC=ABS(beamfrac*catmajbeam[i])/3600.
      IF maxchangeRA LT ABS(0.5*pixelsizeRA) then maxchangeRA=ABS(pixelsizeRA)
      IF maxchangeDEC LT ABS(0.5*pixelsizeDEC) then maxchangeDEC=ABS(pixelsizeDEC)
      maxchangevel=ABS(0.5*channelwidth)
@@ -3157,7 +3169,7 @@ noconfig:
                              
 
                                 ;let's see if the model has the right size           
-           IF secondtime then norings=newrings else get_newringsv9,SBRarr,SBRarr2,cutoff,newrings
+           IF secondtime OR doubled then norings=newrings else get_newringsv9,SBRarr,SBRarr2,cutoff,newrings
                                 ;cannot have newsize smaller than 3
            if newrings LT 3 then begin
               IF size(log,/TYPE) EQ 7 then begin
@@ -3690,7 +3702,7 @@ noconfig:
      IF norings[0] GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
      set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter
                                 ;set the surface brightness values
-     set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,/initial
+     set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,/initial,doubled=doubled
                                 ;SDIS
      SDISinput1=['SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                  ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
@@ -3760,7 +3772,9 @@ noconfig:
                       ' INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
         PAinput1[0]='PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                     ' PA_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
-        SBRinput1[2]=strtrim(strcompress(string(cutoff[n_elements(cutoff)-1]/4.,format='(E12.5)')),1)
+        IF doubled then begin
+           
+        ENDIF else SBRinput1[2]=strtrim(strcompress(string(cutoff[n_elements(cutoff)-1]/4.,format='(E12.5)')),1)
      endelse  
                        
                                 ;If the first fit is accepted we only change the central position minimally
@@ -3950,7 +3964,7 @@ noconfig:
      ENDIF
      set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,finish_after=finishafter,slope=slope
                                 ;Then set the surface brighness profile parameters
-     set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter
+     set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,doubled=doubled
                                 ;Update the rings to be fitted in the other parameters
 
      IF norings[0] LE 4 or finishafter EQ 1.1 then begin                 
@@ -4239,8 +4253,12 @@ noconfig:
                                 ;making sure that the rings that are
                                 ;fixed are the average of both sides
                                 ;and the same
-     PAang[0:fixedrings-1]=(double(PAang[0])+double(PAang2[0]))/2.
-     PAang2[0:fixedrings-1]=PAang[0]
+     IF polorder1[0] EQ 0 then begin
+        PAang[*]=(double(PAang[0])+double(PAang2[0]))/2.
+     ENDIF ELSE PAang[0:fixedrings-1]=(double(PAang[0])+double(PAang2[0]))/2.
+     IF polorder2[0] EQ 0 then begin
+        PAang2[*]=PAang[0]
+     ENDIF ELSE PAang2[0:fixedrings-1]=PAang[0]
                                 ;And writing them to the file template
      stringPA='PA= '+STRJOIN(string(PAang),' ')
      tmppos=where('PA' EQ tirificsecondvars)
@@ -4258,8 +4276,15 @@ noconfig:
                                 ;making sure that the rings that are
                                 ;fixed are the average of both sides
                                 ;and the same  
-     INCLang[0:fixedrings-1]=(double(INCLang[0])+double(INCLang2[0]))/2.
-     INCLang2[0:fixedrings-1]=(double(INCLang[0])+double(INCLang2[0]))/2.
+
+     IF polorder1[1] EQ 0 then begin
+        INCLang[*]=(double(INCLang[0])+double(INCLang2[0]))/2.
+     ENDIF ELSE INCLang[0:fixedrings-1]=(double(INCLang[0])+double(INCLang2[0]))/2.
+     IF polorder2[1] EQ 0 then begin
+        INCLang2[*]=INCLang[0]
+     ENDIF ELSE INCLang2[0:fixedrings-1]=INCLang[0]
+
+     
      stringINCL='INCL= '+STRJOIN(string(INCLang),' ')
      tmppos=where('INCL' EQ tirificsecondvars)
      tirificsecond[tmppos]=stringINCL
@@ -4597,7 +4622,7 @@ noconfig:
            set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter    
                                 ;Adapt the other fitting parameters
                                 ;first the SBRarr
-           set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,log=log
+           set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,log=log,doubled=doubled
            IF norings[0] LE 4 OR finishafter EQ 1.1 then begin
               INCLinput1[0]='INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                             ' INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)              
@@ -4798,7 +4823,7 @@ noconfig:
               set_warp_slopev3,SBRarr,SBRarr2,cutoff,INCLinput2,PAinput2,INCLinput3,PAinput3,norings,log=log,innerfix=innerfix,sloped=slopedrings           
            ENDELSE
                                 ;Updating surface brightness settings
-           set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,log=log
+           set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,log=log,doubled=doubled
                                 ;Central parameter setting and Z0    
            z0input1[0]='Z0 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                        ' Z0_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
@@ -4858,7 +4883,7 @@ noconfig:
            set_warp_slopev3,SBRarr,SBRarr2,cutoff,INCLinput2,PAinput2,INCLinput3,PAinput3,norings,log=log,innerfix=innerfix,sloped=slopedrings
         ENDELSE
                                 ;set the SBR fitting parameters
-        set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,log=log
+        set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,log=log,doubled=doubled
                                 ;and some other parameters
         z0input1[0]='Z0 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                     ' Z0_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
