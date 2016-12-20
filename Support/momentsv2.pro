@@ -1,4 +1,5 @@
-Pro momentsv2,Cube,Momentmap,header,map
+Pro momentsv2,Cube,Momentmap,header,map,BLANK_VALUE=blanked
+
 
 ;+
 ; NAME:
@@ -98,7 +99,10 @@ IF map EQ 1 then begin
    sxaddpar,header,'BUNIT','KM/S'
    c=0
 ENDIF
-
+if n_elements(blanked) NE 0  then begin
+   tmp=WHERE(momentmap EQ 0.)
+   IF tmp[0] NE -1 then momentmap[tmp]=blanked
+ENDIF
 sxdelpar,header,'CUNIT3'
 sxdelpar,header,'CTYPE3'
 sxdelpar,header,'CRVAL3'
