@@ -61,7 +61,7 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
 ;     
 ;-
 
-  
+ 
   status=0
   chisqr=1
   rchisqr=1
@@ -177,8 +177,14 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
                                 ;If we have a declining rotation curve
                                 ;we want the outer part to be reset to
                                 ;flat.
-                    
-                    if locmax[n_elements(locmax)-1] GT n_elements(yor)/2. then newy[0:fixedrings]=TOTAL(y[0:fixedrings])/n_elements(y[0:fixedrings])
+             ;       if locmax[n_elements(locmax)-1] LT fixedrings then newy[0:fixedrings]=newy[fixedrings+1] else begin
+             ;          IF locmax[n_elements(locmax)-1] LT fix(n_elements(yor)/2.) then newy[0:locmax[n_elements(locmax)-1]]=newy[locmax[n_elements(locmax)-1]]
+             ;       ENDELSE
+                    if locmax[n_elements(locmax)-1] GT fixedrings then begin
+                       IF locmax[n_elements(locmax)-1] LT fix(n_elements(yor)/2.) then newy[0:locmax[n_elements(locmax)-1]]=newy[locmax[n_elements(locmax)-1]]
+                    ENDIF
+ ;                   if locmax[n_elements(locmax)-1] GT n_elements(yor)/2. then newy[0:fixedrings]=newy[fixedrings+1]
+                    ;newy[0:fixedrings]=TOTAL(y[0:fixedrings])/n_elements(y[0:fixedrings])
                  ENDELSE
               ENDIF
               
@@ -186,6 +192,7 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
                                 ;If underdetermined do not penalize
               
               IF chisqr LT (n_elements(fitPA)-order) then goto,skippenalize
+             
                                 ;Let's see if any of the
                                 ;changes per ring are outside
                                 ;the maximum.
