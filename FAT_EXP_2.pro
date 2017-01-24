@@ -1659,8 +1659,9 @@ noconfig:
               printf,66,linenumber()+"The new cutoff values are: "
               printf,66,linenumber()+"Radius           Minimum SBR"
               for j=0,n_elements(rad)-1 do begin
-                 printf,66,rad[j],cutoff[j]
+                 printf,66,rad[j],cutoffor[j]
               endfor
+              printf,66,linenumber()+"These are corrected with "+cutoffcorrection
               close,66
            ENDIF   
            IF size(log,/TYPE) EQ 7 then begin
@@ -4214,7 +4215,8 @@ noconfig:
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+"We are Fitting the first PA and INCL"
-           printf,66,linenumber()+"The profile is forced to remain between "+PAinput2[1]+" and "+PAinput2[2]
+           printf,66,linenumber()+"The PA profile is forced to remain between "+PAinput2[1]+" and "+PAinput2[2]
+           printf,66,linenumber()+"The INC profile is forced to remain between "+INCLinput2[1]+" and "+INCLinput2[2]
            printf,66,linenumber()+"The inner" +string(fixedrings)+" rings are fixed."
            Close,66
         ENDIF
@@ -4237,7 +4239,8 @@ noconfig:
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+"We are Fitting the second PA and INCL"
-           printf,66,linenumber()+"The profile is forced to remain between "+PAinput3[1]+" and "+PAinput3[2]
+           printf,66,linenumber()+"The PA profile is forced to remain between "+PAinput3[1]+" and "+PAinput3[2]
+           printf,66,linenumber()+"The INCL profile is forced to remain between "+INCLinput3[1]+" and "+INCLinput3[2]
            printf,66,linenumber()+"The inner" +string(fixedrings)+" rings are fixed."
            Close,66
         ENDIF
