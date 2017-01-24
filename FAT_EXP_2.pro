@@ -951,6 +951,7 @@ noconfig:
         printf,66,linenumber()+"We picked the "+string(vals[sofia_locations[0]])+" object of the parameter list."
         close,66
      ENDIF
+    
                                 ;If not using preprocessed stuff then we make logical names 
      IF allnew LT 2 then begin
         nummask=readfits(catmaskname[i]+'.fits',hedmasknotproper,/SILENT,/NOSCALE)
@@ -1828,17 +1829,22 @@ noconfig:
      beaminpixels=fix(catmajbeam[i]/((ABS(pixelsizeRA)+ABS(pixelsizeDEC))/2.*3600.))
      centralarea=moment0map[fix(RApix-beaminpixels):fix(RApix+beaminpixels),fix(DECpix-beaminpixels):fix(DECpix+beaminpixels)]
      cenav=TOTAL(centralarea[WHERE(FINITE(centralarea))])/n_elements(centralarea[WHERE(FINITE(centralarea))])
-     peaksbr=cenav*channelwidth/(catmajbeam[i]*catminbeam[i])     
+     peaksbr=cenav*channelwidth/(catmajbeam[i]*catminbeam[i])
                                 ; at high inclinations rings overlap
                                 ; so the peaksbr needs to be reduced
                                 ; according to the inclination and the
                                 ; physical size of the galaxy
-     IF catinc[i] GT 70. then peaksbr=peaksbr/(convertskyanglefunction(DHI,catDistance[i])*SIN(catinc[i]*!DtoR)*0.5)   
+     IF catinc[i] GT 70. then begin
+        IF convertskyanglefunction(DHI,catDistance[i]) GT 1. then $
+           peaksbr=peaksbr/(convertskyanglefunction(DHI,catDistance[i])*SIN(catinc[i]*!DtoR)*0.5) else $
+              peaksbr=peaksbr/(convertskyanglefunction(3.*catmajbeam[i],catDistance[i])*SIN(catinc[i]*!DtoR)*0.5)
+     ENDIF
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         printf,66,linenumber()+"We estimate the peaksbr to be "+string(peaksbr)   
         close,66
-     ENDIF 
+     ENDIF
+    
                                 ;Calculate an initial surface
                                 ;brightness profile based on the
                                 ;central brightness and an exponential
@@ -3995,9 +4001,6 @@ noconfig:
      INCLrings=0
      PArings=0
 
-     print,'edges'
-     print,INCLinput1[1],INCLinput2[1],INCLinput3[1]
-     print,INCLinput1[2],INCLinput2[2],INCLinput3[2]
      IF double(INCLinput1[1]) LT 90. OR double(INCLinput2[1]) LT 90. OR  double(INCLinput3[1]) LT 90.  AND norings[0] GT 4 then begin
         tmp=WHERE(INCLang GE (double(INCLinput2[1])-double(INCLinput2[3])))
         tmp2=WHERE(INCLang2 GE (double(INCLinput3[1])-double(INCLinput3[3])))      
@@ -4031,8 +4034,6 @@ noconfig:
            INCLrings++
         ENDIF
      ENDIF
-     print,PAinput1[1],PAinput2[1],PAinput3[1]
-     print,PAinput1[2],PAinput2[2],PAinput3[2]
      IF ABS(double(PAinput1[1])-double(PAinput1[2])) LT 400 OR ABS(double(PAinput2[1])-double(PAinput2[2])) LT 400 OR  ABS(double(PAinput3[1])-double(PAinput3[2])) LT 400 AND norings[0] GT 4 then begin
         tmp=WHERE(PAang GE (double(PAinput2[1])-double(PAinput2[3])))
         tmp2=WHERE(PAang2 GE (double(PAinput2[1])-double(PAinput2[3])))
