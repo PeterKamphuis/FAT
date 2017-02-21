@@ -305,12 +305,13 @@ restartall:
         ENDIF
      ENDIF
                                 ;If there are rings that are fixed we
-                                ;will set them to ddivadittionally if
+                                ;will set the error to that of the
+                                ;last unfixed ring. adittionally if
                                 ;we have any errors less than ddiv
                                 ;they will also be set to ddiv
      if n_elements(fixedrings) GT 0 then begin
        
-           errors[0:fixedrings-1]=ddiv
+           errors[0:fixedrings-1]=errors[fixedrings]
                                 ;if the errors are less than ddiv in
                                 ;the inner half set them to ddiv in
                                 ;the outer half we average between the
@@ -807,7 +808,7 @@ refit:
      ENDIF
   ENDIF
  
-  
+  IF keyword_set(nocentral) AND n_elements(PAin) GT 15. then newPA[0:fixedrings]=newPA[fixedrings+1]
  
   for j=0,n_elements(PA[*])-1 do errors[j]=MAX([errors[j],ABS(PA[j]-newPA[j]),ddiv])
   

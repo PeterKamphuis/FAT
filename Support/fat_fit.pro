@@ -183,6 +183,7 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
                     if locmax[n_elements(locmax)-1] GT fixedrings then begin
                        IF locmax[n_elements(locmax)-1] LT fix(n_elements(yor)/2.) then newy[0:locmax[n_elements(locmax)-1]]=newy[locmax[n_elements(locmax)-1]]
                     ENDIF
+                    IF keyword_set(nocentral) AND n_elements(xin) GT 15. then newy[0:fixedrings]=newy[fixedrings+1]
  ;                   if locmax[n_elements(locmax)-1] GT n_elements(yor)/2. then newy[0:fixedrings]=newy[fixedrings+1]
                     ;newy[0:fixedrings]=TOTAL(y[0:fixedrings])/n_elements(y[0:fixedrings])
                  ENDELSE
@@ -299,8 +300,12 @@ skippenalize:
                                 ;If we have a declining rotation curve
                                 ;we want the outer part to be reset to
                                 ;flat.
-               
-              if locmax[n_elements(locmax)-1] GT n_elements(yor)/2. then newy[0:fixedrings]=TOTAL(y[0:fixedrings])/n_elements(y[0:fixedrings])
+              if locmax[n_elements(locmax)-1] GT fixedrings then begin
+                 IF locmax[n_elements(locmax)-1] LT fix(n_elements(yor)/2.) then newy[0:locmax[n_elements(locmax)-1]]=newy[locmax[n_elements(locmax)-1]]
+              ENDIF
+              IF keyword_set(nocentral) AND n_elements(xin) GT 15. then newy[0:fixedrings]=newy[fixedrings+1]
+;              if locmax[n_elements(locmax)-1] GT n_elements(yor)/2. then newy[0:fixedrings]=TOTAL(y[0:fixedrings])/n_elements(y[0:fixedrings])
+ 
            ENDELSE
         ENDIF
           

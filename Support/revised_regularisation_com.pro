@@ -545,7 +545,7 @@ restartall:
                                  ;No errors can be larger then maxdev
   IF n_elements(maxdev) GT 0 then begin
      for i=0,1 do begin
-        tmp=WHERE(errors[*,i] GT 2*maxdev[i])
+        tmp=WHERE(errors[*,i] GT 2.*maxdev[i])
         if tmp[0] NE -1 then begin
            for j=0,n_elements(tmp)-1 do begin
               IF cutoff[tmp[j]] LT SBR[tmp[j]] then errors[tmp[j],i]=2*maxdev[i]
@@ -567,7 +567,8 @@ restartall:
      ENDWHILE
   endfor
   
-        
+
+  
   IF keyword_set(extending) then errors[n_elements(errors[*,0])-1,*]=errors[n_elements(errors[*,0])-2,*]
 ; There can't be zeros in the errors let's check
   for i=0,1 do begin
@@ -670,9 +671,7 @@ restartall:
    
 refit:
 
-  MAXPA=MAX(PA,min=minPA)
-  addminchi=0.
-  erroradjusted=0
+
   shifterrors=errors
   if keyword_set(debug) then begin
      print,'Input to the polynomial fit'
@@ -698,6 +697,8 @@ refit:
   newPA[*]=0.
   coefffound=dblarr(6,n_Elements(PA[0,*]))
   for par=0,n_Elements(PA[0,*])-1 do begin
+     addminchi=0.
+     erroradjusted=0
      newPAcoeff=0.
      tmp=WHERE(PA[0,par] EQ PA[*,par])
      IF fixedrings[par] GE cutoffring+1 OR n_elements(tmp) EQ n_elements(PA[*,par]) then begin           
@@ -1011,7 +1012,7 @@ refit:
         endelse
         ;However we will reduce the Chi's if the PA is not 0.
         
-        if finorder[0] EQ 0 then Chi[*]=Chi[*]*SQRT(findgen(endorder-1)+1.)*2.
+        if finorder[0] EQ 0  then Chi[*]=Chi[*]*SQRT(findgen(endorder-1)+1.)*2.
         ;SQRT(findgen(endorder-1)+2)
         maxchi=MAX(Chi,min=minchi)
         
