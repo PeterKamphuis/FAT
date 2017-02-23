@@ -184,15 +184,12 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
      IF tmp[0] NE -1 then catvals[sofia_locations[13],tmp]=0.
      voxratio=dblarr(n_elements(catvals[0,*]))
      maxvoxel=MAX(catvals[sofia_locations[13],*])
-     print,maxvoxel
      for j=0,n_elements(catvals[0,*])-1 do begin
         voxratio[j]=maxvoxel/catvals[sofia_locations[13],j]
      endfor
-     print,'this is the vox ratio'
-     print,voxratio
+    
      rmp=WHERE(voxratio LT 3 AND voxratio GT 0)
-     print,'what is going on'
-     print,rmp
+    
      
      IF rmp[0] EQ -1 then begin
         vals=catvals[*,n_elements(catvals[0,*])-1]
@@ -224,7 +221,6 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
         nummask[tmp]=0.
      ENDIF
      IF vals[0] NE 1. then begin
-        print,vals[sofia_locations[0]]
         tmp=where(nummask EQ double(vals[sofia_locations[0]]))
         nummask[tmp]=1.
      ENDIF
