@@ -33,7 +33,7 @@ Pro FAT_EXP_2,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
 ; PROCEDURES CALLED
 ;  BEAM_PLOT, BOOK_KEEPING, BUILDAXII, CALC_EDGE, CHANGERADII, CHECK_CFLUX, CLEAN_HEADER, CLEANUP, COLUMNDENSITY,
 ;  CONVERTRADEC, CONVERTSKYANGLEFUNCTION(), EXTRACT_PV, FIT_ELLIPSE(),FAT_SMOOTH()
-;  GETDHI, GET_FIXEDRINGSV8, GET_NEWRINGSV9, GET_PROGRESS, 
+;  GETDHI, GET_FIXEDRINGSV9, GET_NEWRINGSV9, GET_PROGRESS, 
 ;  INT_PROFILEV2, INTERPOLATE, ISNUMERIC(), LINENUMBER(), MOMENTSV2,
 ;  OBTAIN_INCLINATIONV8, OBTAIN_PAV2, OBTAIN_VELPA, OBTAIN_W50, OVERVIEW_PLOT
 ;  PARAMETERREGUV87, PREPROCESSING, READ_TEMPLATE, SBR_CHECK, SET_SBR, SET_VROTV6,
@@ -41,6 +41,11 @@ Pro FAT_EXP_2,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      23-02-2017 P.Kamphuis; Lowered the satisfaction size of ypos
+;      and xpos and expressed values in pixelsize in order to ensure a
+;      better determination of the center and that SoFiA offsets are compensated for.
+;      22-02-2017 P.Kamphuis; Compressed the sofia run in a single
+;      module called run SoFiA.  
 ;      21-06-2016 P.Kamphuis; Modified the sofia run to use kernels
 ;      with 0,0.5,1,2 the beam at a threshold of 7.5 and no
 ;      reliability check.  
@@ -48,7 +53,7 @@ Pro FAT_EXP_2,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
 ;      applying to the inclination+1/10th of the upper limit.  
 ;      09-06-2016 P.Kamphuis; Removed the /CENTER keyword from the
 ;      CONGRID call as it does not work in GDL. This means a +1/ratio
-;      addittion the the CRPIX values. Additionally, divided the
+;      addition to the CRPIX values. Additionally, divided the
 ;      verror based on resolution by 2 as it is the 1 sigma error it
 ;      should be half a channel.   
 ;      20-04-2016 P.Kamphuis; Replaced revised_regulation with
@@ -196,7 +201,7 @@ Pro FAT_EXP_2,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
   RESOLVE_ROUTINE, 'fat_smooth',/IS_FUNCTION
   RESOLVE_ROUTINE, 'fit_ellipse',/IS_FUNCTION
   RESOLVE_ROUTINE, 'getdhi'
-  RESOLVE_ROUTINE, 'get_fixedringsv8'
+  RESOLVE_ROUTINE, 'get_fixedringsv9'
   RESOLVE_ROUTINE, 'get_newringsv9'
   RESOLVE_ROUTINE, 'get_progress'
   RESOLVE_ROUTINE, 'int_profilev2'
@@ -217,6 +222,7 @@ Pro FAT_EXP_2,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
   RESOLVE_ROUTINE, 'revised_regularisation_com'
   RESOLVE_ROUTINE, 'revised_regularisation_rot'
   RESOLVE_ROUTINE, 'rottab'
+  RESOLVE_ROUTINE, 'run_sofia'
   RESOLVE_ROUTINE, 'sbr_check'
   RESOLVE_ROUTINE, 'set_sbr'
   RESOLVE_ROUTINE, 'set_vrotv6'
@@ -528,7 +534,7 @@ noconfig:
      bookkeeping=bookkeepingin
      doubled=0
      currentfitcube=catcubename[i]
-     noisemapname=currentfitcube+'_6.0_noisemap'
+     noisemapname=currentfitcube+'_noisemap'
      close,1
                                 ;Start a galaxy specific fitting log
      IF size(olog,/TYPE) EQ 7 then begin
@@ -557,9 +563,9 @@ noconfig:
                                 ;tirific fit 
      read_template,supportdir+'/2ndfit.def', tirificsecond, tirificsecondvars
                                 ;Read the template sofia input file
-     IF allnew LT 2 then begin
-        read_template,supportdir+'/sofiainput.txt',sofia,sofiatriggers,/SOFIA
-     ENDIF
+;     IF allnew LT 2 then begin
+;        read_template,supportdir+'/sofiainput.txt',sofia,sofiatriggers,/SOFIA
+;     ENDIF
                                 ;print which galaxy we are at
      print,linenumber()+"We're at galaxy number "+strtrim(string(i,format='(I10)'),2)+". Which is catalogue id number "+catnumber[i]
      IF size(log,/TYPE) EQ 7 then begin
@@ -618,8 +624,7 @@ noconfig:
      propermom1=0
      propermomnoise=0
      optimized=0
-     sofiacount=0
-     sofiafail=0
+   ;  sofiafail=0
      wroteblank=0
     
                                 ;Let's see if a pre-processed
@@ -711,10 +716,10 @@ noconfig:
      propercat=0
                                 ;if we have preprepared sofia files we will skip all the sofia steps
      case allnew of
-        2:begin
-           CD,new_dir,CURRENT=old_dir
-           goto,skipallsofia
-        end
+       ; 2:begin
+       ;    CD,new_dir,CURRENT=old_dir
+       ;    goto,skipallsofia
+       ; end
         1:begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
@@ -729,28 +734,28 @@ noconfig:
                                 ;maps and the sofia catalogue exist
            smallexists=FILE_TEST(maindir+'/'+catdirname[i]+'/'+currentfitcube+'_small.fits')
            IF smallexists then begin
-              propermask=FILE_TEST(maindir+'/'+catdirname[i]+'/Sofia_Output/'+currentfitcube+'_6.0_binmask_small.fits')
+              propermask=FILE_TEST(maindir+'/'+catdirname[i]+'/Sofia_Output/'+currentfitcube+'_binmask_small.fits')
               IF propermask then begin
                                 ;If we have a mask we also need the catalogue
                  propercat=FILE_TEST(maindir+'/'+catdirname[i]+'/Sofia_Output/'+currentfitcube+'_cat.ascii')
                  IF propercat then begin
                    
                     catCatalogname[i]='Sofia_Output/'+currentfitcube+'_cat.ascii'
-                    catmaskname[i]='Sofia_Output/'+currentfitcube+'_6.0_binmask_small'
+                    catmaskname[i]='Sofia_Output/'+currentfitcube+'_binmask_small'
                                 ;let's check the existence of the moment maps
-                    propermom0=FILE_TEST(maindir+'/'+catdirname[i]+'/Moments/'+currentfitcube+'_6.0_mom0_small.fits')
-                    catMom0name[i]='Moments/'+currentfitcube+'_6.0_mom0_small' ;reset the mom0 map to the one just found
-                    propermom1=FILE_TEST(maindir+'/'+catdirname[i]+'/Moments/'+currentfitcube+'_6.0_mom1_small.fits')
-                    catMom1name[i]='Moments/'+currentfitcube+'_6.0_mom1_small' ;reset the mom0 map to the one just found
-                    propermomnoise=FILE_TEST(maindir+'/'+catdirname[i]+'/Moments/'+currentfitcube+'_6.0_noisemap_small.fits')
-                    noisemapname='Moments/'+currentfitcube+'_6.0_noisemap_small'
+                    propermom0=FILE_TEST(maindir+'/'+catdirname[i]+'/Moments/'+currentfitcube+'_mom0_small.fits')
+                    catMom0name[i]='Moments/'+currentfitcube+'_mom0_small' ;reset the mom0 map to the one just found
+                    propermom1=FILE_TEST(maindir+'/'+catdirname[i]+'/Moments/'+currentfitcube+'_mom1_small.fits')
+                    catMom1name[i]='Moments/'+currentfitcube+'_mom1_small' ;reset the mom0 map to the one just found
+                    propermomnoise=FILE_TEST(maindir+'/'+catdirname[i]+'/Moments/'+currentfitcube+'_noisemap_small.fits')
+                    noisemapname='Moments/'+currentfitcube+'_noisemap_small'
                     currentfitcube=currentfitcube+'_small'
                     dummy=readfits(maindir+'/'+catdirname[i]+'/'+currentfitcube+cubeext,header,/NOSCALE,/SILENT)
                     sizex=sxpar(header,'NAXIS1')
                     sizey=sxpar(header,'NAXIS2')      
                     allnew=3
-                    CD,new_dir,CURRENT=old_dir
-                    goto,skipallsofia
+                 ;   CD,new_dir,CURRENT=old_dir
+                 ;   goto,skipallsofia
                  ENDIF
               ENDIF ELSE BEGIN
                  allnew=1
@@ -758,22 +763,22 @@ noconfig:
               ENDELSE
            ENDIF ELSE BEGIN
                                 ;Maybe no cutting was required so let's check for a mask
-              propermask=FILE_TEST(maindir+'/'+catdirname[i]+'/Sofia_Output/'+currentfitcube+'_6.0_binmask.fits')
+              propermask=FILE_TEST(maindir+'/'+catdirname[i]+'/Sofia_Output/'+currentfitcube+'_binmask.fits')
               IF propermask then begin
                                 ;If we have a mask we also need the catalogue
                  propercat=FILE_TEST(maindir+'/'+catdirname[i]+'/Sofia_Output/'+currentfitcube+'_cat.ascii')
                  IF propercat then begin
                     catCatalogname[i]='Sofia_Output/'+currentfitcube+'_cat.ascii'
-                    catmaskname[i]='Sofia_Output/'+currentfitcube+'_6.0_binmask'
-                    propermom0=FILE_TEST(maindir+'/'+catdirname[i]+'/Moments/'+currentfitcube+'_6.0_mom0.fits')
-                    catMom0name[i]='Moments/'+currentfitcube+'_6.0_mom0' ;reset the mom0 map to the one just found
-                    propermom1=FILE_TEST(maindir+'/'+catdirname[i]+'/Moments/'+currentfitcube+'_6.0_mom1.fits')
-                    catMom1name[i]='Moments/'+currentfitcube+'_6.0_mom1' ;reset the mom0 map to the one just found
-                    propermomnoise=FILE_TEST(maindir+'/'+catdirname[i]+'/Moments/'+currentfitcube+'_6.0_noisemap.fits')
-                    noisemapname='Moments/'+currentfitcube+'_6.0_noisemap'
+                    catmaskname[i]='Sofia_Output/'+currentfitcube+'_binmask'
+                    propermom0=FILE_TEST(maindir+'/'+catdirname[i]+'/Moments/'+currentfitcube+'_mom0.fits')
+                    catMom0name[i]='Moments/'+currentfitcube+'_mom0' ;reset the mom0 map to the one just found
+                    propermom1=FILE_TEST(maindir+'/'+catdirname[i]+'/Moments/'+currentfitcube+'_mom1.fits')
+                    catMom1name[i]='Moments/'+currentfitcube+'_mom1' ;reset the mom0 map to the one just found
+                    propermomnoise=FILE_TEST(maindir+'/'+catdirname[i]+'/Moments/'+currentfitcube+'_noisemap.fits')
+                    noisemapname='Moments/'+currentfitcube+'_noisemap'
                     allnew=2
-                    CD,new_dir,CURRENT=old_dir
-                    goto,skipallsofia
+;                    CD,new_dir,CURRENT=old_dir
+ ;                   goto,skipallsofia
                  ENDIF
               ENDIF ELSE BEGIN
                  allnew=1
@@ -800,248 +805,37 @@ noconfig:
         end
      endcase
      mismatchedmoments:
-     CD,new_dir,CURRENT=old_dir
-     velkern=['0,'+string(39B)+'b'+string(39B),'2,'+string(39B)+'b'+string(39B),'4,'+string(39B)+'b'+string(39B),$
-              '8,'+string(39B)+'b'+string(39B),'16,'+string(39B)+'b'+string(39B)]
-     sofia[sofiatriggers[0]]='import.inFile = '+currentfitcube+'.fits'
-     sofia[sofiatriggers[1]]='steps.doReliability             =       false'
-     sofia[sofiatriggers[2]]='parameters.dilatePixMax	= '+string(fix(pixfwhm))
-  ;   sofia[sofiatriggers[2]]='SCfind.kernels= [[ 0, 0, 0,'+string(39B)+'b'+string(39B)+'],[ 0, 0, 2,'+string(39B)+'b'+string(39B)+$
-    ;                         '],[ 0, 0, 4,'+string(39B)+'b'+string(39B)+'],[ 0, 0, 8,'+string(39B)+'b'+string(39B)+'],[ 0, 0,16,'$
-     ;                        +string(39B)+'b'+string(39B)+'],'$
-      ;                       +STRJOIN(string('['+strtrim(string(fix(pixfwhm/2.)),2)+','+strtrim(string(fix(pixfwhm/2.)),2)+','+velkern[*]+']'),',')+','$
-       ;                      +STRJOIN(string('['+strtrim(string(fix(pixfwhm)),2)+','+strtrim(string(fix(pixfwhm)),2)+','+velkern[*]+']'),',')+','$
-        ;                     +STRJOIN(string('['+strtrim(string(fix(pixfwhm*2.)),2)+','+strtrim(string(fix(pixfwhm*2.)),2)+','+velkern[*]+']'),',')+']'
-                         
-  
-                                ;We run sofia to get a bunch of initial estimates
-     openw,1,'sofia_input.txt'
-     for index=0,n_elements(sofia)-1 do begin
-        printf,1,sofia[index]
-     endfor
-     close,1
-     IF FILE_TEST(currentfitcube+'_cat.ascii') then spawn,'rm -f '+currentfitcube+'_cat.ascii'
-     IF FILE_TEST(currentfitcube+'_cont.png') then spawn,'rm -f '+currentfitcube+'_cont.png'
-     IF FILE_TEST(currentfitcube+'_mask.fits') then spawn,'rm -f '+currentfitcube+'_mask.fits'
-     IF FILE_TEST(currentfitcube+'_scat.png') then spawn,'rm -f '+currentfitcube+'_scat.png'     
-     spawn,'python '+supportdirchecked+'/sofia_pipeline.py sofia_input.txt '
-     IF not FILE_TEST(currentfitcube+'_cat.ascii') then begin
+
+     run_sofia,allnew,new_dir,currentfitcube,catcatalogname[i],supportdirchecked,pixfwhm,header,errormessage,VSYSpix,RApix,DECpix,Totflux,log=log
+     catCatalogname[i]=currentfitcube+'_cat.ascii'
+     catmaskname[i]=currentfitcube+'_binmask'
+     if fix(errormessage[0]) EQ 5 then begin
+        print,errormessage[1]
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"Can't make a mask, aborting."
+           printf,66,linenumber()+errormessage[1]
            close,66
         ENDIF
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A90)', catDirname[i],'Cannot produce a mask'
+        printf,1,format='(A60,A90)', catDirname[i],errormessage[1]
         close,1 
-        CD,old_dir
         bookkeeping=5
         goto,finishthisgalaxy
      endif
-     catCatalogname[i]=currentfitcube+'_cat.ascii'
-     catmaskname[i]=currentfitcube+'_mask' ;first clean up the cat
-     skipallsofia:
-                                ;We need to read the sofia output file     
-     openr,1,catCatalogname[i]
-                                ;get the number of lines
-     paralines=FILE_LINES(catCatalogname[i])
-                                ;define some variables
-     counter=1
-     line=''
-     ID=0.
-     trig=0.
-     catvals=0.
-                                ;Define the parameters that need to be present and that we want.
-     sofia_parameters=['id','x','x_min','x_max','y','y_min','y_max','z','z_min','z_max','x_geo','y_geo','z_geo','f_int']
-                                ;Check whether they are present and
-                                ;which index number they have
-     readf,1,line
-     readf,1,line
-     sofia_column_ids=strtrim(strcompress(str_sep(strtrim(strcompress(line),2),' ')),2)
-     sofia_locations=intarr(n_elements(sofia_parameters))
-     for j=0,n_elements(sofia_parameters)-1 do begin
-        sofia_locations[j]=WHERE(sofia_parameters[j] EQ sofia_column_ids)-1
-        IF sofia_locations[j] EQ -2 then begin
-           print,'We cannot find the required column for '+sofia_parameters[i]+' in the sofia catalogue'
-           print,'This can happen because a) you have tampered with the sofiainput.txt file in the directory, '+supportdirchecked
-           print,'b) you are using an updated version of SoFiA where the names have changed and FAT is not yet updated.'
-           print,'   In this case please file a bug report at https://github.com/PeterKamphuis/FAT/issues/'
-           print,'c) You are using pre processed SoFiA output of your own and do not have all the output'
-           print,'   Required output is '+STRJOIN(sofia_parameters,',')
-           stop
-        ENDIF
-     endfor
-     ;reset file pointer to the beginning of the file
-     point_lun,1,0
-     
-                                ;find the number 1 source
-     WHILE ID NE 1 and counter LT paralines do begin
-                                ;create a skip array
-        skiparray=strarr(paralines-counter)
-                                ;skip the header
-        readf,1,skiparray
-                                ;read the line
-        readf,1,line
-                                ;break the line
-        vals=strtrim(strcompress(str_sep(strtrim(strcompress(line),2),' ')),2)
-                                ;set ID
-        IF vals[0] EQ '#' then goto,nogame
-        ID=fix(vals[sofia_locations[0]])
-        IF ID eq 1 then begin
-           IF trig EQ 0. then catvals=double(vals) ELSE begin
-              tmp=catvals
-              catvals=dblarr(n_elements(vals),n_elements(tmp[0,*])+1)
-              catvals[*,0:n_elements(tmp[0,*])-1]=tmp[*,*]
-              catvals[*,n_elements(tmp[0,*])]=double(vals[*])
-           endelse
-        ENDIF
-        IF ID GT 1 then begin
-           IF n_elements(catvals) LT 3 then begin
-              catvals=vals
-              trig=1
-           ENDIF else begin
-              tmp=catvals
-              catvals=dblarr(n_elements(vals),n_elements(tmp[0,*])+1)
-              catvals[*,0:n_elements(tmp[0,*])-1]=tmp[*,*]
-              catvals[*,n_elements(tmp[0,*])]=vals[*]
-              trig=1
-           ENDELSE
-        ENDIF
-        nogame:
-                                ;reset file pointer to the beginning of the file
-        point_lun,1,0
-                                ;increase the counter
-        counter++
-     ENDWHILE
-     close,1
-     IF n_elements(catvals[sofia_locations[0],*]) GT 1 then begin
-        voxratio=dblarr(n_elements(catvals[0,*]))
-        maxvoxel=MAX(catvals[sofia_locations[13],*])
-        for j=0,n_elements(catvals[0,*])-1 do begin
-           voxratio[j]=maxvoxel/catvals[sofia_locations[13],j]
-        endfor
-        rmp=WHERE(voxratio LT 3)
-        IF rmp[0] EQ -1 then begin
-           vals=catvals[*,n_elements(catvals[0,*])-1]
-        ENDIF ELSE BEGIN        
-           diff=dblarr(n_elements(rmp))
-           for j=0,n_elements(rmp)-1 do begin
-              diff[j]=SQRT((sxpar(header,'CRPIX1')-catvals[sofia_locations[1],rmp[j]])^2+(sxpar(header,'CRPIX2')-catvals[sofia_locations[4],rmp[j]])^2)
-           endfor
-           maxdiff=MAX(diff,MIN=whatwelookfor)
-           vals=catvals[*,rmp[WHERE(diff EQ whatwelookfor)]]
-        ENDELSE
-     ENDIF ELSE vals=catvals
-                                ;If sofia didn't work and there is no preprocessed stuff then abort
-     IF double(vals[sofia_locations[0]]) EQ 0. AND NOT allnew GE 2 then begin
-        IF size(log,/TYPE) EQ 7 then begin
-           openu,66,log,/APPEND
-           printf,66,linenumber()+"Sofia failed, the original cube is too small."
-           close,66
-        ENDIF
-        openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A90)', catDirname[i],'Sofia failed on this cube.'
-        close,1 
-        CD,old_dir
-        bookkeeping=5
-        goto,finishthisgalaxy
-     ENDIF
-     IF size(log,/TYPE) EQ 7 then begin
-        openu,66,log,/APPEND
-        printf,66,linenumber()+"We picked the "+string(vals[sofia_locations[0]])+" object of the parameter list."
-        close,66
-     ENDIF
-    
-                                ;If not using preprocessed stuff then we make logical names 
-     IF allnew LT 2 then begin
-        nummask=readfits(catmaskname[i]+'.fits',hedmasknotproper,/SILENT,/NOSCALE)
-        tmp=where(nummask NE double(vals[sofia_locations[0]])) 
-        IF tmp[0] NE -1 then begin
-           nummask[tmp]=0.
-        ENDIF
-        IF vals[0] NE 1. then begin
-           print,vals[sofia_locations[0]]
-           tmp=where(nummask EQ double(vals[sofia_locations[0]]))
-           nummask[tmp]=1.
-        ENDIF
-                                ;We want to expand this mask as it is
-                                ;usually a bit tight
-        pixelsizeRA=ABS(sxpar(header,'CDELT1'))
-      
-        ;newmask=fat_smooth(nummask,catmajbeam[i]/(pixelsizeRA*3600.),/MASK)
-
-        
-        sxaddpar,header,'BITPIX',-32
-        writefits,currentfitcube+'_6.0_binmask.fits',float(nummask),header
-        nummask=0.
-        newmask=0.
-        catmaskname[i]=currentfitcube+'_6.0_binmask'
-        IF FILE_TEST(currentfitcube+'_cont.png') then spawn,'rm -f '+currentfitcube+'_cont.png'
-        IF FILE_TEST(currentfitcube+'_mask.fits') then spawn,'rm -f '+currentfitcube+'_mask.fits'
-        IF FILE_TEST(currentfitcube+'_scat.png') then spawn,'rm -f '+currentfitcube+'_scat.png'  
-     ENDIF
-                                ;Read the centre values and make sure
-                                ;they fall inside the cube
-     
-     RApix=double(vals[sofia_locations[1]])
-                                ;IF we read the small cube this needs to be corrected
-       
-     RApixboun=[double(vals[sofia_locations[2]]),double(vals[sofia_locations[3]])]
-     IF allnew EQ 3 then begin
-        newsize=sxpar(header,'NAXIS1')-1
-        Old=RApix
-        RApix=floor(newsize/2.)+(Rapix-floor(RApix))
-        pixshift=Old-RApix
-        RApixboun=RApixboun-pixshift
-     ENDIF    
-     IF RApix GT sxpar(header,'NAXIS1')-10 then BEGIN
-        RApix=double(sxpar(header,'NAXIS1')/2.)
-        RApixboun=[double(sxpar(header,'NAXIS1')/4.),double(sxpar(header,'NAXIS1')/4.)*3.]
-     ENDIF
-     DECpix=double(vals[sofia_locations[4]])
-     DECpixboun=[double(vals[sofia_locations[5]]),double(vals[sofia_locations[6]])]
-     IF allnew EQ 3 then begin
-        newsize=sxpar(header,'NAXIS1')-1
-        Old=DECpix
-        DECpix=floor(newsize/2.)+(DECpix-floor(DECpix))
-        pixshift=Old-DECpix
-        DECpixboun=DECpixboun-pixshift
-     ENDIF    
-     IF DECpix GT sxpar(header,'NAXIS2')-10 then begin
-        DECpix=fix( sxpar(header,'NAXIS2')/2.)
-        DECpixboun=[double(sxpar(header,'NAXIS2')/4.),double(sxpar(header,'NAXIS2')/4.)*3.]
-     ENDIF
-     VSYSpix=double(vals[sofia_locations[7]])
-     ROTpixboun=[double(vals[sofia_locations[8]]),double(vals[sofia_locations[9]])]
-     IF VSYSpix GT sxpar(header,'NAXIS3')-5 then BEGIN
-        VSYSpix=fix( sxpar(header,'NAXIS3')/2.)
-        ROTpixboun=[double(sxpar(header,'NAXIS3')/4.),double(sxpar(header,'NAXIS3')/4.)*3.]
-     ENDIF
-     IF RApix LT RApixboun[0] OR RApix GT RApixboun[1] $
-        OR DECpix LT DECpixboun[0] OR DECpix GT DECpixboun[1] $
-        OR VSYSpix LT ROTpixboun[0] OR VSYSpix GT ROTpixboun[1] then begin
-        RApix=double(vals[sofia_locations[10]])
-        DECpix=double(vals[sofia_locations[11]])
-        VSYSpix=double(vals[sofia_locations[12]])
-     ENDIF
-     Totflux=[double(vals[sofia_locations[13]])] ;Jy/beam   
-                                ;let's check whether we have flux in this central pixel
-   
-
                                 ;Convert pixel coordinates to Degrees
-     DECdeg=sxpar(header,'CRVAL2')+(DECpix-sxpar(header,'CRPIX2')+1)*sxpar(header,'CDELT2')
-     RAdeg=sxpar(header,'CRVAL1')+(RApix-sxpar(header,'CRPIX1')+1)*sxpar(header,'CDELT1')/COS(DECdeg*(!pi/180.))
-     DECboundeg=sxpar(header,'CRVAL2')+(DECpixboun-sxpar(header,'CRPIX2')+1)*sxpar(header,'CDELT2')
-     RAboundeg=sxpar(header,'CRVAL1')+((RApixboun-sxpar(header,'CRPIX1')+1)*sxpar(header,'CDELT1'))/COS(DECboundeg*(!pi/180.))
+     DECdeg=sxpar(header,'CRVAL2')+(DECpix[0]-sxpar(header,'CRPIX2')+1)*sxpar(header,'CDELT2')
+     RAdeg=sxpar(header,'CRVAL1')+(RApix[0]-sxpar(header,'CRPIX1')+1)*sxpar(header,'CDELT1')/COS(DECdeg*(!pi/180.))
+     DECboundeg=sxpar(header,'CRVAL2')+(DECpix[1:2]-sxpar(header,'CRPIX2')+1)*sxpar(header,'CDELT2')
+     RAboundeg=sxpar(header,'CRVAL1')+((RApix[1:2]-sxpar(header,'CRPIX1')+1)*sxpar(header,'CDELT1'))/COS(DECboundeg*(!pi/180.))
      RAboundeg=RAboundeg[SORT(RAboundeg)]
      DECboundeg=DECboundeg[SORT(DECboundeg)]
      IF strupcase(veltype) EQ 'M/S' then begin
-        catVSYS[i]=sxpar(header,'CRVAL3')/1000.+(VSYSpix-sxpar(header,'CRPIX3')+1)*sxpar(header,'CDELT3')/1000.
-        ROTboun=sxpar(header,'CRVAL3')/1000.+(ROTpixboun-sxpar(header,'CRPIX3')+1)*sxpar(header,'CDELT3')/1000.
+        catVSYS[i]=sxpar(header,'CRVAL3')/1000.+(VSYSpix[0]-sxpar(header,'CRPIX3')+1)*sxpar(header,'CDELT3')/1000.
+        ROTboun=sxpar(header,'CRVAL3')/1000.+(VSYSpix[1:2]-sxpar(header,'CRPIX3')+1)*sxpar(header,'CDELT3')/1000.
         ROTboun=ROTboun[SORT(ROTboun)]
      ENDIF else begin
-        catVSYS[i]=sxpar(header,'CRVAL3')+(VSYSpix-sxpar(header,'CRPIX3')+1)*sxpar(header,'CDELT3')
-        ROTboun=sxpar(header,'CRVAL3')+(ROTpixboun-sxpar(header,'CRPIX3')+1)*sxpar(header,'CDELT3')
+        catVSYS[i]=sxpar(header,'CRVAL3')+(VSYSpix[0]-sxpar(header,'CRPIX3')+1)*sxpar(header,'CDELT3')
+        ROTboun=sxpar(header,'CRVAL3')+(VSYSpix[1:2]-sxpar(header,'CRPIX3')+1)*sxpar(header,'CDELT3')
         ROTboun=ROTboun[SORT(ROTboun)]
      ENDELSE
      mask=readfits(maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'.fits',headermask,/NOSCALE,/SILENT)
@@ -1085,8 +879,8 @@ noconfig:
         sxdelpar,headernoisemap,'NAXIS3'
         sxdelpar,headernoisemap,'CRPIX3'
         sxaddpar,headernoisemap,'NAXIS',2
-        writefits,currentfitcube+'_6.0_noisemap.fits',float(noisemap),headernoisemap
-        noisemapname=currentfitcube+'_6.0_noisemap'
+        writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_noisemap.fits',float(noisemap),headernoisemap
+        noisemapname=currentfitcube+'_noisemap'
         tmp=WHERE(noisemap NE 0.)
         momnoise=TOTAL(noisemap[tmp])/n_elements(tmp)
         IF size(log,/TYPE) EQ 7 then begin
@@ -1111,9 +905,9 @@ noconfig:
         headermap=header
                                 ;Same as in gipsy
         momentsv2,tmpmask,moment0map,headermap,0.
-        writefits,currentfitcube+'_6.0_mom0.fits',float(moment0map),headermap
+        writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_mom0.fits',float(moment0map),headermap
                                 ;reset the mom0 map to the one just created
-        catMom0name[i]=currentfitcube+'_6.0_mom0'
+        catMom0name[i]=currentfitcube+'_mom0'
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+"We have created the moment 0 map."
@@ -1146,9 +940,9 @@ noconfig:
         headervel=header
                                 ;Same as in gipsy
         momentsv2,tmpmask,moment1map,headervel,1.
-        writefits,currentfitcube+'_6.0_mom1.fits',float(moment1map),headervel
+        writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_mom1.fits',float(moment1map),headervel
                                 ;reset the mom 1 map to the one just created
-        catMom1name[i]=currentfitcube+'_6.0_mom1'
+        catMom1name[i]=currentfitcube+'_mom1'
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+"We have created the moment 1 map."
@@ -1239,18 +1033,11 @@ noconfig:
      
         IF NOT smallexists then begin
            newsize=fix((2.*(maxrings+1.)*catmajbeam[i])/(ABS(sxpar(header,'cdelt1'))*3600.))
-;           IF xhandle[0] GT yhandle[0] then begin
-;              IF xhandle[0]/(catmajbeam[i]/(ABS(sxpar(header,'cdelt1'))*3600.)) LE 6 then newsize=fix(round(xhandle[0]+(10.+sofiacount)*catmajbeam[i]/(ABS(sxpar(header,'cdelt1'))*3600.))) else $
-;                 newsize=fix(round(xhandle[0]+(8.+sofiacount)*catmajbeam[i]/(ABS(sxpar(header,'cdelt1'))*3600.)))
-;           ENDIF ELSE BEGIN
-;              IF yhandle[0]/(catmajbeam[i]/(ABS(sxpar(header,'cdelt2'))*3600.)) LE 6 then newsize=fix(round(yhandle[0]+(10.+sofiacount)*catmajbeam[i]/(ABS(sxpar(header,'cdelt2'))*3600.))) else $
-;                 newsize=fix(round(yhandle[0]+(8.+sofiacount)*catmajbeam[i]/(ABS(sxpar(header,'cdelt2'))*3600.)))
-;           ENDELSE
-           IF floor(RApix-newsize/2.) GE 0. AND floor(RApix+newsize/2.) LT  sxpar(header,'NAXIS1') AND $
-              floor(DECpix-newsize/2.) GE 0. AND floor(DECpix+newsize/2.) LT sxpar(header,'NAXIS2') AND $
+           IF floor(RApix[0]-newsize/2.) GE 0. AND floor(RApix[0]+newsize/2.) LT  sxpar(header,'NAXIS1') AND $
+              floor(DECpix[0]-newsize/2.) GE 0. AND floor(DECpix[0]+newsize/2.) LT sxpar(header,'NAXIS2') AND $
               not smallexists then begin
               newdummy=fltarr(newsize+1,newsize+1,n_elements(dummy[0,0,*]))
-              newdummy[*,*,*]=dummy[floor(RApix-newsize/2.):floor(RApix+newsize/2.),floor(DECpix-newsize/2.):floor(DECpix+newsize/2.),*]
+              newdummy[*,*,*]=dummy[floor(RApix[0]-newsize/2.):floor(RApix[0]+newsize/2.),floor(DECpix[0]-newsize/2.):floor(DECpix[0]+newsize/2.),*]
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
                  printf,66,linenumber()+"In order to speed up the fitting process significantly we cut the cube to "+string(newsize)+ " pixels." 
@@ -1258,47 +1045,47 @@ noconfig:
               ENDIF          
               sxaddpar,header,'NAXIS1',newsize+1
               sxaddpar,header,'NAXIS2',newsize+1
-              sxaddpar,header,'CRPIX1',sxpar(header,'CRPIX1')-floor(RApix-newsize/2.)
-              sxaddpar,header,'CRPIX2',sxpar(header,'CRPIX2')-floor(DECpix-newsize/2.)
+              sxaddpar,header,'CRPIX1',sxpar(header,'CRPIX1')-floor(RApix[0]-newsize/2.)
+              sxaddpar,header,'CRPIX2',sxpar(header,'CRPIX2')-floor(DECpix[0]-newsize/2.)
               writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_small.fits',float(newdummy),header
               dummy=newdummy
               newdummy[*,*,*]=0.
-              newdummy[*,*,*]=mask[floor(RApix-newsize/2.):floor(RApix+newsize/2.),floor(DECpix-newsize/2.):floor(DECpix+newsize/2.),*]
+              newdummy[*,*,*]=mask[floor(RApix[0]-newsize/2.):floor(RApix[0]+newsize/2.),floor(DECpix[0]-newsize/2.):floor(DECpix[0]+newsize/2.),*]
               writefits,maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'_small.fits',float(newdummy),header
               mask=newdummy
               moment0map=readfits(maindir+'/'+catdirname[i]+'/'+catMom0Name[i]+'.fits',headermap,/SILENT)
               newdummy=fltarr(newsize+1,newsize+1)
               sxaddpar,headermap,'NAXIS1',newsize+1
               sxaddpar,headermap,'NAXIS2',newsize+1
-              sxaddpar,headermap,'CRPIX1',sxpar(headermap,'CRPIX1')-floor(RApix-newsize/2.)
-              sxaddpar,headermap,'CRPIX2',sxpar(headermap,'CRPIX2')-floor(DECpix-newsize/2.)
-              newdummy[*,*]=moment0map[floor(RApix-newsize/2.):floor(RApix+newsize/2.),floor(DECpix-newsize/2.):floor(DECpix+newsize/2.)]
+              sxaddpar,headermap,'CRPIX1',sxpar(headermap,'CRPIX1')-floor(RApix[0]-newsize/2.)
+              sxaddpar,headermap,'CRPIX2',sxpar(headermap,'CRPIX2')-floor(DECpix[0]-newsize/2.)
+              newdummy[*,*]=moment0map[floor(RApix[0]-newsize/2.):floor(RApix[0]+newsize/2.),floor(DECpix[0]-newsize/2.):floor(DECpix[0]+newsize/2.)]
               writefits,maindir+'/'+catdirname[i]+'/'+catMom0name[i]+'_small.fits',float(newdummy),headermap
               moment0map=newdummy
               moment1map=readfits(maindir+'/'+catdirname[i]+'/'+catMom1Name[i]+'.fits',headervel,/SILENT)
               newdummy=fltarr(newsize+1,newsize+1)
               sxaddpar,headervel,'NAXIS1',newsize+1
               sxaddpar,headervel,'NAXIS2',newsize+1
-              sxaddpar,headervel,'CRPIX1',sxpar(headervel,'CRPIX1')-floor(RApix-newsize/2.)
-              sxaddpar,headervel,'CRPIX2',sxpar(headervel,'CRPIX2')-floor(DECpix-newsize/2.)
-              newdummy[*,*]=moment1map[floor(RApix-newsize/2.):floor(RApix+newsize/2.),floor(DECpix-newsize/2.):floor(DECpix+newsize/2.)]
+              sxaddpar,headervel,'CRPIX1',sxpar(headervel,'CRPIX1')-floor(RApix[0]-newsize/2.)
+              sxaddpar,headervel,'CRPIX2',sxpar(headervel,'CRPIX2')-floor(DECpix[0]-newsize/2.)
+              newdummy[*,*]=moment1map[floor(RApix[0]-newsize/2.):floor(RApix[0]+newsize/2.),floor(DECpix[0]-newsize/2.):floor(DECpix[0]+newsize/2.)]
               writefits,maindir+'/'+catdirname[i]+'/'+catMom1name[i]+'_small.fits',float(newdummy),headervel
               moment1map=newdummy
-              noisemap=readfits(maindir+'/'+catdirname[i]+'/'+currentfitcube+'_6.0_noisemap.fits',headernoise,/SILENT)
+              noisemap=readfits(maindir+'/'+catdirname[i]+'/'+currentfitcube+'_noisemap.fits',headernoise,/SILENT)
               newdummy=fltarr(newsize+1,newsize+1)
               sxaddpar,headernoise,'NAXIS1',newsize+1
               sxaddpar,headernoise,'NAXIS2',newsize+1
-              sxaddpar,headernoise,'CRPIX1',sxpar(headernoise,'CRPIX1')-floor(RApix-newsize/2.)
-              sxaddpar,headernoise,'CRPIX2',sxpar(headernoise,'CRPIX2')-floor(DECpix-newsize/2.)
-              newdummy[*,*]=noisemap[floor(RApix-newsize/2.):floor(RApix+newsize/2.),floor(DECpix-newsize/2.):floor(DECpix+newsize/2.)]
-              writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_6.0_noisemap_small.fits',float(newdummy),headernoise
+              sxaddpar,headernoise,'CRPIX1',sxpar(headernoise,'CRPIX1')-floor(RApix[0]-newsize/2.)
+              sxaddpar,headernoise,'CRPIX2',sxpar(headernoise,'CRPIX2')-floor(DECpix[0]-newsize/2.)
+              newdummy[*,*]=noisemap[floor(RApix[0]-newsize/2.):floor(RApix[0]+newsize/2.),floor(DECpix[0]-newsize/2.):floor(DECpix[0]+newsize/2.)]
+              writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_noisemap_small.fits',float(newdummy),headernoise
               noisemap=newdummy
-              noisemapname=currentfitcube+'_6.0_noisemap_small'
+              noisemapname=currentfitcube+'_noisemap_small'
               cubeext='.fits'
               CD, new_dir, CURRENT=old_dir
               spawn,'rm -f '+currentfitcube+'_cont.png '+currentfitcube+'_scat.png',isthere
               IF allnew LT 2 then begin
-                 spawn,'rm -f '+catmaskname[i]+'.fits '+catMom1name[i]+'.fits '+catMom0name[i]+'.fits '+currentfitcube+'_6.0_noisemap.fits',isthere
+                 spawn,'rm -f '+catmaskname[i]+'.fits '+catMom1name[i]+'.fits '+catMom0name[i]+'.fits '+currentfitcube+'_noisemap.fits',isthere
               ENDIF
               CD,old_dir
               currentfitcube=currentfitcube+'_small'
@@ -1306,22 +1093,22 @@ noconfig:
               catMom0name[i]=catMom0name[i]+'_small'
               catMom1name[i]=catMom1name[i]+'_small'
               catmaskname[i]=catmaskname[i]+'_small'
-              Old=RApix
-              RApix=floor(newsize/2.)+(RApix-floor(RApix))
-              pixshift=Old-RApix
-              RApixboun=RApixboun-pixshift     
-              Old=DECpix
-              DECpix=floor(newsize/2.)+(DECpix-floor(DECpix))
-              pixshift=Old-DECpix
-              DECpixboun=DECpixboun-pixshift
+              Old=RApix[0]
+              RApix[0]=floor(newsize/2.)+(RApix[0]-floor(RApix[0]))
+              pixshift=Old-RApix[0]
+              RApix[1:2]=RApix[1:2]-pixshift     
+              Old=DECpix[0]
+              DECpix[0]=floor(newsize/2.)+(DECpix[0]-floor(DECpix[0]))
+              pixshift=Old-DECpix[0]
+              DECpix[1:2]=DECpix[1:2]-pixshift
     
            ENDIF
         ENDIF
      ENDIF
-     centralflux=dummy[fix(RApix),fix(DECpix),fix(VSYSpix)]
+     centralflux=dummy[fix(RApix[0]),fix(DECpix[0]),fix(VSYSpix[0])]
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+"We have this value in the central pixel "+string(centralflux)+" at the pixel (x,y,z) "+string(fix(RApix))+","+string(fix(DECpix))+","+string(fix(VSYSpix))
+        printf,66,linenumber()+"We have this value in the central pixel "+string(centralflux)+" at the pixel (x,y,z) "+string(fix(RApix[0]))+","+string(fix(DECpix[0]))+","+string(fix(VSYSpix[0]))
         IF not FINITE(centralflux) then  printf,66,linenumber()+"Central exclude = 1" else   printf,66,linenumber()+"Central exclude = 0"
         close,66
      ENDIF
@@ -1330,9 +1117,9 @@ noconfig:
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         printf,66,linenumber()+"The source finder found the following center in pixels."
-        printf,66,linenumber()+"DEC center="+string(DECpix)+"DEC Boundaries"+string(DECpixboun[0])+","+string(DECpixboun[1])
-        printf,66,linenumber()+"RA center="+string(RApix)+"RA Boundaries"+string(RApixboun[0])+","+string(RApixboun[1])
-        printf,66,linenumber()+"V_sys center="+string(VSYSpix)+"V_sys Boundaries"+string(ROTpixboun[0])+","+string(ROTpixboun[1])
+        printf,66,linenumber()+"DEC center="+string(DECpix[0])+"DEC Boundaries"+string(DECpix[1])+","+string(DECpix[2])
+        printf,66,linenumber()+"RA center="+string(RApix[0])+"RA Boundaries"+string(RApix[1])+","+string(RApix[2])
+        printf,66,linenumber()+"V_sys center="+string(VSYSpix[0])+"V_sys Boundaries"+string(VSYSpix[1])+","+string(VSYSpix[2])
         printf,66,linenumber()+"Which converts to real coordinates as."      
         printf,66,linenumber()+"DEC center="+string(DECdeg)+"DEC Boundaries"+string(DECboundeg[0])+","+string(DECboundeg[1])
         printf,66,linenumber()+"RA center="+string(RAdeg)+"RA Boundaries"+string(RAboundeg[0])+","+string(RAboundeg[1])
@@ -1403,7 +1190,7 @@ noconfig:
         goto,finishthisgalaxy
      ENDIF                   
                        ;Now let's obtain a initial pa and inclination for the galaxy    
-     obtain_pav2,moment0map,newPA,inclination=newinclination,center=[RApix,DECpix],noise=momnoise,iterations=10.
+     obtain_pav2,moment0map,newPA,inclination=newinclination,center=[RApix[0],DECpix[0]],noise=momnoise,iterations=10.
                                 ;Let's check wether the PA
                                 ;lines up with the kinematical
                                 ;or needs a 180  degree shift
@@ -1419,45 +1206,45 @@ noconfig:
      twobeampixel=3.*catmajbeam[i]/(ABS(sxpar(headermap,'cdelt1'))*3600.)
      case (1) of
         (sxpar(headervel,'cdelt1') LT 0):begin
-           elowRA=fix(RApix-twobeampixel)
+           elowRA=fix(RApix[0]-twobeampixel)
            IF elowRA LT 0 then elowRA=0
-           ehighRA=fix(RApix)
+           ehighRA=fix(RApix[0])
            IF ehighRA GT n_elements(dummyvel[*,0])-1 then ehighRA=n_elements(dummyvel[*,0])-1
-           elowDEC=fix(DECpix-twobeampixel)
+           elowDEC=fix(DECpix[0]-twobeampixel)
            IF elowDEC LT 0 then elowDEC=0
-           ehighDEC=fix(DECpix+twobeampixel)
+           ehighDEC=fix(DECpix[0]+twobeampixel)
            IF ehighDEC GT n_elements(dummyvel[0,*])-1 then ehighDEC=n_elements(dummyvel[0,*])-1
            IF elowRA GE ehighRA then elowRA=0
            IF elowDEC GE ehighDEC then elowDEC=0
-           wlowRA=fix(RApix)
+           wlowRA=fix(RApix[0])
            IF wlowRA LT 0 then wlowRA=0
-           whighRA=fix(RApix+twobeampixel)
+           whighRA=fix(RApix[0]+twobeampixel)
            IF whighRA GT n_elements(dummyvel[*,0])-1 then whighRA=n_elements(dummyvel[*,0])-1
-           wlowDEC=fix(DECpix-twobeampixel)
+           wlowDEC=fix(DECpix[0]-twobeampixel)
            IF wlowDEC LT 0 then wlowDEC=0
-           whighDEC=fix(DECpix+twobeampixel)
+           whighDEC=fix(DECpix[0]+twobeampixel)
            IF whighDEC GT n_elements(dummyvel[0,*])-1 then whighDEC=n_elements(dummyvel[0,*])-1
            IF wlowRA GE whighRA then whighRA=n_elements(dummyvel[*,0])-1
            IF wlowDEC GE whighDEC then whighDEC=n_elements(dummyvel[0,*])-1
         end
         (sxpar(headervel,'cdelt1') GT 0):begin
-           elowRA=fix(RApix)
+           elowRA=fix(RApix[0])
            IF elowRA LT 0 then elowRA=0
-           ehighRA=fix(RApix+twobeampixel)
+           ehighRA=fix(RApix[0]+twobeampixel)
            IF ehighRA GT n_elements(dummyvel[*,0])-1 then ehighRA=n_elements(dummyvel[*,0])-1
-           elowDEC=fix(DECpix-twobeampixel)
+           elowDEC=fix(DECpix[0]-twobeampixel)
            IF elowDEC LT 0 then elowDEC=0
-           ehighDEC=fix(DECpix+twobeampixel)
+           ehighDEC=fix(DECpix[0]+twobeampixel)
            IF ehighDEC GT n_elements(dummyvel[0,*])-1 then ehighDEC=n_elements(dummyvel[0,*])-1
            IF elowRA GE ehighRA then ehighRA=n_elements(dummyvel[*,0])-1
            IF elowDEC GE ehighDEC then ehighDEC=n_elements(dummyvel[0,*])-1
-           wlowRA=fix(RApix-twobeampixel)
+           wlowRA=fix(RApix[0]-twobeampixel)
            IF wlowRA LT 0 then wlowRA=0
-           whighRA=fix(RApix)
+           whighRA=fix(RApix[0])
            IF whighRA GT n_elements(dummyvel[*,0])-1 then whighRA=n_elements(dummyvel[*,0])-1
-           wlowDEC=fix(DECpix-twobeampixel)
+           wlowDEC=fix(DECpix[0]-twobeampixel)
            IF wlowDEC LT 0 then wlowDEC=0
-           whighDEC=fix(DECpix+twobeampixel)
+           whighDEC=fix(DECpix[0]+twobeampixel)
            IF whighDEC GT n_elements(dummyvel[0,*])-1 then whighDEC=n_elements(dummyvel[0,*])-1
            IF wlowRA GE whighRA then wlowRA=0
            IF wlowDEC GE whighDEC then wlowDEC=0
@@ -1510,7 +1297,7 @@ noconfig:
      ENDELSE
      avPA=dblarr(2)
                                 ;get the kinematical PA
-     obtain_velpa,moment1map,velPA,center=[RApix,DECpix]
+     obtain_velpa,moment1map,velPA,center=[RApix[0],DECpix[0]]
      IF ABS(velPA[0]-newPA[0]) LT 25. then begin
         avPA[0]=(velPA[0]+newPA[0])/2. 
         avPA[1]=SQRT(velPA[1]^2+newPA[1]^2)/2. 
@@ -1522,7 +1309,7 @@ noconfig:
      ENDELSE
                                 ;recalculate the inclination
     
-     obtain_inclinationv8,moment0map,avPA,newinclination,[RApix,DECpix],extend=noringspix,noise=momnoise,beam=catmajbeam[i]/(pixelsizeRA*3600.),gdlidl=gdlidl
+     obtain_inclinationv8,moment0map,avPA,newinclination,[RApix[0],DECpix[0]],extend=noringspix,noise=momnoise,beam=catmajbeam[i]/(pixelsizeRA*3600.),gdlidl=gdlidl
     
      obtain_w50,dummy,mask,header,W50   
                                 ;We want to adjust the cutoff values
@@ -1827,7 +1614,7 @@ noconfig:
      newrings=fix(norings[0])
                                 ;Calculate the beam in pixels  and get an estimate for the peak sbr
      beaminpixels=fix(catmajbeam[i]/((ABS(pixelsizeRA)+ABS(pixelsizeDEC))/2.*3600.))
-     centralarea=moment0map[fix(RApix-beaminpixels):fix(RApix+beaminpixels),fix(DECpix-beaminpixels):fix(DECpix+beaminpixels)]
+     centralarea=moment0map[fix(RApix[0]-beaminpixels):fix(RApix[0]+beaminpixels),fix(DECpix[0]-beaminpixels):fix(DECpix[0]+beaminpixels)]
      cenav=TOTAL(centralarea[WHERE(FINITE(centralarea))])/n_elements(centralarea[WHERE(FINITE(centralarea))])
      peaksbr=cenav*channelwidth/(catmajbeam[i]*catminbeam[i])
                                 ; at high inclinations rings overlap
@@ -2165,19 +1952,35 @@ noconfig:
         minxpos=strcompress(string(RAdeg-catmajbeam[i]/3600.))
         maxypos=strcompress(string(DECdeg+catmajbeam[i]/3600.))
         minypos=strcompress(string(DECdeg-catmajbeam[i]/3600.))
+;        xposinput1=[ ' XPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+                                ;                    ' XPOS_2
+                                ;                    1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), maxxpos,minxpos,'5E-4','1E-5','1E-4','1E-6','3','70','70']
+        ;We'll be satified with a change less than a tenth of a pixel
         xposinput1=[ ' XPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-                     ' XPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), maxxpos,minxpos,'5E-6','1E-6','1E-4','1E-6','3','70','70']
+                      ' XPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), +$
+                      maxxpos,minxpos,strtrim(string(pixelsizeRA)),strtrim(string(pixelsizeRA/20.)),+$
+                      strtrim(string(pixelsizeRA/10.)),strtrim(string(pixelsizeRA/20.)),'3','70','70']
         yposinput1=[ ' YPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-                     ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), maxypos,minypos,'5E-6','1E-6','1E-4','1E-6','3','70','70']
+                     ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),+$
+                     maxypos,minypos,strtrim(string(pixelsizeDEC)),strtrim(string(pixelsizeDEC/20.)),+$
+                      strtrim(string(pixelsizeDEC/10.)),strtrim(string(pixelsizeDEC/20.)),'3','70','70']
      ENDIF ELSE BEGIN
         maxxpos=strcompress(string(RAdeg+3.*catmajbeam[i]/3600.))
         minxpos=strcompress(string(RAdeg-3.*catmajbeam[i]/3600.))
         maxypos=strcompress(string(DECdeg+3.*catmajbeam[i]/3600.))
         minypos=strcompress(string(DECdeg-3.*catmajbeam[i]/3600.))
         xposinput1=[ ' XPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-                     ' XPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), maxxpos,minxpos,'1E-5','1E-6','1E-4','1E-6','3','70','70']
+                      ' XPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), +$
+                      maxxpos,minxpos,strtrim(string(pixelsizeRA*2.)),strtrim(string(pixelsizeRA/10.)),+$
+                      strtrim(string(pixelsizeRA/2.)),strtrim(string(pixelsizeRA/10.)),'3','70','70']
         yposinput1=[ ' YPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-                     ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), maxypos,minypos,'1E-5','1E-6','1E-4','1E-6','3','70','70']
+                     ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),+$
+                     maxypos,minypos,strtrim(string(pixelsizeDEC*2.)),strtrim(string(pixelsizeDEC/10.)),+$
+                      strtrim(string(pixelsizeDEC/2.)),strtrim(string(pixelsizeDEC/10.)),'3','70','70']
+;        xposinput1=[ ' XPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+;                     ' XPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), maxxpos,minxpos,'1E-3','1E-5','5E-5','1E-6','3','70','70']
+;        yposinput1=[ ' YPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+;                     ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), maxypos,minypos,'1E-3','1E-5','5E-5','1E-6','3','70','70']
      ENDELSE
      tryone=0.
                                 ;   IF we have a low inclination we first want to fit the PA by itself
@@ -2371,7 +2174,7 @@ noconfig:
            newinclination=[firstfitvalues[0,2],20.]
            newrot=firstfitvalues[1,4]
         ENDIF else begin
-           obtain_inclinationv8,moment0map,newPA,newinclination,[RApix,DECpix],extend=noringspix,noise=momnoise,beam=catmajbeam[i]/(pixelsizeRA*3600.),gdlidl=gdlidl 
+           obtain_inclinationv8,moment0map,newPA,newinclination,[RApix[0],DECpix[0]],extend=noringspix,noise=momnoise,beam=catmajbeam[i]/(pixelsizeRA*3600.),gdlidl=gdlidl 
            
            IF newinclination[0] LT 40 then newrot=W50/2./SIN(ABS(newinclination[0]+5.0)*!pi/180.) else newrot=W50/2./SIN(newinclination[0]*!pi/180.) 
         ENDELSE
@@ -2511,7 +2314,7 @@ noconfig:
 
         
         IF INCLest LT 1 then begin
-           obtain_inclinationv8,moment0map,newPA,newinclination,[RApix,DECpix],extend=noringspix,noise=momnoise,beam=catmajbeam[i]/(pixelsizeRA*3600.),gdlidl=gdlidl
+           obtain_inclinationv8,moment0map,newPA,newinclination,[RApix[0],DECpix[0]],extend=noringspix,noise=momnoise,beam=catmajbeam[i]/(pixelsizeRA*3600.),gdlidl=gdlidl
                                 ;when we get a new inclination we need
                                 ;to reset our cutoff values.
            cutoffcorrection=SIN(75.*!DtoR)/SIN((newinclination[0]+newinclination[1]/2.)*!DtoR)
@@ -3209,31 +3012,31 @@ noconfig:
               printf,66,linenumber()+"We found this as rings="+strtrim(string(fix(norings[0])),2)+"  new="+strtrim(string(fix(newrings)),2)
               close,66
            ENDIF
-           IF NOT sofiafail then begin
-              IF newrings GT sofiarings+2 OR newrings LT sofiarings-2 then begin        
+         ;  IF NOT sofiafail then begin
+           IF newrings GT sofiarings+2 OR newrings LT sofiarings-2 then begin        
+              IF size(log,/TYPE) EQ 7 then begin
+                 openu,66,log,/APPEND
+                 printf,66,linenumber()+"The new amount of rings ("+strtrim(string(fix(newrings)),2)+") deviates too much from the sofia estimate ("+string(sofiarings)+")."
+                 close,66
+              ENDIF
+              IF newrings LT norings[0] then begin
+                 IF norings[0] GT sofiarings-2 then newrings=norings[0]-1 else newrings=sofiarings-2
                  IF size(log,/TYPE) EQ 7 then begin
                     openu,66,log,/APPEND
-                    printf,66,linenumber()+"The new amount of rings ("+strtrim(string(fix(newrings)),2)+") deviates too much from the sofia estimate ("+string(sofiarings)+")."
+                    printf,66,linenumber()+"We set the number of rings to "+strtrim(string(fix(newrings)),2)
                     close,66
                  ENDIF
-                 IF newrings LT norings[0] then begin
-                    IF norings[0] GT sofiarings-2 then newrings=norings[0]-1 else newrings=sofiarings-2
-                    IF size(log,/TYPE) EQ 7 then begin
-                       openu,66,log,/APPEND
-                       printf,66,linenumber()+"We set the number of rings to "+strtrim(string(fix(newrings)),2)
-                       close,66
-                    ENDIF
-                 endif Else begin
-                    IF norings[0] LT sofiarings+2 then newrings=norings[0]+1 else newrings=sofiarings+2
-                    IF size(log,/TYPE) EQ 7 then begin
-                       openu,66,log,/APPEND
-                       printf,66,linenumber()+"We set the number of rings to "+strtrim(string(fix(newrings)),2)
-                       close,66
-                    ENDIF
-                 ENDELSE
-             
-              ENDIF
+              endif Else begin
+                 IF norings[0] LT sofiarings+2 then newrings=norings[0]+1 else newrings=sofiarings+2
+                 IF size(log,/TYPE) EQ 7 then begin
+                    openu,66,log,/APPEND
+                    printf,66,linenumber()+"We set the number of rings to "+strtrim(string(fix(newrings)),2)
+                    close,66
+                 ENDIF
+              ENDELSE
+              
            ENDIF
+           ;ENDIF
            IF newrings LT norings[0] AND constring NE 1 then begin 
               IF newrings LE forcedring then begin
                  IF norings[0] GT forcedring then begin
@@ -3648,14 +3451,14 @@ noconfig:
      IF innerfix LT 4 OR innerfix GE norings[0] OR finishafter EQ 1.1 then innerfix=4
 
 
-     IF sofiafail then begin
-        lowring=3
-        highring=maxrings
-        IF finishafter EQ 1.1 then highring=(maxrings-2)*2
-     ENDIF else begin
+;     IF sofiafail then begin
+;        lowring=3
+;        highring=maxrings
+;        IF finishafter EQ 1.1 then highring=(maxrings-2)*2
+;     ENDIF else begin
         lowring=norings[0]-3
         highring=norings[0]+2
-     ENDELSE
+;     ENDELSE
      tmppos=where('VROT' EQ tirificsecondvars)
      tirificsecond[tmppos]='VROT= 0.'+STRJOIN(strtrim(strcompress(string(VROTarr[1:n_elements(VROTarr)-1]))),' ')
      tmppos=where('VROT_2' EQ tirificsecondvars)
@@ -3786,10 +3589,19 @@ noconfig:
                        
                                 ;If the first fit is accepted we only change the central position minimally
      IF AC1 EQ 1 then begin     
+  ;      xposinput1=[ ' XPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+  ;                   ' XPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), '360','0','1E-3','1E-5','1E-4','1E-6','3','70','70']
+    ;    yposinput1=[ ' YPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+    ;                 ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), '90','-90','1E-3','1E-5','1E-4','1E-6','3','70','70']
         xposinput1=[ ' XPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-                     ' XPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), '360','0','1E-5','1E-6','1E-4','1E-6','3','70','70']
+                      ' XPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),'360','0', +$
+                      strtrim(string(pixelsizeRA)),strtrim(string(pixelsizeRA/20.)),+$
+                      strtrim(string(pixelsizeRA/10.)),strtrim(string(pixelsizeRA/20.)),'3','70','70']
         yposinput1=[ ' YPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-                     ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), '90','-90','1E-5','1E-6','1E-4','1E-6','3','70','70']
+                     ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),'90','-90',+$
+                     strtrim(string(pixelsizeDEC)),strtrim(string(pixelsizeDEC/20.)),+$
+                     strtrim(string(pixelsizeDEC/10.)),strtrim(string(pixelsizeDEC/20.)),'3','70','70']
+
         vsysinput1=[ ' VSYS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                      ' VSYS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),strtrim(strcompress(string(catvsys[i]+100.)),1),$
                      strtrim(strcompress(string(catvsys[i]-100.)),1),'0.5','0.01','2','0.5','3','70','70']
@@ -3801,11 +3613,20 @@ noconfig:
                                  xposinput1,yposinput1,vsysinput1,sdisinput1
         ENDELSE
      endif else begin
-                                ;Else we allow more variation in the center
+                                ;Else we allow more variation in the
+                                ;center
         xposinput1=[ ' XPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-                     ' XPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), '360','0','1E-4','1E-5','1E-4','1E-5','3','70','70']
+                      ' XPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),'360','0', +$
+                      strtrim(string(pixelsizeRA*3.)),strtrim(string(pixelsizeRA/10.)),+$
+                      strtrim(string(pixelsizeRA)),strtrim(string(pixelsizeRA/10.)),'3','70','70']
         yposinput1=[ ' YPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-                     ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), '90','-90','1E-4','1E-5','1E-4','1E-5','3','70','70']
+                     ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),'90','-90',+$
+                     strtrim(string(pixelsizeDEC*3.)),strtrim(string(pixelsizeDEC/10.)),+$
+                     strtrim(string(pixelsizeDEC)),strtrim(string(pixelsizeDEC/10.)),'3','70','70']
+  ;      xposinput1=[ ' XPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+  ;                   ' XPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), '360','0','1E-3','1E-5','1E-4','1E-5','3','70','70']
+  ;      yposinput1=[ ' YPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+   ;                  ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), '90','-90','1E-3','1E-5','1E-4','1E-5','3','70','70']
         vsysinput1=[ ' VSYS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                      ' VSYS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),strtrim(strcompress(string(catvsys[i]+100.)),1),strtrim(strcompress(string(catvsys[i]-100.)),1),'2','0.5','2','0.5','3','70','70']
         IF norings[0] LE 4 or finishafter EQ 1.1 then begin
@@ -3860,12 +3681,12 @@ noconfig:
      close,1
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+"Starting tirific Second estimate in "+catDirname[i]+" at "+systime()
+        printf,66,linenumber()+"Starting tirific Second estimate in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
         printf,66,linenumber()+"We have changed the ring numbers "+string(sbrmodify)+" times."
         printf,66,linenumber()+"We have changed the fitting paramaters "+string(trytwo)+" times."
         close,66
      ENDIF 
-     print,linenumber()+"Starting tirific Second estimate in "+catDirname[i]+" at "+systime()
+     print,linenumber()+"Starting tirific Second estimate in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
                                 ;rename the files
      counter++
      
@@ -4188,7 +4009,10 @@ noconfig:
                                 ;We will correct the output by fitting a polynomial
                                 ;first we set the amount of rings that
                                 ;are clearly one value
-     get_fixedringsv8,[[PAang],[PAang2],[INCLang],[INCLang2]],fixedrings
+
+     IF finalsmooth EQ 1 then begin
+        get_fixedringsv9,[[PAang],[PAang2],[INCLang],[INCLang2]],fixedrings,/smooth
+     ENDIF ELSE get_fixedringsv9,[[PAang],[PAang2],[INCLang],[INCLang2]],fixedrings
      IF fixedrings GE norings[0] then begin
         IF norings[0] GT 5 then fixedrings=norings[0]-2 else fixedrings=norings[0]-1
      ENDIF
@@ -4310,7 +4134,8 @@ noconfig:
                                 ;combination gives good results
                                 ;let's leave it like this.
      SBRav=(SBRarr+SBRarr2)/2.
-     get_newringsv9,SBRav,SBRav,2.*cutoff,velconstused    
+     get_newringsv9,SBRav,SBRav,2.*cutoff,velconstused
+     velconstused--
      IF double(norings[0]) GT 15. then begin
         IF velconstused GT norings[0]-ceil(norings[0]/10.) then velconstused=norings[0]-ceil(norings[0]/10.)
      ENDIF
@@ -4366,10 +4191,10 @@ noconfig:
                                 ;Perform tirific check with only changes as a whole to the parameters
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"Starting slope adjustment in "+catDirname[i]+" at "+systime()
+              printf,66,linenumber()+"Starting slope adjustment in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
               close,66
            ENDIF 
-           print,linenumber()+"Starting slope adjustment in "+catDirname[i]+" at "+systime()
+           print,linenumber()+"Starting slope adjustment in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
            rename,'2ndfit.','2ndfittmp.'
            gipsyfirst=strarr(1)
            gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
@@ -4442,7 +4267,7 @@ noconfig:
         openu,66,log,/APPEND
         printf,66,linenumber()+"We fit a slope to the rotation curve from ring "+string(velconstused)+" to ring"+strtrim(string(fix(norings[0])),2)
         for x=0,n_elements(SBRarr)-1 do begin
-           printf,66,SBRarr[x],SBRarr2[x],3.5*cutoff[x]
+           printf,66,SBRarr[x],SBRarr2[x],2.*cutoff[x]
         endfor
         Close,66
      ENDIF ELSE BEGIN
@@ -4528,31 +4353,31 @@ noconfig:
            printf,66,linenumber()+"We found this as rings = "+strtrim(string(fix(norings[0])),2)+"  new="+strtrim(string(fix(newrings)),2)
            close,66
         ENDIF
-        IF NOT sofiafail then begin
-           IF newrings GT sofiarings+3 OR newrings LT sofiarings-3 then begin        
+      ;  IF NOT sofiafail then begin
+        IF newrings GT sofiarings+3 OR newrings LT sofiarings-3 then begin        
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"The new amount of rings ("+strtrim(string(fix(newrings)),2)+") deviates too much from the sofia estimate ("+string(sofiarings)+")."
+              close,66
+           ENDIF
+           IF newrings LT norings[0] then begin
+              IF norings[0] GT sofiarings-3 then newrings=norings[0]-1 else newrings=sofiarings-3
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"The new amount of rings ("+strtrim(string(fix(newrings)),2)+") deviates too much from the sofia estimate ("+string(sofiarings)+")."
+                 printf,66,linenumber()+"We set the number of rings to "+strtrim(string(fix(newrings)),2)
                  close,66
               ENDIF
-              IF newrings LT norings[0] then begin
-                 IF norings[0] GT sofiarings-3 then newrings=norings[0]-1 else newrings=sofiarings-3
-                 IF size(log,/TYPE) EQ 7 then begin
-                    openu,66,log,/APPEND
-                    printf,66,linenumber()+"We set the number of rings to "+strtrim(string(fix(newrings)),2)
-                    close,66
-                 ENDIF
-              endif Else begin
-                 IF norings[0] LT sofiarings+3 then newrings=norings[0]+1 else newrings=sofiarings+3
-                 IF size(log,/TYPE) EQ 7 then begin
-                    openu,66,log,/APPEND
-                    printf,66,linenumber()+"We set the number of rings to "+strtrim(string(fix(newrings)),2)
-                    close,66
-                 ENDIF
-              ENDELSE
-              
-           ENDIF
+           endif Else begin
+              IF norings[0] LT sofiarings+3 then newrings=norings[0]+1 else newrings=sofiarings+3
+              IF size(log,/TYPE) EQ 7 then begin
+                 openu,66,log,/APPEND
+                 printf,66,linenumber()+"We set the number of rings to "+strtrim(string(fix(newrings)),2)
+                 close,66
+              ENDIF
+           ENDELSE
+           
         ENDIF
+        ;ENDIF
         
                                 ;Not previously fitted. If it has been
                                 ;than fix to this number of rings.
@@ -5056,12 +4881,12 @@ noconfig:
                                 ;Perform tirific check with only changes as a whole to the parameters
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+"Starting tirific check of the smoothed second estimate in "+catDirname[i]+" at "+systime()
+        printf,66,linenumber()+"Starting tirific check of the smoothed second estimate in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
         printf,66,linenumber()+"We have changed the ring numbers "+string(sbrmodify)+" times."
         printf,66,linenumber()+"We have changed the fitting paramaters "+string(trytwo)+" times."
         close,66
      ENDIF 
-     print,linenumber()+"Starting tirific check of second estimate in "+catDirname[i]+" at "+systime()
+     print,linenumber()+"Starting tirific check of second estimate in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
      rename,'2ndfit.','2ndfitunsmooth.'
      gipsyfirst=strarr(1)
      gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
