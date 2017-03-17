@@ -62,7 +62,7 @@ smoothagain:
      maxvel=MAX(smoothfield[tmp],min=minvel)
      POS1=WHERE(maxvel EQ smoothfield)
      POS2=WHERE(minvel EQ smoothfield)
-     print,n_elements(POS1),n_elements(POS2)
+   ;  print,n_elements(POS1),n_elements(POS2)
      IF n_elements(POS1) GT 1 or n_elements(POS2) GT 1 then begin
         POS1=POS1[0]
         POS2=POS2[0]

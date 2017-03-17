@@ -203,18 +203,24 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
             endfor
          ENDIF
          IF NOT found then begin
-            IF size(log,/TYPE) EQ 7 then begin
-               openu,66,log,/APPEND
-               printf,66,linenumber()+'CLEAN_HEADER: WE CANNOT FIND THE MAJOR AXIS FWHM IN THE HEADER'          
-               close,66
+            IF beam[0] NE 1 then begin
+               sxaddpar,header,'BMAJ',double(beam[0]/3600.)
+               If beam[1] NE 1 then  sxaddpar,header,'BMIN',double(beam[1]/3600.) else  sxaddpar,header,'BMIN',double(beam[0]/3600.)
+               writecube=1
             ENDIF ELSE BEGIN
-               print,linenumber()+'CLEAN_HEADER: WE CANNOT FIND THE MAJOR AXIS FWHM IN THE HEADER'   
+               IF size(log,/TYPE) EQ 7 then begin
+                  openu,66,log,/APPEND
+                  printf,66,linenumber()+'CLEAN_HEADER: WE CANNOT FIND THE MAJOR AXIS FWHM IN THE HEADER'          
+                  close,66
+               ENDIF ELSE BEGIN
+                  print,linenumber()+'CLEAN_HEADER: WE CANNOT FIND THE MAJOR AXIS FWHM IN THE HEADER'   
+               ENDELSE
+               openu,1,outputcatalogue,/APPEND
+               printf,1,format='(A60,A90)', Dir,'The Cube has no major axis FWHM in the header.'
+               close,1
+               writecube=2
+               goto,finishup
             ENDELSE
-            openu,1,outputcatalogue,/APPEND
-            printf,1,format='(A60,A90)', Dir,'The Cube has no major axis FWHM in the header.'
-            close,1
-            writecube=2
-            goto,finishup
          ENDIF
      ENDELSE
     

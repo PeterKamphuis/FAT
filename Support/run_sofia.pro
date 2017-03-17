@@ -50,6 +50,11 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       07-03-2017 P.Kamphuis; Setup such that SoFiA output now goes
+;                              to the Log file instead of the screen. 
+;       06-03-2017 P.Kamphuis; Made sure that when there is a central
+;                              source and nan is found in the output
+;                              file that source is selected.  
 ;       Written 22-02-2017 P.Kamphuis v1.0
 ;
 ; NOTE:
@@ -85,8 +90,18 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
   IF FILE_TEST(currentfitcube+'_cat.ascii') then spawn,'rm -f '+currentfitcube+'_cat.ascii'
   IF FILE_TEST(currentfitcube+'_cont.png') then spawn,'rm -f '+currentfitcube+'_cont.png'
   IF FILE_TEST(currentfitcube+'_mask.fits') then spawn,'rm -f '+currentfitcube+'_mask.fits'
-  IF FILE_TEST(currentfitcube+'_scat.png') then spawn,'rm -f '+currentfitcube+'_scat.png'     
-  spawn,'python '+supportdirchecked+'/sofia_pipeline.py sofia_input.txt '
+  IF FILE_TEST(currentfitcube+'_scat.png') then spawn,'rm -f '+currentfitcube+'_scat.png'
+  print,linenumber()+'Running SoFiA.'    
+  spawn,'python '+supportdirchecked+'/sofia_pipeline.py sofia_input.txt ',sofiaoutput
+  IF size(log,/TYPE) EQ 7 then begin
+     openu,66,log,/APPEND
+     printf,66,linenumber()+'The Sofia Output'
+     for j=0,n_elements(sofiaoutput)-1 do begin
+        printf,66,sofiaoutput[j]
+     endfor
+     close,66
+  ENDIF
+  
   IF not FILE_TEST(currentfitcube+'_cat.ascii') then begin
      IF threshold GT 4 then begin
         IF size(log,/TYPE) EQ 7 then begin
@@ -181,7 +196,15 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
   close,1
   IF n_elements(catvals[sofia_locations[0],*]) GT 1 then begin
      tmp=WHERE(FINITE(catvals[sofia_locations[13],*]) EQ 0)
-     IF tmp[0] NE -1 then catvals[sofia_locations[13],tmp]=0.
+     IF tmp[0] NE -1 then begin
+        dummy=readfits(currentfitcube+'.fits',hedtmp)
+        ;,/NOSCALE,/SILENT)
+        For j=0,n_elements(tmp)-1 do begin
+           IF FINITE(dummy[double(catvals[sofia_locations[1],tmp[j]]),double(catvals[sofia_locations[4],tmp[j]]),double(catvals[sofia_locations[7],tmp[j]])]) EQ 0 then $
+              catvals[sofia_locations[13],tmp[j]]=1e9-j else  catvals[sofia_locations[13],tmp[j]]=0.
+        ENDFOR
+
+     ENDIF
      voxratio=dblarr(n_elements(catvals[0,*]))
      maxvoxel=MAX(catvals[sofia_locations[13],*])
      for j=0,n_elements(catvals[0,*])-1 do begin

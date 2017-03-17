@@ -70,8 +70,20 @@ Pro revised_regularisation_com,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       08-03-2017 P.Kamphuis; Added the condition that when the
+;                              initial order is 0 when refitting do
+;                              not take the lowest order. Aditionally
+;                              when minchi is too high check that the
+;                              errors do not increase beyond 3* maxdev
+;                              and removed the condition that when the
+;                              profile approaches minpar the error is
+;                              the distance to minpar as it actually
+;                              reduces the error.
+;       01-03-2017 P.Kamphuis; Added a final condition where the
+;                              polynomial is re-fitted with the
+;                              estimated errors from an initial fit.  
 ;       13-06-2016 P.Kamphuis; Increased the option to check for
-;       sloped warp parts and increase the error.  
+;                              sloped warp parts and increase the error.  
 ;       30-03-2016 P.Kamphuis; A complete overhaul of this routine
 ;                              build from scratch based on
 ;                              parrameterreguv87. This new routine
@@ -143,7 +155,8 @@ Pro revised_regularisation_com,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
                                 ;some tracking variables to use
   IF arctan EQ 0 then attempts=0. else attempts=1
                              
-  
+  errincfact=1.5
+  checkfit=0
   largerad=0.
   fitstat=0
   prevreduce=0.
@@ -560,8 +573,10 @@ restartall:
      j=n_elements(errors[*,i])-1
      
      WHILE SBR[j]/cutoff[j] LT 1.5 do begin
-        print,'Here we are penalising low SBR rings'
-        print,j,SBR[j],cutoff[j],SBR[j]/cutoff[j]
+        IF keyword_set(debug) then begin
+           print,'Here we are penalising low SBR rings'
+           print,j,SBR[j],cutoff[j],SBR[j]/cutoff[j]
+        ENDIF
         errors[j,i]=3*maxdev[i]/(SBR[j]/cutoff[j])
         j--
      ENDWHILE
@@ -696,6 +711,10 @@ refit:
   newPA=PA
   newPA[*]=0.
   coefffound=dblarr(6,n_Elements(PA[0,*]))
+  triesorder=0
+  fixed=[0,0]
+  regendorder=[0,0]
+  changedorder:
   for par=0,n_Elements(PA[0,*])-1 do begin
      addminchi=0.
      erroradjusted=0
@@ -709,6 +728,7 @@ refit:
         newPAcoeff=PA[0,par]
         coefffound[0,par]=newPA[0,par]
         finorder[par]=0
+        fixed[par]=1
         goto,allfixed
      ENDIF
      endorder=ceil((n_elements(PA[*,par])-3.)/2.)
@@ -732,6 +752,8 @@ refit:
      ReturnPA=1
      mcerrors=dblarr(n_elements(PA[*,0]),endorder-1)
      finalcoeff=dblarr(6,endorder-1)
+ 
+     regendorder[par]=endorder
      for order=endorder,2,-1 do begin
         shifterrors=shifterrorsor
         tmp=dblarr(1)
@@ -944,6 +966,8 @@ refit:
            incerr=minchi/20
            If incerr GT 10 then incerr=10.
            fiterrors=fiterrors*incerr
+           tmp=WHERE(fiterrors GT 3.*maxdev[par])
+           IF tmp[0] NE -1 then fiterrors[tmp]=3.*maxdev[par]
            IF keyword_set(debug) then begin
               print,'We go to newendorder cause minchi is too big'
            ENDIF
@@ -1134,7 +1158,8 @@ refit:
      erroradjusted=0
      cleanuppar:
   endfor   
-  
+
+ 
   cleanup:
   for i=0,1 do begin
      IF fixedrings[i] GT n_elements(newPA[*,i])-1 then fixedrings[i]=n_elements(newPA[*,i])-1
@@ -1154,11 +1179,13 @@ refit:
         ENDELSE
      ENDIF
   endfor
-  print,'What up?'
-  print,errors[*,0]
+  if keyword_set(debug) then begin
+     print,'What up?'
+     print,errors
+  endif
   for i=0,n_elements(PA[0,*])-1 do begin
      for j=0,n_elements(PA[*,i])-1 do begin
-        errors[j,i]=MAX([errors[j,i]*1.5,ABS(PAin[j,i]-newPA[j,i]),ddiv[i]])        
+        errors[j,i]=MAX([errors[j,i]*errincfact,ABS(PAin[j,i]-newPA[j,i]),ddiv[i]])        
      endfor
   endfor
   if keyword_set(debug) then begin
@@ -1169,19 +1196,139 @@ refit:
   tmp=WHERE(FINITE(newPA) EQ 0.)
   IF tmp[0] NE -1 then newPA[WHERE(FINITE(newPA) EQ 0.)]=PAin[WHERE(FINITE(newPA) EQ 0.)]
   for i=0,n_elements(PA[0,*])-1 do begin 
-     IF n_elements(pamin[i]) gt 0 then tmp=WHERE(PA[*,i]-errors[*,i] LT pamin[i]) else tmp=-1
-     IF tmp[0] NE -1  then begin
-        for j=0,n_elements(tmp)-1 do begin
-           errors[j,i]=MAX([PAin[j,i]-pamin[i],ddiv[i]])
-        endfor
-     endif
+   ;  IF n_elements(pamin[i]) gt 0 then begin
+   ;     tmp=WHERE(newPA[*,i]-errors[*,i] LT pamin[i])
+   ;  ENDIF else tmp=-1
+   ;  IF tmp[0] NE -1  then begin
+   ;     for j=0,n_elements(tmp)-1 do begin
+   ;        errors[tmp[j],i]=MAX([newPA[tmp[j],i]-pamin[i],ddiv[i]])
+   ;     endfor
+   ;  endif
      IF SBRin[n_elements(PAin[*,i])-1] LT cutoff[n_elements(PAin[*,i])-1] then errors[n_elements(PAin[*,i])-1,i]=MAX(errors[*,i])
      If errors[n_elements(errors[*,0])-1,i] LT errors[n_elements(errors[*,0])-2,i] then errors[n_elements(errors[*,0])-1,i]=errors[n_elements(errors[*,0])-2,i]
-    ; IF n_elements(pamax) gt 0 then tmp=WHERE(newPA[*,i]+errors[*,i] GT pamax[i]) else tmp=-1
-    ; IF tmp[0] NE -1 then errors[tmp,i]=pamax[i]-newPA[tmp,i]
-    ; IF n_elements(pamin) gt 0 and n_elements(pamax) gt 0 then tmp=WHERE(errors[*,i] LT 0) else tmp=-1
-    ; IF tmp[0] NE -1 then errors[tmp,i]=pamax[i]-pamin[i]
   endfor
+  if arctan eq 0 and checkfit LT 1 then begin
+  ;   neworderfind=dblarr(endorder+1)
+  ;   newchi=dblarr(endorder+1)
+     IF keyword_set(debug) then print,'maybe the sbr is the same of course'
+     ratio=SBRin[*]/cutoff
+     IF keyword_set(debug) then print,ratio
+     tmp=WHERE(ratio LT 2.)
+     endrings=n_elements(ratio)-1
+     IF keyword_set(debug) then print,'the endrings',endrings
+     IF tmp[0] NE -1 then begin
+        WHILE tmp[n_elements(tmp)-1] EQ endrings AND n_elements(tmp) GT 1 DO BEGIN
+           tmp2=tmp
+           tmp=tmp2[0:n_elements(tmp)-2]
+           endrings--
+        ENDWHILE
+     ENDIF
+     IF keyword_set(debug) then print,endrings
+     
+     for j=0,1 do begin
+        endorder=regendorder[j]
+        newchi=dblarr(endorder+1)
+        IF fixed[j] NE 1 then begin
+           fitPA=PAin[0:endrings,j]
+           IF fixedrings[j] LE endrings then fitPA[0:fixedrings[j]]=PAin[0,j] else begin
+              fitPA[0:endrings]=PAin[0,j]
+              fixedrings[j]=endrings
+           ENDELSE
+           if keyword_set(debug) then begin
+              print,'This is the PA we will fit'
+              print,fitPA
+              print,'With these errors'
+              print,errors[0:endrings,j]
+           ENDIF
+           fact=1
+           for i=0,endorder do begin
+              IF i EQ 1 then begin
+                 newchi[i]=5e9
+                 i++
+              ENDIF
+              newcoeff=FAT_FIT(RADII[0:endrings],fitPA,i,RCHI_SQR=redChi,errors= errors[0:endrings,j],STATUS=fitstat,log=log,fixedrings=fixedrings[j])
+              IF keyword_set(debug) then print,i,redchi
+              newchi[i]=redChi
+           endfor
+          
+           checkerr=MAX(newchi,min=minchi)
+           IF minchi LT 1. then begin
+              fact=fact/minchi
+              errors[*,j]=errors[*,j]/fact
+           ENDIF
+           tmp=WHERE(newchi EQ minchi)
+           refitad:
+           if keyword_set(debug) then begin
+              print,'This is the PA we will fit'
+              print,fitPA
+              print,'With these errors'
+              print,errors[0:endrings,j]
+              print,'We selected this order'
+              print,tmp[0]
+           ENDIF
+           newcoeff=FAT_FIT(RADII[0:endrings],fitPA,tmp[0],RCHI_SQR=redChi,errors= errors[0:endrings,j],STATUS=fitstat,log=log,newy=newPAfit,fixedrings=fixedrings[j])
+           IF tmp[0] EQ 0 AND FINITE(newcoeff[0]) EQ 0 then begin
+              redchi=1.001
+              newcoeff[0]=PAin[0,j]
+           ENDIF
+           IF keyword_set(debug) then print,redChi,tmp[0],finorder[j]
+           IF redChi LT 1 then begin
+              IF redChi GT 0.9 then fact=1.1 else fact=1./(redChi+0.1)
+              errors[*,j]=errors[*,j]/fact
+              goto,refitad
+           ENDIF
+           IF redCHi GT 3 then begin
+              fact=redChi/2.
+              errors[*,j]=errors[*,j]*fact
+              goto,refitad
+           ENDIF
+           IF tmp[0] NE finorder[j] then begin
+              errors[*,j]=errors[*,j]*1.5
+              fg=MAX([tmp[0],finorder[j]],min=neworder)
+              if finorder[j] NE 0 then begin
+                 tmp[0]=neworder
+                 finorder[j]=neworder
+                 goto,refitad
+              ENDIF
+           ENDIF
+           IF keyword_set(debug) then print,'worrisome'
+           IF endrings EQ n_elements(newPA[*,j])-1 then newPA[*,j]=newPAfit else begin
+              IF keyword_set(debug) then print,'what ishjhjh'
+              newy=dblarr(n_elements(newPA[*,j]))
+              newy[*]=newcoeff[0]
+              for i=1,n_elements(newcoeff)-1 do newy[*]=newy[*]+newcoeff[i]*RADII[*]^i
+              IF fixedrings[j] GT 0. and finorder[j] NE 0 then begin
+                 IF fixedrings[j] GT fix(n_elements(newy)/2.)-1 then begin
+                    newy[0:fix(n_elements(newy)/2.)-1]=PAin[0,j]
+                    newy[fix(n_elements(newy)/2.):fixedrings[j]]=(PAin[0,j]+newy[fix(n_elements(newy)/2.):fixedrings[j]])/2.                    
+                 ENDIF else begin
+                    newy[0:fixedrings[j]]=PAin[0,j]
+                    newy[fixedrings[j]+1]=(newy[fixedrings[j]+1]+newy[fixedrings[j]])/2.
+                    newy[fixedrings[j]+2]=(newy[fixedrings[j]+2]*2.+newy[fixedrings[j]+1])/3.
+                    newy[fixedrings[j]+3]=(newy[fixedrings[j]+3]*3.+newy[fixedrings[j]+2])/4.
+                 ENDELSE
+              ENDIF
+              newPA[*,j]=newy
+           ENDELSE
+           finorder[j]=tmp[0]
+           IF j EQ 0 then begin
+              IF errors[0,j] LT 1 then begin
+                 errors[*,j]=errors[*,j]/errors[0,j]
+              ENDIF
+           ENDIF ELSE BEGIN
+              IF errors[0,j] LT 2. then begin
+                 errors[*,j]=errors[*,j]/errors[0,j]
+              ENDIF
+           ENDELSE
+           IF keyword_set(debug) then print,'is it finished?',finorder[j]
+        ENDIF
+     endfor
+     checkfit=1
+     errincfact=1.
+     goto,cleanup
+  endif
+  
+
   errorin=errors
   order=finorder
   if keyword_set(debug) then begin
@@ -1193,6 +1340,8 @@ refit:
      print,'The final fitted output'
      print,PAin
   ENDIF
+  tmp=WHERE(FINITE(Pain) EQ 0)
+  IF tmp[0] NE -1 then stop
   IF size(log,/TYPE) EQ 7 then begin
      openu,66,log,/APPEND
      IF arctan EQ 0 then begin

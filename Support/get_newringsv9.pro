@@ -238,7 +238,7 @@ Pro get_newringsv9,SBR1in,SBR2in,cutoffin,newrings,INDIVIDUAL=individual,debug=d
                                 ;if the low rings are in some other
                                 ;area of the model we do not want to cut
               else: begin
-                 print,'nothing to be done'
+                 print,linenumber()+'GET_NEWRINGSV9: Nothing to be done.'
               end
            endcase
 

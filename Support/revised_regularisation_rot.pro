@@ -70,6 +70,8 @@ Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       07-03-2017 P.Kamphuis; Improved the error constuction for the
+;                              inner part of well resolved galaxies  
 ;       30-03-2016 P.Kamphuis; A complete overhaul of this routine
 ;                              build from scratch based on
 ;                              parrameterreguv87. This new routine
@@ -100,6 +102,7 @@ Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
      RADII=RADIIin[1:n_elements(SBRin)-1]
      PA0=PAin[0]
      PA=PAin[1:n_elements(SBRin)-1]
+     IF PA[0] GT 200. then PA[0]=PA[0]*(MEAN(PA[n_elements(PA)-4:n_elements(PA)-1])/PA[0])
      IF n_elements(cutoffin) GT 0 then cutoff=cutoffin[1:n_elements(SBRin)-1]
   ENDIF ELSE BEGIN
      SBR=SBRin
@@ -110,13 +113,11 @@ Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
   PA=REVERSE(PA)
   SBR=REVERSE(SBR)
   RADII=REVERSE(RADII)
-  cutoff=REVERSE(cutoff)
-
+  
   IF n_elements(cutoffin) GT 0 then cutoff=Reverse(cutoff)
   If n_elements(fixedringsin) GT 0 then fixedrings=fixedringsin else fixedrings=0
   If n_elements(DDivin) GT 0 then DDiv=DDivin
   If n_elements(errorin) GT 0 then error=errorin
-  If n_elements(cutoffin) GT 0 then cutoff=cutoffin
                                 ;arctan can have the values of 0: for a polynomial fit
                                 ;1: for a smoothing of PA or INCL  (default)
                                 ;2: for a smoothing of VROT
@@ -179,10 +180,10 @@ Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
      tmp=cutoff
      cutoff=dblarr(n_elements(PA[*,0]))
      last=n_elements(tmp)-1
-     cutoff[0:last]=tmp[0:last]
-     cutoff[last+1:n_elements(PA)-1]=cutoff[last]
+     cutoff[last:n_elements(PA)-1]=tmp[0:last]
+     cutoff[0:last-1]=cutoff[last]
   endif
-  IF cutoff[0] EQ 0 then cutoff[0]=cutoff[1]
+  IF cutoff[n_elements(PA[*])-1] EQ 0 then cutoff[n_elements(PA[*])-1]=cutoff[n_elements(PA[*])-2]
   IF keyword_set(rev) and fixedrings GE n_elements(RADII)-1 then fixedrings=n_elements(RADII)-2
   if keyword_set(debug) then begin
      print,'A new regularization starts here'
@@ -344,42 +345,46 @@ restartall:
                                 ;we will check this from the outside
                                 ;in and ignore the inner parts
      counter=0
-    
+     
      for j=1,fix(n_elements(PA[*])/2.) do begin
                                 ;first check if we satisfy the
                                 ;condition
         adjust=0
         sawtooth=0
         maxdevfac=[0.]
-       
+        
         deltaslope=(PA[j+1]-PA[j])-(PA[j]-PA[j-1])
         deltasign=(PA[j+1]-PA[j])/(PA[j]-PA[j-1])
                                 ;Here we will determine the current
                                 ;trend of the change
-           sign=dblarr(3)
-           for x=0,2 do begin
-              sign[x]=PA[j+x]-PA[j+x-1]
-           endfor
-           tmp=WHERE(sign LT 0)
-           case 1 of
-              ;if all elements are less than 0 the curve is growing
-              n_elements(tmp) EQ 3:begin
-                 trend=1
-                 IF (PA[j+1]-PA[j]) GT 0 AND ABS(deltaslope) GT maxdev then adjust=1
-              end
-              ;IF all elements are larger than 0 the trend is declining
-              tmp[0] EQ -1:begin
-                 trend=-1
-                 IF (PA[j+1]-PA[j]) GT 0 AND ABS(deltaslope) GT maxdev then adjust=1
-              end
-              ;IF there are positive and negatives we have a sawtooth pattern
-              else:begin
-                 trend=0
-                 tmp=WHERE(sign GT ddiv)
-                 IF tmp[0] NE -1 then sawtooth=1
-                 IF ABS(deltaslope) GT maxdev and deltasign LT 0 then adjust=1
-              end
-           endcase
+        sign=dblarr(3)
+        for x=0,2 do begin
+           sign[x]=PA[j+x]-PA[j+x-1]
+        endfor
+        tmp=WHERE(sign LT 0)
+        if keyword_set(debug) then begin
+           print,'This is where the sig is negative'
+           print,tmp
+        endif
+        case 1 of
+                                ;if all elements are less than 0 the curve is growing
+           n_elements(tmp) EQ 3:begin
+              trend=1
+              IF (PA[j+1]-PA[j]) GT 0 AND ABS(deltaslope) GT maxdev then adjust=1
+           end
+                                ;IF all elements are larger than 0 the trend is declining
+           tmp[0] EQ -1:begin
+              trend=-1
+              IF (PA[j+1]-PA[j]) GT 0 AND ABS(deltaslope) GT maxdev then adjust=1
+           end
+                                ;IF there are positive and negatives we have a sawtooth pattern
+           else:begin
+              trend=0
+              tmp=WHERE(sign GT ddiv)
+              IF tmp[0] NE -1 then sawtooth=1
+              IF ABS(deltaslope) GT maxdev and deltasign LT 0 then adjust=1
+           end
+        endcase
            
           
         
@@ -390,6 +395,10 @@ restartall:
               maxdevfac=ABS(deltaslope/(maxdev/accuracy))
               tmp=WHERE(maxdevfac LT 1.2)
               IF tmp[0] NE -1 then maxdevfac[tmp]=1.2
+              IF keyword_set(debug) then begin
+                 print,'do we dothis'
+                 print,j,errors[j],n_elements(errors)-1
+              ENDIF
               errors[j]=errors[j]*(1+maxdevfac*(counter/(n_elements(PA[*])/4.)))
               counter++
            ENDIF ELSE BEGIN                    
@@ -407,20 +416,103 @@ restartall:
            endif
         ENDELSE
      ENDFOR
+                                ;If the model has more then 15 rings
+                                ;we also want to check the last 4
+                                ;elements for the sawtooth pattern
+   
+     IF n_elements(PA) GT 15 then begin
+        for j=n_elements(PA)-5,n_elements(PA[*])-2 do begin
+                                ;first check if we satisfy the
+                                ;condition
+           adjust=0
+           sawtooth=0
+           maxdevfac=[0.]
+           
+           deltaslope=(PA[j+1]-PA[j])-(PA[j]-PA[j-1])
+           deltasign=(PA[j+1]-PA[j])/(PA[j]-PA[j-1])
+                                ;Here we will determine the current
+                                ;trend of the change
+           sign=dblarr(3)
+           for x=-1,1 do begin
+              sign[x+1]=PA[j+x]-PA[j+x-1]
+           endfor
+           tmp=WHERE(sign LT 0)
+           IF keyword_set(debug) then begin
+              print,'This is where the sig is negative in the inner part of large galaxies'
+              print,tmp
+           ENDIF
+           case 1 of
+                                ;if all elements are less than 0 the curve is growing
+              n_elements(tmp) EQ 3:begin
+                 trend=1
+                 IF (PA[j+1]-PA[j]) GT 0 AND ABS(deltaslope) GT maxdev then adjust=1
+              end
+                                ;IF all elements are larger than 0 the trend is declining
+              tmp[0] EQ -1:begin
+                 trend=-1
+                 IF (PA[j+1]-PA[j]) GT 0 AND ABS(deltaslope) GT maxdev then adjust=1
+              end
+                                ;IF there are positive and negatives we have a sawtooth pattern
+              else:begin
+                 trend=0
+                 tmp=WHERE(sign GT ddiv)
+                 IF tmp[0] NE -1 then sawtooth=1
+                 IF ABS(deltaslope) GT maxdev and deltasign LT 0 then adjust=1
+              end
+           endcase
+           
+           
+           
+           
+           IF adjust then begin  
+              IF sawtooth then begin
+                 IF counter GT 0 then errors[j]=ABS(ABS(PA[j-1]+PA[j+1])/2.-PA[j])/4.
+                 
+                 maxdevfac=ABS(deltaslope/(maxdev/accuracy))
+                 tmp=WHERE(maxdevfac LT 1.2)
+                 IF tmp[0] NE -1 then maxdevfac[tmp]=1.2
+                 IF keyword_set(debug) then begin
+                    print,'do we dothis'
+                    print,j,errors[j],n_elements(errors)-1
+                ; errors[j]=errors[j]*(1+maxdevfac*(counter/(n_elements(PA[*])/4.)))
+                    print,errors[j],(maxdevfac*(counter/(n_elements(PA[*])/4.)))
+                 ENDIF
+                 counter++
+                 IF keyword_set(NOCENTRAL) AND j EQ n_elements(PA)-2 then errors[j+1]=errors[j]*2.*(1+maxdevfac*(counter/(n_elements(PA[*])/4.)))
+              ENDIF ELSE BEGIN                    
+                 IF ABS(deltaslope) GT maxdev/accuracy then begin
+                    errors[j]=errors[j]*(ABS(deltaslope)/(maxdev))
+                 ENDIF
+                 
+                                ; ENDIF
+                 prevsign=0
+              ENDELSE
+           ENDIF ELSE BEGIN
+              IF sawtooth then begin
+                 errors[j]=ABS(ABS(PA[j-1]+PA[j+1])/2.-PA[j])
+                 
+              endif
+           ENDELSE
+        ENDFOR
+     ENDIF
+
+     
      IF PA[n_elements(PA)-1] EQ 0 then errors[n_elements(PA)-1]=ddiv/4.
      for j=fixedrings+1,0,-1 do begin
-         IF errors[j+1] EQ 0 then errors[j+1] = errors[j]/2.
+        IF errors[j+1] EQ 0 then errors[j+1] = errors[j]/2.
         WHILE errors[j] GT errors[j+1] do begin
            errors[j+1]=errors[j+1]*fact
         ENDWHILE
      endfor
-     IF SBR[0] LT cutoff[0] then errors[0]=MAX([MAX(errors),2.*ddiv])
+     IF SBR[0] LT cutoff[0] AND fixedrings EQ 0 then errors[0]=MAX([MAX(errors),2.*ddiv])
   ENDELSE
                                 ;No errors can be larger then maxdev
   IF n_elements(maxdev) GT 0 then begin
      tmp=WHERE(errors GT 2*maxdev[0])
-     print,tmp,maxdev
-     print,'here here'
+     IF keyword_set(debug) then begin
+        print,tmp,maxdev
+        print,'here here'
+     ENDIF
      if tmp[0] NE -1 then begin
         for j=0,n_elements(tmp)-1 do begin
            IF cutoff[tmp[j]] LT SBR[tmp[j]] then errors[tmp[j]]=2*maxdev[0]
@@ -429,6 +521,8 @@ restartall:
         IF tmp[0] NE -1 then errors[tmp]=3*maxdev[0]
      ENDIF
   ENDIF
+  tmp=WHERE(errors LT ddiv)
+  IF tmp[0] NE -1 then errors[tmp]=ddiv
   IF ~keyword_set(nocentral) then errors[n_elements(errors)-2:n_elements(errors)-1]=maxdev[0]/2.
   IF keyword_set(debug) then begin
      print,'The final errors are:'
@@ -598,8 +692,8 @@ refit:
      endelse
      IF order GT 5 then  Chi[order-beginorder]=tmp*order
      IF keyword_set(debug) then begin
-        print,'Printing reduced chi, order'
-        print,tmp,order
+        print,'Printing reduced chi, order, Reg red Chi'
+        print,tmp,order,Chi[order-beginorder]
         print,'Finished this order'
               
      ENDIF
@@ -751,7 +845,7 @@ refit:
                                 ;rotation curve
      
     
-           print,'This is minchi',minchi
+  IF keyword_set(debug) then print,'This is minchi',minchi
   order=WHERE(Chi EQ minchi)+beginorder
   tmp=order
   order=intarr(1)
@@ -823,18 +917,14 @@ refit:
   IF tmp[0] NE -1  then begin
      for j=0,n_elements(tmp)-1 do begin
         IF tmp[j] NE n_elements(errors)-1 then begin
-           print,errors[tmp[j]]
+           IF keyword_set(debug) then print,errors[tmp[j]]
            errors[tmp[j]]=PA[tmp[j]]-pamin
-           print,errors[tmp[j]],PAin[tmp[j]],pamin
+           IF keyword_set(debug) then print,errors[tmp[j]],PAin[tmp[j]],pamin
         ENDIF
      ENDFOR
   endif
-  IF SBRin[n_elements(PAin[*])-1] LT cutoff[n_elements(PAin[*])-1] then errors[0]=MAX(errors[*])
+  IF SBRin[n_elements(PAin[*])-1] LT cutoffin[n_elements(PAin[*])-1] then errors[0]=MAX(errors[*])
   If errors[0] LT errors[1] then errors[0]=errors[1]
-  ;IF n_elements(pamax) gt 0 then tmp=WHERE(newPA[*]+errors[*] GT pamax) else tmp=-1
-  ;IF tmp[0] NE -1 then errors[tmp]=pamax-PA[tmp]
-  ;IF n_elements(pamin) gt 0 and n_elements(pamax) gt 0 then tmp=WHERE(errors[*] LT 0) else tmp=-1
-  ;IF tmp[0] NE -1 AND n_elements(errorin) NE 0 then errorin[tmp]=pamax-pamin
   IF n_elements(errorin) NE 0 then errorin=REVERSE(errors)
   
   order=finorder

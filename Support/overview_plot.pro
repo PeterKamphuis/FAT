@@ -364,7 +364,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   Contour,mom0,xaxis,yaxis,levels=levels,/overplot,c_colors=['000000'x]
   Contour,mom0mod,xaxis,yaxis,levels=levels,/overplot,c_colors=['ffffff'x]
   beam_plot,beam[0],beam[1],bpa=bpa,center=[xaxis[0]-beam[0]/3600.,yaxis[0]+beam[0]/3600.],/fill,/transparent,color='000000'x
-  colormaps,'sauron_colormap',/invert
+  colormaps,'sauron_colormap'
   colour_bar,[0.37,0.39],[0.1+0.2*scrdim[0]/scrdim[1]+0.02,0.1+0.4*scrdim[0]/scrdim[1]-0.02],strtrim(string(mapmin,format='(F10.1)'),2),strtrim(string(mapmax,format='(F10.1)'),2),/OPPOSITE_LABEL,/BLACK,TITLE='(km s!E-1!N)',/VERTICAL,charthick=charthick,/hex_color
   loadct,0,/SILENT
   IF mapmax-mapmin LT 100 then begin
@@ -415,4 +415,37 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         spawn,'rm -f Overview.ps'
      ENDIF
   ENDIF
+  spawn,'convert --help',result
+  IF n_elements(result) GT 1 then begin
+     gf=strsplit(result[0],' ',/extract)
+     IF n_elements(gf) GT 1 then begin
+        IF strtrim(gf[1],2) EQ 'ImageMagick' then spawn,'convert Overview.png -trim Overview.png'
+     ENDIF ELSE BEGIN
+        spawn,'/usr/bin/convert --help',result
+        IF n_elements(result) GT 1 then begin
+           gf=strsplit(result[0],' ',/extract)
+           IF n_elements(gf) GT 1 then begin
+              IF strtrim(gf[1],2) EQ 'ImageMagick' then spawn,'/usr/bin/convert Overview.png -trim Overview.png'
+           ENDIF
+        ENDIF
+     ENDELSE
+  ENDIF ELSE BEGIN
+     spawn,'/usr/bin/convert --help',result
+     IF n_elements(result) GT 1 then begin
+        gf=strsplit(result[0],' ',/extract)
+        IF n_elements(gf) GT 1 then begin
+           IF strtrim(gf[1],2) EQ 'ImageMagick' then spawn,'/usr/bin/convert Overview.png -trim Overview.png'
+        ENDIF 
+     ENDIF ELSE BEGIN
+        spawn,'imconvert --help',result
+        IF n_elements(result) GT 1 then begin
+           gf=strsplit(result[0],' ',/extract)
+           IF n_elements(gf) GT 1 then begin
+              IF strtrim(gf[1],2) EQ 'ImageMagick' then spawn,'imconvert Overview.png -trim Overview.png'
+           ENDIF
+        ENDIF
+     ENDELSE 
+  ENDELSE
+
+  
 end

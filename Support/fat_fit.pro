@@ -172,6 +172,9 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
                        newy[fix(n_elements(newy)/2.):fixedrings]=(yor[0]+newy[fix(n_elements(newy)/2.):fixedrings])/2.                    
                     ENDIF else begin
                        newy[0:fixedrings]=yor[0]
+                       newy[fixedrings+1]=(newy[fixedrings+1]+newy[fixedrings])/2.
+                       newy[fixedrings+2]=(newy[fixedrings+2]*2.+newy[fixedrings+1])/3.
+                       newy[fixedrings+3]=(newy[fixedrings+3]*3.+newy[fixedrings+2])/4.
                     ENDELSE
                  ENDIF  ELSE BEGIN
                                 ;If we have a declining rotation curve
@@ -281,7 +284,7 @@ skippenalize:
            ini=randomu(seed,/Double)
            y[*]=yor[*]+(randomu(seed,/Double,n_elements(y))-0.5)*mc_errors[*]
         ENDWHILE
-        print,'How many iterations?',iterno
+     ;   print,'How many iterations?',iterno
         p[*]=totp[*]        
       
         for j=0,n_elements(y)-1 do mc_errors[j]=STDDEV(checky[j,0:iterno-1])
@@ -295,6 +298,9 @@ skippenalize:
                  newy[fix(n_elements(newy)/2.):fixedrings]=(yor[0]+newy[fix(n_elements(newy)/2.):fixedrings])/2.                    
               ENDIF else begin
                  newy[0:fixedrings]=yor[0]
+                 newy[fixedrings+1]=(newy[fixedrings+1]+newy[fixedrings])/2.
+                 newy[fixedrings+2]=(newy[fixedrings+2]*2.+newy[fixedrings+1])/3.
+                 newy[fixedrings+3]=(newy[fixedrings+3]*3.+newy[fixedrings+2])/4.
               ENDELSE
            ENDIF  ELSE BEGIN
                                 ;If we have a declining rotation curve
@@ -340,6 +346,17 @@ skippenalize:
      newy=dblarr(n_elements(x))
      newy[*]=p[0]
      for i=1,n_elements(p)-1 do newy[*]=newy[*]+p[i]*x[*]^i
+     IF fixedrings GT 0. and order NE 0 then begin
+        IF fixedrings GT fix(n_elements(newy)/2.)-1 then begin
+           newy[0:fix(n_elements(newy)/2.)-1]=yor[0]
+           newy[fix(n_elements(newy)/2.):fixedrings]=(yor[0]+newy[fix(n_elements(newy)/2.):fixedrings])/2.                    
+        ENDIF else begin
+           newy[0:fixedrings]=yor[0]
+           newy[fixedrings+1]=(newy[fixedrings+1]+newy[fixedrings])/2.
+           newy[fixedrings+2]=(newy[fixedrings+2]*2.+newy[fixedrings+1])/3.
+           newy[fixedrings+3]=(newy[fixedrings+3]*3.+newy[fixedrings+2])/4.
+        ENDELSE
+     ENDIF
                                 ;calculate chi-squares    
      IF n_elements(errors) GT 0 then chisqr=TOTAL((newy - y)^2/sqerrors) else chisqr=TOTAL((newy - y)^2)
      rchisqr=chisqr/(n_elements(y)-order)

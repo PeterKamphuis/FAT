@@ -259,7 +259,7 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
      diff=ABS((rmsfirstchannel-rmslastchannel)/rmsfirstchannel)
      IF rmscorn/rmschan GT 1.5 AND diff LT 0.2 then rmscorn=rmschan
      diff2=ABS((rmschan-rmscorn)/rmschan)
-     IF diff LT 0.2 AND FINITE(diff) AND diff2 LT 0.2 then difference=0. else begin
+     IF diff LT 0.2 AND FINITE(diff) AND diff2 LT 0.25 then difference=0. else begin
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+'PREPROCESSING: We are cutting the cube as clearly the noise statistics are off.'

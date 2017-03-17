@@ -122,13 +122,13 @@ FUNCTION Fit_Ellipse, indices, $
     SCALE=scale, $
     XSIZE=xsize, $
     YSIZE=ysize
-
-    ; The following method determines the "mass density" of the ROI and fits
-    ; an ellipse to it. This is used to calculate the major and minor axes of
-    ; the ellipse, as well as its orientation. The orientation is calculated in
-    ; degrees counter-clockwise from the X axis.
-    
-    IF N_Elements(xsize) EQ 0 THEN xsize = !D.X_Size
+ 
+                                ; The following method determines the "mass density" of the ROI and fits
+                                ; an ellipse to it. This is used to calculate the major and minor axes of
+                                ; the ellipse, as well as its orientation. The orientation is calculated in
+                                ; degrees counter-clockwise from the X axis.
+  
+  IF N_Elements(xsize) EQ 0 THEN xsize = !D.X_Size
     IF N_Elements(ysize) EQ 0 THEN ysize = !D.Y_Size
     IF N_Elements(npoints) EQ 0 THEN npoints = 120
     IF N_Elements(scale) EQ 0 THEN scale = [1.0, 1.0]
@@ -153,11 +153,12 @@ FUNCTION Fit_Ellipse, indices, $
     minY = Min(xyindices[1,*], MAX=maxY)
     cols = Reform(xyindices[0,*]) - minX
     rows = Reform(xyindices[1,*]) - minY
-
     ; Make an array large enough to hold the blob.
     arrayXSize = maxX-minX+1
     arrayYSize = maxY-minY+1
+
     array = BytArr(arrayXSize, arrayYSize)
+
     array[xyindices[0,*] - minX, xyindices[1,*] - minY] = 255B
     totalMass = Total(array)
     setcenter=0.
@@ -181,12 +182,13 @@ FUNCTION Fit_Ellipse, indices, $
     yy = ((x * 0 + 1) # y) - (ycm)
     npts = N_Elements(indices)
 
-    ; Calculate the mass distribution tensor.
+                                ; Calculate the mass distribution tensor.
+
     i11 = Total(yy[cols, rows]^2) / npts
     i22 = Total(xx[cols, rows]^2) / npts
     i12 = -Total(xx[cols, rows] * yy[cols, rows]) / npts
  ;   tensor = [[ i11, i12],[i12,i22]]
-
+ 
     ; Find the eigenvalues and eigenvectors of the tensor.
 ;Replace this beuase Eigenql not available in GDL
 ;   evals = Eigenql(tensor, Eigenvectors=evecs)
@@ -197,7 +199,7 @@ FUNCTION Fit_Ellipse, indices, $
     L2 = T/2 - Sqrt(T*T/4.-D)
 
     evals = [L1,L2]
-
+ 
     IF i12 NE 0 THEN BEGIN
        V1 = [i12,L1-i11]
        V2 = [L2-i22,i12]
@@ -217,7 +219,7 @@ FUNCTION Fit_Ellipse, indices, $
     minor = semiminor * 2.0
     semiAxes = [semimajor, semiminor]
     axes = [major, minor]
-
+ 
     ; The orientation of the ellipse is obtained from the first eigenvector.
     evec = evecs[*,0]
 
@@ -241,13 +243,13 @@ FUNCTION Fit_Ellipse, indices, $
     ; Rotate to desired position angle.
     xprime = xcm + (x * cosang) - (y * sinang)
     yprime = ycm + (x * sinang) + (y * cosang)
-
+ 
     ; Extract the points to return.
     pts = FltArr(2, N_Elements(xprime))
     pts[0,*] = xprime + minX
     pts[1,*] = yprime + minY
     IF setcenter then center = center + [minX, minY]
-
+ 
     RETURN, pts
     
 END

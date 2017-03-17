@@ -41,6 +41,9 @@ Pro obtain_pav2,map,PA,INCLINATION=inclination,CENTER=center,NOISE=noise,ITERATI
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       16-03-2017 P.Kamphuis; Fit ellipse crashes when only one index
+;                              is presented to it hence the condition has been set for more
+;                              than one index to be present    
 ;       18-02-2016 P.Kamphuis; Replaced sigma with STDDEV   
 ;       Written 01-01-2015 P.Kamphuis v1.0
 ;
@@ -59,7 +62,8 @@ Pro obtain_pav2,map,PA,INCLINATION=inclination,CENTER=center,NOISE=noise,ITERATI
   for i=0,norings-1 do begin
      minint=maxint-step
      tmp=WHERE(map GT minint AND map LT maxint)
-     IF tmp[0] NE -1 then begin
+     ;fit_ellipse does not work when we have only one element
+     IF n_elements(tmp) GT 1 then begin
         IF n_elements(center) EQ 0 then begin
            ell=fit_ellipse(tmp,xsize=n_elements(map[*,0]),ysize=n_elements(map[0,*]),orientation=paring,axes=inclring)
            pafound[i]=paring
@@ -68,7 +72,7 @@ Pro obtain_pav2,map,PA,INCLINATION=inclination,CENTER=center,NOISE=noise,ITERATI
            IF ratio LT 0.21 then ratio=0.21
            inclfound[i]=acos(SQRT((ratio^2-0.2^2)/0.96))*180./!pi+2.
         ENDIF else begin
-           ell=fit_ellipse(tmp,center=center,xsize=n_elements(map[*,0]),ysize=n_elements(map[0,*]),orientation=paring,axes=inclring)     
+           ell=fit_ellipse(tmp,center=center,xsize=n_elements(map[*,0]),ysize=n_elements(map[0,*]),orientation=paring,axes=inclring)
            pafound[i]=paring
            ratio=double(inclring[1]/inclring[0])
            IF ratio GT 1. then ratio=1.
@@ -103,7 +107,6 @@ Pro obtain_pav2,map,PA,INCLINATION=inclination,CENTER=center,NOISE=noise,ITERATI
      ENDIF
 
   ENDIF
-
   IF inclination[0] EQ 0. then begin
      inclination[1]=45.
      inclination[0]=45.
