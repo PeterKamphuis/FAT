@@ -1,4 +1,4 @@
-Pro FAT_EXP_2,SUPPORT=supportdir,CONFIGURATION_FILE=configfile
+Pro FAT_EXP_2,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug
 
 ;+
 ; NAME:
@@ -4071,9 +4071,10 @@ noconfig:
            printf,66,linenumber()+"The inner" +string(fixedrings)+" rings are fixed."
            Close,66
         ENDIF
-        revised_regularisation_com,comin,SBRarror,RADarr,fixedrings=fixedrings,difference=[padiv,4.*exp(-catinc[i]^2.5/10^3.5)+1.5],cutoff=cutoff,arctan=prefunc,order=polorder1,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[accuracy/4.,accuracy],error=errors ,gdlidl=gdlidl,log=log,sloped=prevslopedrings[0] 
+        IF keyword_set(debug) then begin print,linenumber()+'making sure it is here before' 
+        revised_regularisation_com,comin,SBRarror,RADarr,fixedrings=fixedrings,difference=[padiv,4.*exp(-catinc[i]^2.5/10^3.5)+1.5],cutoff=cutoff,arctan=prefunc,order=polorder1,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[accuracy/4.,accuracy],error=errors ,gdlidl=gdlidl,log=log,sloped=prevslopedrings[0]
            
-                            
+        IF keyword_set(debug) then begin print,linenumber()+'making sure it is here after'                    
         PAang=comin[*,0]
         INCLang=comin[*,1]
         sigmapa1=errors[*,0]

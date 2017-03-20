@@ -1214,10 +1214,11 @@ refit:
      ratio=SBRin[*]/cutoff
      IF keyword_set(debug) then print,ratio
      tmp=WHERE(ratio LT 2.)
+     IF n_elements(tmp) EQ n_elements(ratio) then tmp=WHERE(ratio LT 1.5)
      endrings=n_elements(ratio)-1
      IF keyword_set(debug) then print,'the endrings',endrings
      IF tmp[0] NE -1 then begin
-        WHILE tmp[n_elements(tmp)-1] EQ endrings AND n_elements(tmp) GT 1 DO BEGIN
+        WHILE tmp[n_elements(tmp)-1] EQ endrings AND n_elements(tmp) GT 3 DO BEGIN
            tmp2=tmp
            tmp=tmp2[0:n_elements(tmp)-2]
            endrings--
@@ -1257,7 +1258,9 @@ refit:
               errors[*,j]=errors[*,j]/fact
            ENDIF
            tmp=WHERE(newchi EQ minchi)
+           refitcounter=0
            refitad:
+           refitcounter++
            if keyword_set(debug) then begin
               print,'This is the PA we will fit'
               print,fitPA
@@ -1267,28 +1270,30 @@ refit:
               print,tmp[0]
            ENDIF
            newcoeff=FAT_FIT(RADII[0:endrings],fitPA,tmp[0],RCHI_SQR=redChi,errors= errors[0:endrings,j],STATUS=fitstat,log=log,newy=newPAfit,fixedrings=fixedrings[j])
-           IF tmp[0] EQ 0 AND FINITE(newcoeff[0]) EQ 0 then begin
-              redchi=1.001
-              newcoeff[0]=PAin[0,j]
-           ENDIF
-           IF keyword_set(debug) then print,redChi,tmp[0],finorder[j]
-           IF redChi LT 1 then begin
-              IF redChi GT 0.9 then fact=1.1 else fact=1./(redChi+0.1)
-              errors[*,j]=errors[*,j]/fact
-              goto,refitad
-           ENDIF
-           IF redCHi GT 3 then begin
-              fact=redChi/2.
-              errors[*,j]=errors[*,j]*fact
-              goto,refitad
-           ENDIF
-           IF tmp[0] NE finorder[j] then begin
-              errors[*,j]=errors[*,j]*1.5
-              fg=MAX([tmp[0],finorder[j]],min=neworder)
-              if finorder[j] NE 0 then begin
-                 tmp[0]=neworder
-                 finorder[j]=neworder
+           IF refitcounter LT 100. then begin
+              IF tmp[0] EQ 0 AND FINITE(newcoeff[0]) EQ 1 then begin
+                 redchi=1.001
+                 newcoeff[0]=PAin[0,j]
+              ENDIF
+              IF keyword_set(debug) then print,redChi,tmp[0],finorder[j]
+              IF redChi LT 1. then begin
+                 IF redChi GT 0.9 then fact=1.1 else fact=1./(redChi+0.1)
+                 errors[*,j]=errors[*,j]/fact
                  goto,refitad
+              ENDIF
+              IF redCHi GT 3 then begin
+                 fact=redChi/2.
+                 errors[*,j]=errors[*,j]*fact
+                 goto,refitad
+              ENDIF
+              IF tmp[0] NE finorder[j] then begin
+                 errors[*,j]=errors[*,j]*1.5
+                 fg=MAX([tmp[0],finorder[j]],min=neworder)
+                 if finorder[j] NE 0 then begin
+                    tmp[0]=neworder
+                    finorder[j]=neworder
+                    goto,refitad
+                 ENDIF
               ENDIF
            ENDIF
            IF keyword_set(debug) then print,'worrisome'
