@@ -1,4 +1,4 @@
-Pro obtain_velpa,map,velpa,CENTER=center
+Pro obtain_velpa,map,velpa,CENTER=center,debug=debug
 
 ;+
 ; NAME:
@@ -36,6 +36,7 @@ Pro obtain_velpa,map,velpa,CENTER=center
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       21-03-2017 P.Kamphuis; Added debug keyword for debugging  
 ;       18-02-2016 P.Kamphuis; Replaced sigma with STDDEV   
 ;       06-01-2016 P.Kamphuis; Added NE 0. Condition to detecting the
 ;                              min and max values   
@@ -53,6 +54,10 @@ Pro obtain_velpa,map,velpa,CENTER=center
   If n_elements(center) EQ 0 then center=[0,0]
   tmpor=WHERE(FINITE(map))
   ormax=MAX(map[tmpor],min=ormin)
+  if keyword_set(debug) then begin
+     print,'These are the maximum and minimum velocities in the original field'
+     print,ormax,ormin
+  ENDIF
   smoothfield=map
   pixsmooth=3
 smoothagain:
@@ -60,6 +65,10 @@ smoothagain:
   tmp=WHERE(FINITE(smoothfield) AND smoothfield NE 0.)
   IF tmp[0] NE -1 AND n_elements(tmp) GT 10. then begin
      maxvel=MAX(smoothfield[tmp],min=minvel)
+     if keyword_set(debug) then begin
+        print,'These are the maximum and minimum velocities in the smoothed field'
+        print,maxvel,minvel
+     ENDIF
      POS1=WHERE(maxvel EQ smoothfield)
      POS2=WHERE(minvel EQ smoothfield)
    ;  print,n_elements(POS1),n_elements(POS2)
@@ -74,7 +83,11 @@ smoothagain:
         y1 = POS1 / ncol
         x2 = POS2 MOD ncol
         y2 = POS2 / ncol
-        
+        if keyword_set(debug) then begin
+           print,'These are the location of the maximum and minimum'
+           print,'max',x1,y1
+           print,'min',x2,y2
+        ENDIF
         velpamax=ATAN((center[0]-x1)/(center[1]-y1))
         velpamin=ATAN((center[0]-x2)/(center[1]-y2))
         velnocen=ATAN(double(x1-x2)/double(y1-y2))
@@ -118,6 +131,10 @@ smoothagain:
         smoothfield=FAT_SMOOTH(smoothfield,3,/BOX)
         tmp=WHERE(FINITE(smoothfield) AND smoothfield NE 0.)      
         maxvel=MAX(smoothfield[tmp],min=minvel)
+        if keyword_set(debug) then begin
+           print,'These are the maximum and minimum velocities in the Box field'
+           print,maxvel,minval
+        ENDIF
         POS1=WHERE(maxvel EQ smoothfield)
         POS2=WHERE(minvel EQ smoothfield)
         IF n_elements(POS1) GT 1 or  n_elements(POS2) GT 1 then begin
@@ -179,12 +196,31 @@ smoothagain:
      ENDELSE
   ENDELSE
   arr=[velpamax,velpamin,velnocen]
+  maxang=MAX(arr*!RADEG,min=minang)
+  if keyword_set(debug) then begin
+     print,'These are  max angle and the min angle'
+     print,maxang,minang
+  ENDIF
+  IF maxang GT 270 AND minang LT 90 then begin
+     for i=0,n_elements(arr)-1 do begin
+        if arr[i]*!RADEG GT 270 then arr[i]=arr[i]-2.*!pi
+     endfor
+  endif
+  if keyword_set(debug) then begin
+     print,'These are the angles to the max, the min and max to min'
+     print,arr*!RADEG
+  ENDIF
   tmp=WHERE(FINITE(arr))
   IF tmp [0] NE -1 then velpam=MEAN(arr[tmp])*!RADEG else begin
      velpa=[!values.f_nan,!values.f_nan]
      goto,endthis
   ENDELSE
   IF n_elements(tmp) GT 1 then paerr=STDDEV(arr[tmp]*!RADEG)*3. ELSE paerr=20.
+  if keyword_set(debug) then begin
+     print,'This is the final angle and error'
+     print,velpam,paerr
+  ENDIF
+  
   velpa=[velpam,paerr]
 
 endthis:

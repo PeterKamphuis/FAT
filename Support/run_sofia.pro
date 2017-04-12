@@ -201,7 +201,11 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
         ;,/NOSCALE,/SILENT)
         For j=0,n_elements(tmp)-1 do begin
            IF FINITE(dummy[double(catvals[sofia_locations[1],tmp[j]]),double(catvals[sofia_locations[4],tmp[j]]),double(catvals[sofia_locations[7],tmp[j]])]) EQ 0 then $
-              catvals[sofia_locations[13],tmp[j]]=1e9-j else  catvals[sofia_locations[13],tmp[j]]=0.
+              catvals[sofia_locations[13],tmp[j]]=1e9-j else begin
+              IF ABS(catvals[sofia_locations[1],tmp[j]]-sxpar(hedtmp,'NAXIS1')/2.) LT pixfwhm AND ABS(catvals[sofia_locations[4],tmp[j]]-sxpar(hedtmp,'NAXIS2')/2.) LT pixfwhm AND    $
+                 ABS(catvals[sofia_locations[7],tmp[j]]-sxpar(hedtmp,'NAXIS3')/2.) LT 2 then $
+                    catvals[sofia_locations[13],tmp[j]]=1e9-j else catvals[sofia_locations[13],tmp[j]]=0.
+           ENDELSE
         ENDFOR
 
      ENDIF

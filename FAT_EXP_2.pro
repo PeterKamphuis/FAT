@@ -41,6 +41,8 @@ Pro FAT_EXP_2,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      22-03-2017 P.Kamphuis; Added condition for very massive
+;      galaxies to not be rising
 ;      07-03-2017 P.Kamphuis; Removed ther debug parameter from the regularistaion. 
 ;      06-03-2017 P.Kamphuis; Added a part such that central continuum
 ;      sources can be blanked no matter what way SoFiA swings on it.  
@@ -3797,6 +3799,11 @@ noconfig:
      get_newringsv9,SBRarr,SBRarr2,2.*cutoff,velconstused
      velconstused--
      IF norings[0] GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
+     IF TOTAL(VROTarr[1:2])/2. GT 150 AND VROTarr[1] GT VROTarr[2] AND VROTarr[1] GT VROTarr[3] then begin
+        x=n_elements(VROTarr)-1
+        WHILE VROTarr[x] GT  VROTarr[x-1] AND x GT fix(n_elements(VROTarr)/2) DO x--
+        VROTarr[x:n_elements(VROTarr)-1]=VROTarr[x]        
+     ENDIF
      locmax=WHERE(MAX(VROTarr) EQ VROTarr)
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
@@ -4071,10 +4078,10 @@ noconfig:
            printf,66,linenumber()+"The inner" +string(fixedrings)+" rings are fixed."
            Close,66
         ENDIF
-        IF keyword_set(debug) then begin print,linenumber()+'making sure it is here before' 
+        IF keyword_set(debug) then print,linenumber()+'making sure it is here before' 
         revised_regularisation_com,comin,SBRarror,RADarr,fixedrings=fixedrings,difference=[padiv,4.*exp(-catinc[i]^2.5/10^3.5)+1.5],cutoff=cutoff,arctan=prefunc,order=polorder1,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[accuracy/4.,accuracy],error=errors ,gdlidl=gdlidl,log=log,sloped=prevslopedrings[0]
            
-        IF keyword_set(debug) then begin print,linenumber()+'making sure it is here after'                    
+        IF keyword_set(debug) then print,linenumber()+'making sure it is here after'                    
         PAang=comin[*,0]
         INCLang=comin[*,1]
         sigmapa1=errors[*,0]
@@ -4169,6 +4176,12 @@ noconfig:
      prefunc=0. 
      IF norings[0]-velconstused LT 2 then velconstused=norings[0]-1
      IF norings[0] GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
+     IF TOTAL(VROTarr[1:2])/2. GT 150 AND VROTarr[1] GT VROTarr[2] AND VROTarr[1] GT VROTarr[3] then begin
+        x=n_elements(VROTarr)-1
+        WHILE VROTarr[x] GT  VROTarr[x-1] AND x GT fix(n_elements(VROTarr)/2) DO x--
+        VROTarr[x:n_elements(VROTarr)-1]=VROTarr[x]
+        
+     ENDIF
      if finalsmooth LE 1 then begin
                          
         IF finalsmooth EQ 1 AND norings[0] GT 4 then prefunc=0 else prefunc=1
@@ -4186,6 +4199,7 @@ noconfig:
         velfixrings=norings[0]-velconstused
         IF velfixrings LT 1 then velfixrings=1
         IF velfixrings EQ 1 AND norings[0] GT 5 then velfixrings=2
+        
         locmax=WHERE(MAX(VROTarr) EQ VROTarr)
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND

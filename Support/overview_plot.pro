@@ -33,6 +33,10 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
 ;       AXIS,COLORMAPS,COLOUR_BAR,COLUMNDENSITY,CONTOUR,DEVICE,FILE_TEST(),LOADCT,MAX(),N_ELEMENTS(),OPLOT,PLOT,FAT_PLOTERR,READFITS(),SET_PLOT,SHOWPIXELSMAP,WRITENEWTOTEMPLATE,XYOUTS
 ;
 ; MODIFICATION HISTORY:
+;       22-03-2017 P.Kamphuis; Increased checking for Imagick convert
+;                              in order to trim the png. Improved
+;                              plotting limits on velocity contours
+;                              and PV-Diagram color scale.  
 ;       15-11-2016 P.Kamphuis; Fixed a bounding Box issue in GDL  
 ;       15-11-2016 P.Kamphuis; Introduced hexadecimal plotting for
 ;                              color in idl and gdl. In idl and gdl
@@ -359,7 +363,10 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   buildaxii,mom0hed,xaxis,yaxis
   colormaps,'sauron_colormap'
   showpixelsmap,xaxis,yaxis,mom0,position=[0.15,0.1+0.2*scrdim[0]/scrdim[1],0.35,0.1+0.4*scrdim[0]/scrdim[1]],/WCS,ytitle='DEC (J2000)',BLANK_VALUE=0.,range=[mapmin,mapmax],/NOERASE,charthick=charthick,thick=thick,xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],/hex_color
-  IF mapmax-mapmin LT 100 then levels=(findgen(20)+1)*10.+mapmin else levels=(findgen(30)+1)*25.+mapmin
+
+  velostep=fix((fix(mapmax-mapmin)-fix(mapmax-mapmin)/10.)/10.)
+  IF velostep LT 1 then velostep=1
+  levels=(findgen(9)+0.5)*velostep+mapmin
   loadct,0,/SILENT
   Contour,mom0,xaxis,yaxis,levels=levels,/overplot,c_colors=['000000'x]
   Contour,mom0mod,xaxis,yaxis,levels=levels,/overplot,c_colors=['ffffff'x]
@@ -367,11 +374,8 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   colormaps,'sauron_colormap'
   colour_bar,[0.37,0.39],[0.1+0.2*scrdim[0]/scrdim[1]+0.02,0.1+0.4*scrdim[0]/scrdim[1]-0.02],strtrim(string(mapmin,format='(F10.1)'),2),strtrim(string(mapmax,format='(F10.1)'),2),/OPPOSITE_LABEL,/BLACK,TITLE='(km s!E-1!N)',/VERTICAL,charthick=charthick,/hex_color
   loadct,0,/SILENT
-  IF mapmax-mapmin LT 100 then begin
-     XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.06,'Velocity Field Contours start at '+strtrim(string(mapmin+10.,format='(I10)'),2)+' km s!E-1!N and increase with 10 km s!E-1!N.',color='000000'x,/normal,charthick=charthick
-  ENDIF ELSE BEGIN
-     XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.06,'Velocity Field Contours start at '+strtrim(string(mapmin+25.,format='(I10)'),2)+' km s!E-1!N and increase with 25 km s!E-1!N.',color='000000'x,/normal,charthick=charthick
-  ENDELSE
+  XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.06,'Velocity Field Contours start at '+strtrim(string(levels[0],format='(F10.1)'),2)+' km s!E-1!N and increase with '+strtrim(string(velostep,format='(I10)'),2)+' km s!E-1!N.',color='000000'x,/normal,charthick=charthick
+  
   
 ;PV Diagram along major axis
   
@@ -381,7 +385,8 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   mom0mod=readfits('PV-Diagrams/Finalmodel_xv.fits',mom0hedmod,/SILENT)
   velbuf=(2.*velext)/(ceninc*0.2)+disper+2.*sxpar(mom0hed,'CDELT2')
 
-  mapinmax=MAX(mom0,min=mapinmin)
+  mapinmax=MAX(mom0[WHERE(FINITE(mom0))],min=mapinmin)
+  if ABS(mapinmin/mapinmax) GT 0.2 then mapinmin=-1*mapinmax/5
   buildaxii,mom0hed,xaxis,yaxis
   IF mapmax+velbuf GT yaxis[n_elements(yaxis)-1] then tmp=yaxis[n_elements(yaxis)-1] else tmp= mapmax+velbuf
   IF mapmin-velbuf LT yaxis[0] then tmpmin=yaxis[0] else tmpmin=mapmin-velbuf
