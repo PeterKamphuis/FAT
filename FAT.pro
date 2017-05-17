@@ -1,4 +1,4 @@
-Pro FAT_EXP_2,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug
+Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATION_CHECK=installation_check
 
 ;+
 ; NAME:
@@ -41,6 +41,9 @@ Pro FAT_EXP_2,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      17-05-2017 P.Kamphuis;  
+;      17-05-2017 P.Kamphuis; Added a coherent error message for when
+;                             the code crashes.  
 ;      11-05-2017 P.Kamphuis; If the warp was sloped the code would
 ;                             take that number for the roatation
 ;                             curve. Now checks for VROT in VARINDX
@@ -49,7 +52,7 @@ Pro FAT_EXP_2,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug
 ;                              receding side and more then 2 on the
 ;                              approaching side. Have now set both
 ;                              sides to 2. 
-;      06-05-2017 P.Kamphuis; Added the warp output   
+;      06-05-2017 P.Kamphuis; Added the warp output possibility.  
 ;      28-03-2017 P.Kamphuis; Added a check for the use of ~ in the
 ;                             directory paths. If used the append
 ;                             function in gdl does not work hence they
@@ -59,7 +62,7 @@ Pro FAT_EXP_2,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug
 ;                             input had been lost in recent
 ;                             changes. Made sure it is functioning again.  
 ;      22-03-2017 P.Kamphuis; Added condition for very massive
-;      galaxies to not be rising
+;                             galaxies to not be rising
 ;      07-03-2017 P.Kamphuis; Removed the debug parameter from the
 ;                             regularisation calls. 
 ;      06-03-2017 P.Kamphuis; Added a part such that central continuum
@@ -174,20 +177,62 @@ Pro FAT_EXP_2,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug
                                 ;All Fully Automated Tirific (FAT) specific routines are availaible in the
                                 ;Support directory
 
-                                ;The directory where the support
-                                ;routines for the program are located
-                                ;Python needs this to be a full path
-                                ;on my mac so we'll set that
-                                ;with a pwd just in case
-
+   
 
                           
-  COMPILE_OPT IDL2 
+  COMPILE_OPT IDL2
+  DEFSYSV, '!GDL', EXISTS = gdlidl ;is 1 when running GDL
+  spawn,'pwd',originaldir
+;  goto,skipcatch
+  CATCH,Error_status  
+  IF  Error_status NE 0. THEN BEGIN
+    
+     print, ' '
+     print, 'Oops the following went wrong:'
+     print,'-------------------------------------------'
+     help,/Last_Message, Output = theerrmess
+                                ;This gives trace back information in
+                                ;IDL but unfortunately not in GDL
+     for j=0,n_elements(theerrmess)-1 do print,theerrmess[j]
+     print,'-------------------------------------------'
+     if gdlidl then begin
+        print, ' '
+        print,'Unfortunately GDL does not provide trace back information in help'
+        print,'In order to fix this error please open FAT.pro and '
+        print,'uncomment line 182 (goto,skipcatch).'
+        print, ' '
+        print,'Then reproduce the error with trace back information '
+        print, 'and submit an issue at:'
+        print, ' '
+        print,'       https://github.com/PeterKamphuis/FAT/issues'
+        print, ' '
+        print,'If the error occured while fitting a galaxy, please attach you fitting'
+        print,'log as well.' 
+     endif else begin
+        print, ' '
+        print,'If this message completely baffles you then please submit the last 20 lines of output as a bug report to:'
+        print, ' '
+        print,'       https://github.com/PeterKamphuis/FAT/issues'
+        print, ' '
+        print,'If the error occured while fitting a galaxy, please attach you fitting'
+        print,'log as well.' 
+     endelse
+     cd,originaldir
+     stop
+  ENDIF
+  skipcatch:
   version='v5.0'
                                 ;First thing we do is to check whether we run IDL or GDL
   DEFSYSV, '!GDL', EXISTS = gdlidl ;is 1 when running GDL
   if n_elements(supportdir) EQ 0 then supportdir='Support'
   CD,supportdir,CURRENT=old_dir
+
+                                 ;The directory where the support
+                                ;routines for the program are located
+                                ;Python needs this to be a full path
+                                ;on my mac so we'll set that
+                                ;with a pwd just in case
+
   spawn,'pwd',supportdir
   cd,old_dir
   supportdir=supportdir[0]+'/'
@@ -197,12 +242,12 @@ Pro FAT_EXP_2,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug
   spacecheck=strtrim(str_sep(supportdir,' '),2)
   supportdirchecked=STRJOIN(spacecheck,'\ ')
                                 ;Location of the input configuration file
-
-  IF n_elements(configfile) EQ 0 then configfile='FAT_INPUT.config'
-
+  if keyword_set(installation_check) then $
+     configfile='Installation_Check/FAT_INPUT.config'
+  IF n_elements(configfile) EQ 0 then begin
+     configfile='FAT_INPUT.config'
+  endif
                                 ;dumb resolve routine doesn't accept paths so cd to support dir
-
-  spawn,'pwd',originaldir
   CD,supportdir,current=old_dir
   RESOLVE_ROUTINE, 'beam_plot'
   RESOLVE_ROUTINE, 'book_keeping'
@@ -231,6 +276,7 @@ Pro FAT_EXP_2,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug
   RESOLVE_ROUTINE, 'get_progress'
   RESOLVE_ROUTINE, 'int_profilev2'
   RESOLVE_ROUTINE, 'interpolate'
+  RESOLVE_ROUTINE, 'install_check',/IS_FUNCTION
   RESOLVE_ROUTINE, 'isnumeric',/IS_FUNCTION
   RESOLVE_ROUTINE, 'linenumber',/IS_FUNCTION
   RESOLVE_ROUTINE, 'momentsv2'
@@ -332,6 +378,15 @@ tryconfigagain:
      endif
   ENDWHILE
   close,1
+                                ;if we are checking the installation
+                                ;then the maindir, outputcatalogue and
+                                ;Log go into the
+                                ;originaldir+installationcheck.
+  if keyword_set(Installation_Check) then begin
+     catalogue=originaldir+'/Installation_Check/FAT_Input_Catalogue.txt'
+     maindir=originaldir+'/Installation_Check/'
+     outputcatalogue=originaldir+'/Installation_Check/Output_N2903.txt'
+  endif
                                 ;If maindir, outputcatalogue or
                                 ;catalog start with a ~ then replace
                                 ;it with the full path as append does
@@ -600,7 +655,8 @@ noconfig:
      close,1
                                 ;Start a galaxy specific fitting log
      IF size(olog,/TYPE) EQ 7 then begin
-        log=maindir+'/'+catdirname[i]+'/'+olog
+        if catdirname[i] EQ './' then log=maindir+'/'+olog else $
+           log=maindir+'/'+catdirname[i]+'/'+olog
         IF not FILE_TEST(log) OR strupcase(newlog) EQ 'Y' then begin
            openw,66,log
            printf,66,linenumber()+"This file is a log of the fitting process run at "+systime()
@@ -3883,34 +3939,6 @@ noconfig:
         tmp=WHERE(INCLang2 LT 0.)
         IF tmp[0] NE -1 then INCLang2[tmp]=ABS(INCLang2[tmp]) else check=1
      ENDWHILE
-;     check=0.
-;     WHILE check EQ 0 DO BEGIN
-;        tmp=WHERE(PAang GT 380.)
-;        IF tmp[0] NE -1 then BEGIN
-;           meanpa=MEAN(PAang)
-;           stddevpa=STDDEV(PAang)
-;           IF meanpa GT 360 and stddevpa LT 30 then begin
-;              PAang=PAang-360
-;              check=1
-;           ENDIF ELSE BEGIN
-;              IF stddevpa GT 30. then begin
-;                 PAang[tmp]=PAang[tmp]-360. else check=1
-;     ENDWHILE
-;     check=0.
-;     WHILE check EQ 0 DO BEGIN
-;        tmp=WHERE(PAang2 GT 360.)
-;        IF tmp[0] NE -1 then PAang2[tmp]=PAang2[tmp]-360 else check=1
-;     ENDWHILE
-;     check=0.
-;     WHILE check EQ 0 DO BEGIN
-;        tmp=WHERE(PAang LT 0.)
-;        IF tmp[0] NE -1 then PAang[tmp]=PAang[tmp]+360 else check=1
-;     ENDWHILE
-;     check=0.
-;     WHILE check EQ 0 DO BEGIN
-;        tmp=WHERE(PAang2 LT 0.)
-;        IF tmp[0] NE -1 then PAang2[tmp]=PAang2[tmp]+360 else check=1
-;     ENDWHILE
      
 ;Let's see how many of the inner rings we want to fix
      tmppos=where('VSYS' EQ firstfitvaluesnames)
@@ -4192,13 +4220,7 @@ noconfig:
      IF finalsmooth EQ 1 then prefunc=0 else prefunc=1
      centralincl=(INCLang[0]+INCLang2[0])/2.
      IF norings[0] GT 15 then accuracy=0.5+COS(centralincl*!DtoR)*0.5*15./norings[0] else accuracy=1
-    ; IF finalsmooth LE 1 then begin
-    ;    sigmapa1=0.
-    ;    sigmapa2=0.
-    ;    sigmaincl1=0.
-    ;    sigmaincl2=0.
-    ;    sigmarot=0.
-    ; ENDIF
+
                                 ;Smoothing PA_1
      if finalsmooth LE 1 AND norings[0] GT 4 and finishafter NE 1.1 then begin
         comin=[[PAang],[INCLang]]
@@ -5059,10 +5081,6 @@ noconfig:
                                 ;write the parameters to the tirific array
      Writefittingvariables,tirificsecond,PAinput1,INCLinput1,VROTinput1,SBRinput1,SBRinput2,SBRinput4,SDISinput1,Z0input1 
      IF testing GE 2 OR finalsmooth EQ 2. then goto,testing2check
-   ;  tmppos=where('PA' EQ tirificsecondvars)
-   ;  stringPA=tirificsecond[tmppos]
-   ;  tmppos=where('PA_2' EQ tirificsecondvars)
-   ;  stringPA=tirificsecond[tmppos]
                                 ;Write to file
      openw,1,maindir+'/'+catdirname[i]+'/tirific.def'
      for index=0,n_elements(tirificsecond)-1 do begin
@@ -5426,5 +5444,58 @@ noconfig:
   endfor
   CD,originaldir
   close,3
+  if keyword_set(installation_check) then begin
+     check=install_check(gdlidl)
+     print,check
+     check_error:
+     case 1 of
+        check EQ 0:begin
+           print, ' '
+           print,'!!!!--------------------------------------------!!!!!'
+           print,'!!!! As far as we can tell FAT is installed     !!!!!'
+           print,'!!!! properly and runs smoothly.                !!!!!'
+           print,'!!!!--------------------------------------------!!!!!'
+        end
+        check EQ 1:begin
+           print, ' '
+           print,'!!!!---------------------------------------------!!!!!'
+           print,'!!!! FAT has crashed somewhere during the        !!!!!'
+           print,'!!!! fitting. Please check the error message     !!!!!'
+           print,'!!!! and all dependencies. If you are unable to  !!!!!'
+           print,'!!!! resolve the issue please file a bug report  !!!!!'
+           print,'!!!! at:                                         !!!!!'
+           print,'!!!!                                             !!!!!' 
+           print,'!!!! https://github.com/PeterKamphuis/FAT/issues !!!!!'
+           print,'!!!!---------------------------------------------!!!!!'
+        end
+        check eq 2: begin
+           print, ' '
+           print,'!!!!---------------------------------------------!!!!!'
+           print,'!!!! FAT ran through the fitting process but the !!!!!'
+           print,'!!!! fitted values differ too much from their    !!!!!'
+           print,'!!!! expectations. Please update SoFiA and other !!!!!'
+           print,'!!!! dependencies. If you are unable to resolve  !!!!!'
+           print,'!!!! resolve the issue please file a bug report  !!!!!'
+           print,'!!!! at:                                         !!!!!'
+           print,'!!!!                                             !!!!!' 
+           print,'!!!! https://github.com/PeterKamphuis/FAT/issues !!!!!'
+           print,'!!!!                                             !!!!!' 
+           print,'!!!! Please add the Log.txt file in the directory!!!!!'
+           print,'!!!! Installation_Check and the Finalmodel.def   !!!!!'
+           print,'!!!! in the Installation_Check/Finalmodel/       !!!!!'
+           print,'!!!! directory to your report.                   !!!!!'
+           print,'!!!!---------------------------------------------!!!!!'
+        end
+        else: begin
+           print, ' '
+           print,'!!!!---------------------------------------------!!!!!'
+           print,'!!!! This should not happen please file a bug    !!!!!'
+           print,'!!!! report at:                                  !!!!!'
+           print,'!!!!                                             !!!!!' 
+           print,'!!!! https://github.com/PeterKamphuis/FAT/issues !!!!!'
+           print,'!!!!---------------------------------------------!!!!!'
+        end
+     endcase
+  endif
 end
 

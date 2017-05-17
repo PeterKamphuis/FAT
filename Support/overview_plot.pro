@@ -420,13 +420,13 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         spawn,'rm -f Overview.ps'
      ENDIF
   ENDIF
-  spawn,'convert --help',result
+  spawn,'convert --help',result,notfound
   IF n_elements(result) GT 1 then begin
      gf=strsplit(result[0],' ',/extract)
      IF n_elements(gf) GT 1 then begin
         IF strtrim(gf[1],2) EQ 'ImageMagick' then spawn,'convert Overview.png -trim Overview.png'
      ENDIF ELSE BEGIN
-        spawn,'/usr/bin/convert --help',result
+        spawn,'/usr/bin/convert --help',result,notfound
         IF n_elements(result) GT 1 then begin
            gf=strsplit(result[0],' ',/extract)
            IF n_elements(gf) GT 1 then begin
@@ -435,14 +435,14 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         ENDIF
      ENDELSE
   ENDIF ELSE BEGIN
-     spawn,'/usr/bin/convert --help',result
+     spawn,'/usr/bin/convert --help',result,notfound
      IF n_elements(result) GT 1 then begin
         gf=strsplit(result[0],' ',/extract)
         IF n_elements(gf) GT 1 then begin
            IF strtrim(gf[1],2) EQ 'ImageMagick' then spawn,'/usr/bin/convert Overview.png -trim Overview.png'
         ENDIF 
      ENDIF ELSE BEGIN
-        spawn,'imconvert --help',result
+        spawn,'imconvert --help',result,notfound
         IF n_elements(result) GT 1 then begin
            gf=strsplit(result[0],' ',/extract)
            IF n_elements(gf) GT 1 then begin

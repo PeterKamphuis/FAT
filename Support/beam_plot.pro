@@ -40,7 +40,7 @@ Pro beam_plot, BMAJ,BMIN,BPA=bpa,center=center,Fill=Fill,_EXTRA=ex,Transparent=t
 ;     
 ;-
 
-
+  COMPILE_OPT IDL2
   if n_elements(center) EQ 0 then center=[0,0]
   if n_elements(bpa) EQ 0 then bpa=0.
   A = FINDGEN(100) * (!PI*2/99.)
