@@ -1,4 +1,4 @@
-Pro obtain_velpa,map,velpa,CENTER=center,debug=debug
+Pro obtain_velpa,map,velpa,CENTER=center,debug=debug,intensity=intensity
 
 ;+
 ; NAME:
@@ -22,7 +22,9 @@ Pro obtain_velpa,map,velpa,CENTER=center,debug=debug
 ;
 ; KEYWORD PARAMETERS:
 ;       CENTER = center of the galaxy in pixels
-;
+;    INTENSITY = Moment0 map to identify edges.   
+;        DEBUG = option to have verbose running
+;  
 ; OUTPUTS:
 ;       PA = the positional angle
 ;
@@ -36,6 +38,10 @@ Pro obtain_velpa,map,velpa,CENTER=center,debug=debug
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       15-05-2017 P.Kamphuis; Added the intensity keyword which
+;                              allows for a moment 0 map to be
+;                              given. If given the velocity field will
+;                              be cut at 5% of the maximum intensity.   
 ;       21-03-2017 P.Kamphuis; Added debug keyword for debugging  
 ;       18-02-2016 P.Kamphuis; Replaced sigma with STDDEV   
 ;       06-01-2016 P.Kamphuis; Added NE 0. Condition to detecting the
@@ -49,7 +55,10 @@ Pro obtain_velpa,map,velpa,CENTER=center,debug=debug
 ;-
   COMPILE_OPT IDL2 
   velpa=dblarr(2)
-
+  if n_elements(intensity) NE 0 then begin
+     tmp=WHERE(intensity LT 0.05*MAX(intensity))
+     map[tmp]=!values.f_nan
+  endif
 
   If n_elements(center) EQ 0 then center=[0,0]
   tmpor=WHERE(FINITE(map))

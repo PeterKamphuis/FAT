@@ -56,10 +56,10 @@ Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishaft
 ;-
   COMPILE_OPT IDL2
   spawn,'pwd',currentdir
-  print,version
+;  print,version
   IF version NE 5 AND finishafter NE 0 then create_residuals,filenames,version
   organize_output,filenames,version, ['Optimized','Intermediate','Finalmodel','No_Warp','Moments','PV-Diagrams','Sofia_Output']
-  IF version NE 5 AND finishafter NE 0 then overview_plot,distance,gdlidl,noise=noise,finishafter=finishafter,filenames=filenames
+  IF version NE 5 AND finishafter NE 0 then overview_plot,distance,gdlidl,noise=noise,finishafter=finishafter,filenames=filenames,version=version
   IF size(log,/TYPE) EQ 7 then begin
      openu,66,log,/APPEND
      printf,66,linenumber()+"BOOK_KEEPING: Removing the following files from "+currentdir

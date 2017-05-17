@@ -1,4 +1,4 @@
-Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filenames=filenames,splined=splined
+Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filenames=filenames,splined=splined,version=version
 
 ;+
 ; NAME:
@@ -378,9 +378,9 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   
   
 ;PV Diagram along major axis
-  
-  spawn,'ls -1 PV-Diagrams/'+filenames[0]+'_[0-2]_xv.fits',mom0name
-  
+  IF fix(version) EQ version then begin
+     spawn,'ls -1 PV-Diagrams/'+filenames[0]+'_2_xv.fits',mom0name
+  ENDIF ELSE spawn,'ls -1 PV-Diagrams/'+filenames[0]+'_1_xv.fits',mom0name
   mom0=readfits(mom0name[n_elements(mom0name)-1],mom0hed,/SILENT)
   mom0mod=readfits('PV-Diagrams/Finalmodel_xv.fits',mom0hedmod,/SILENT)
   velbuf=(2.*velext)/(ceninc*0.2)+disper+2.*sxpar(mom0hed,'CDELT2')

@@ -1350,13 +1350,13 @@ refit:
   IF size(log,/TYPE) EQ 7 then begin
      openu,66,log,/APPEND
      IF arctan EQ 0 then begin
-        tmp=where(coefffound[*,0] NE 0)
+        tmp=where(coefffound[*,0] NE 0.)
         a=findgen(n_elements(tmp))
         printf,66,linenumber()+'REVISED_REGULARISATION_COM: We have fitted the PA curve with a polynomial of order '+strtrim(string(order[0]),2)
         printf,66,linenumber()+'REVISED_REGULARISATION_COM: With the following coefficients '+STRJOIN('c'+strtrim(string(a,format='(I1)'),2)+'='+strtrim(string(coefffound[tmp,0]),2),', ')
         
         printf,66,linenumber()+'REVISED_REGULARISATION_COM: We have fixed the inner '+strtrim(string(fixedrings[0]),2)+' rings'
-        tmp=where(coefffound[*,1] NE 0)
+        tmp=where(coefffound[*,1] NE 0.)
         a=findgen(n_elements(tmp))
         printf,66,linenumber()+'REVISED_REGULARISATION_COM: We have fitted the INCL curve with a polynomial of order '+strtrim(string(order[1]),2)
         printf,66,linenumber()+'REVISED_REGULARISATION_COM: With the following coefficients '+STRJOIN('c'+strtrim(string(a,format='(I1)'),2)+'='+strtrim(string(coefffound[tmp,1]),2),', ')

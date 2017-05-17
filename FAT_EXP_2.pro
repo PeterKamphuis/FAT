@@ -41,9 +41,27 @@ Pro FAT_EXP_2,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      11-05-2017 P.Kamphuis; If the warp was sloped the code would
+;                             take that number for the roatation
+;                             curve. Now checks for VROT in VARINDX
+;      10-05-2017 P.Kamphuis; The boundary conditions check demanded
+;                              2 rings to hit the boundary on the
+;                              receding side and more then 2 on the
+;                              approaching side. Have now set both
+;                              sides to 2. 
+;      06-05-2017 P.Kamphuis; Added the warp output   
+;      28-03-2017 P.Kamphuis; Added a check for the use of ~ in the
+;                             directory paths. If used the append
+;                             function in gdl does not work hence they
+;                             will be replaced with whatever directory
+;                             cd finds under ~
+;      27-03-2017 P.Kamphuis; The possibility to use a self ran SoFiA
+;                             input had been lost in recent
+;                             changes. Made sure it is functioning again.  
 ;      22-03-2017 P.Kamphuis; Added condition for very massive
 ;      galaxies to not be rising
-;      07-03-2017 P.Kamphuis; Removed ther debug parameter from the regularistaion. 
+;      07-03-2017 P.Kamphuis; Removed the debug parameter from the
+;                             regularisation calls. 
 ;      06-03-2017 P.Kamphuis; Added a part such that central continuum
 ;      sources can be blanked no matter what way SoFiA swings on it.  
 ;      23-02-2017 P.Kamphuis; reduced all instances of velconstused
@@ -222,6 +240,7 @@ Pro FAT_EXP_2,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug
   RESOLVE_ROUTINE, 'obtain_w50'
   RESOLVE_ROUTINE, 'organize_output'
   RESOLVE_ROUTINE, 'overview_plot'
+  RESOLVE_ROUTINE, 'pre_ran_sofia'
   RESOLVE_ROUTINE, 'preprocessing'
   RESOLVE_ROUTINE, 'ra_names' 
   RESOLVE_ROUTINE, 'read_template'
@@ -305,13 +324,48 @@ tryconfigagain:
            'velocity_resolution':vresolution=double(tmp[1])
                                 ;Clean up after the fitting is complete.
            'maps_output':bookkeeping=double(tmp[1])
+                                ;Do we want warp info
+           'warp_output':warpoutput=double(tmp[1])
            else:begin
            end
         endcase
      endif
   ENDWHILE
   close,1
- 
+                                ;If maindir, outputcatalogue or
+                                ;catalog start with a ~ then replace
+                                ;it with the full path as append does
+                                ;not work in gdl otherwise.
+
+  tildepresent=STRMID(maindir,0,1)
+  thisishome=' '
+  IF tildepresent EQ '~' then begin
+     cd,'~',CURRENT=old_dir
+     spawn,'pwd',thisishome
+     cd,old_dir
+     maindir= STRJOIN(STRSPLIT(maindir, '~',/regex,/extract,/preserve_null),thisishome)     
+  ENDIF
+  tildepresent=STRMID(catalogue,0,1)
+  IF tildepresent EQ '~' then begin
+     IF thisishome EQ ' ' then begin
+        cd,'~',CURRENT=old_dir
+        spawn,'pwd',thisishome
+        cd,old_dir
+        print,'are we doing this?'
+     ENDIF
+     catalogue= STRJOIN(STRSPLIT(catalogue, '~',/regex,/extract,/preserve_null),thisishome)     
+  ENDIF  
+  tildepresent=STRMID(outputcatalogue,0,1)
+  IF tildepresent EQ '~' then begin
+     IF thisishome EQ ' ' then begin
+        cd,'~',CURRENT=old_dir
+        spawn,'pwd',thisishome
+        cd,old_dir
+        print,'are we doing this?'
+     ENDIF
+     outputcatalogue= STRJOIN(STRSPLIT(outputcatalogue, '~',/regex,/extract,/preserve_null),thisishome)     
+  ENDIF  
+
 noconfig:
                                 ;Make idiot failsafe standards for the config files 
   IF size(maindir,/TYPE) NE 7 then begin
@@ -369,6 +423,7 @@ noconfig:
   IF n_elements(optpixelbeam) EQ 0 then optpixelbeam=4.
   IF n_elements(allnewin) EQ 0 then allnewin=1
   IF n_elements(bookkeeping) EQ 0 then bookkeeping=3
+  IF n_elements(warpoutput) EQ 0 then warpoutput=0
  
   IF bookkeeping EQ 5. then bookkeeping=4
 
@@ -563,6 +618,7 @@ noconfig:
            close,66
         ENDELSE
      ENDIF
+     
                                 ;Read the template for the first
                                 ;tirific fit 
      read_template,supportdir+'/1stfit.def', tirificfirst, tirificfirstvars
@@ -579,8 +635,7 @@ noconfig:
         openu,66,log,/APPEND
         printf,66,linenumber()+"We're at galaxy number "+strtrim(string(i,format='(I10)'),2)+". Which is catalogue id number "+catnumber[i]
         close,66
-     ENDIF
-                      
+     ENDIF                 
                                 ; And the directory
      new_dir=maindir+'/'+catdirname[i]+'/'
    
@@ -725,10 +780,15 @@ noconfig:
      propercat=0
                                 ;if we have preprepared sofia files we will skip all the sofia steps
      case allnew of
-       ; 2:begin
-       ;    CD,new_dir,CURRENT=old_dir
-       ;    goto,skipallsofia
-       ; end
+        2:begin
+           names=[catmaskname[i],catcatalogname[i]]
+           pre_ran_sofia,names,new_dir,supportdirchecked,pixfwhm,header,errormessage,VSYSpix,RApix,DECpix,Totflux,log=log
+           propermom1=FILE_TEST(maindir+'/'+catdirname[i]+'/'+catmom1name[i]+'.fits')
+           propermom0=FILE_TEST(maindir+'/'+catdirname[i]+'/'+catmom0name[i]+'.fits')
+           IF propermom1 then print,'Moment 1 = '+catmom1name[i]+'.fits'
+           IF propermom0 then print,'Moment 0 = '+catmom0name[i]+'.fits'
+           goto,skipallsofia
+        end
         1:begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
@@ -816,8 +876,10 @@ noconfig:
      mismatchedmoments:
 
      run_sofia,allnew,new_dir,currentfitcube,catcatalogname[i],supportdirchecked,pixfwhm,header,errormessage,VSYSpix,RApix,DECpix,Totflux,log=log
+  
      catCatalogname[i]=currentfitcube+'_cat.ascii'
      catmaskname[i]=currentfitcube+'_binmask'
+     skipallsofia:
      if fix(errormessage[0]) EQ 5 then begin
       ;  print,errormessage[1]
         IF size(log,/TYPE) EQ 7 then begin
@@ -1312,7 +1374,7 @@ noconfig:
      ENDELSE
      avPA=dblarr(2)
                                 ;get the kinematical PA
-     obtain_velpa,moment1map,velPA,center=[RApix[0],DECpix[0]]
+     obtain_velpa,moment1map,velPA,center=[RApix[0],DECpix[0]],intensity=moment0map
      IF ABS(velPA[0]-newPA[0]) LT 25. then begin
         avPA[0]=(velPA[0]+newPA[0])/2. 
         avPA[1]=SQRT(velPA[1]^2+newPA[1]^2)/2. 
@@ -1325,7 +1387,7 @@ noconfig:
                                 ;recalculate the inclination
     
      obtain_inclinationv8,moment0map,avPA,newinclination,[RApix[0],DECpix[0]],extend=noringspix,noise=momnoise,beam=catmajbeam[i]/(pixelsizeRA*3600.),gdlidl=gdlidl
-    
+   
      obtain_w50,dummy,mask,header,W50   
                                 ;We want to adjust the cutoff values
                                 ;with the inclination as edge-on
@@ -3038,8 +3100,11 @@ noconfig:
               printf,66,linenumber()+"We found this as rings="+strtrim(string(fix(norings[0])),2)+"  new="+strtrim(string(fix(newrings)),2)
               close,66
            ENDIF
-         ;  IF NOT sofiafail then begin
-           IF newrings GT sofiarings+2 OR newrings LT sofiarings-2 then begin        
+                                ;  Let's see whether the
+                                ;  improved version can allow
+                                ;  large estimates of the initial
+                                ;  version changed -2 to -3 (15-05-2015)
+           IF newrings GT sofiarings+2 OR newrings LT sofiarings-3 then begin        
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
                  printf,66,linenumber()+"The new amount of rings ("+strtrim(string(fix(newrings)),2)+") deviates too much from the sofia estimate ("+string(sofiarings)+")."
@@ -3473,9 +3538,17 @@ noconfig:
      levels=(sbrarr+sbrarr2)/2.*1000.
      Columndensity,levels,vsys,[catmajbeam[i],catminbeam[i]],/ARCSQUARE
      tmp=WHERE(levels GT 2E20)
-     IF tmp[0] NE -1 then innerfix=floor(tmp[n_elements(tmp)-1]/1.5)-1. else innerfix=4
+       
+     tmp=WHERE(levels GT 2E20)      
+     IF tmp[0] NE -1 then innerfix=floor(tmp[n_elements(tmp)-1]/1.5)-1. else innerfix=4     
      IF innerfix LT 4 OR innerfix GE norings[0] OR finishafter EQ 1.1 then innerfix=4
-
+     IF centralexclude then begin
+        cen=0
+        WHILE levels[cen] LT 1E20 AND cen LT n_elements(levels)-1 DO cen++
+        IF cen GT innerfix then innerfix=cen else innerfix++
+     ENDIF
+  
+     
 
 ;     IF sofiafail then begin
 ;        lowring=3
@@ -3710,7 +3783,7 @@ noconfig:
         openu,66,log,/APPEND
         printf,66,linenumber()+"Starting tirific Second estimate in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
         printf,66,linenumber()+"We have changed the ring numbers "+string(sbrmodify)+" times."
-        printf,66,linenumber()+"We have changed the fitting paramaters "+string(trytwo)+" times."
+        printf,66,linenumber()+"We have changed the fitting parameters "+string(trytwo)+" times."
         close,66
      ENDIF 
      print,linenumber()+"Starting tirific Second estimate in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
@@ -3722,6 +3795,7 @@ noconfig:
      gipsyfirst=strarr(1)
      gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
      spawn,gipsyfirst,isthere2
+
      testing2:
                                 ;Then we check wether the fit is accepted if not we see if the PA and
                                 ;INCL can be accepted IF the positions were not accepted before we try
@@ -3782,7 +3856,62 @@ noconfig:
            Close,66
         ENDIF        
      ENDIF
-
+                                ;Sometimes TiRiFiC can place values
+                                ;outside the boundaries leading to
+                                ;peculiar effects. Hence we first check
+                                ;that the PA and INCL are within our
+                                ;set boundaries. This seems to make
+                                ;matters worse. because of messing up
+                                ;the PA. Let's turn off PA for now (15-05-2017)
+     check=0.
+     WHILE check EQ 0 DO BEGIN
+        tmp=WHERE(INCLang GT 90.)
+        IF tmp[0] NE -1 then INCLang[tmp]=180-INCLang[tmp] else check=1
+     ENDWHILE
+     check=0.
+     WHILE check EQ 0 DO BEGIN
+        tmp=WHERE(INCLang2 GT 90.)
+        IF tmp[0] NE -1 then INCLang2[tmp]=180-INCLang2[tmp] else check=1
+     ENDWHILE
+     check=0.
+     WHILE check EQ 0 DO BEGIN
+        tmp=WHERE(INCLang LT 0.)
+        IF tmp[0] NE -1 then INCLang[tmp]=ABS(INCLang[tmp]) else check=1
+     ENDWHILE
+     check=0.
+     WHILE check EQ 0 DO BEGIN
+        tmp=WHERE(INCLang2 LT 0.)
+        IF tmp[0] NE -1 then INCLang2[tmp]=ABS(INCLang2[tmp]) else check=1
+     ENDWHILE
+;     check=0.
+;     WHILE check EQ 0 DO BEGIN
+;        tmp=WHERE(PAang GT 380.)
+;        IF tmp[0] NE -1 then BEGIN
+;           meanpa=MEAN(PAang)
+;           stddevpa=STDDEV(PAang)
+;           IF meanpa GT 360 and stddevpa LT 30 then begin
+;              PAang=PAang-360
+;              check=1
+;           ENDIF ELSE BEGIN
+;              IF stddevpa GT 30. then begin
+;                 PAang[tmp]=PAang[tmp]-360. else check=1
+;     ENDWHILE
+;     check=0.
+;     WHILE check EQ 0 DO BEGIN
+;        tmp=WHERE(PAang2 GT 360.)
+;        IF tmp[0] NE -1 then PAang2[tmp]=PAang2[tmp]-360 else check=1
+;     ENDWHILE
+;     check=0.
+;     WHILE check EQ 0 DO BEGIN
+;        tmp=WHERE(PAang LT 0.)
+;        IF tmp[0] NE -1 then PAang[tmp]=PAang[tmp]+360 else check=1
+;     ENDWHILE
+;     check=0.
+;     WHILE check EQ 0 DO BEGIN
+;        tmp=WHERE(PAang2 LT 0.)
+;        IF tmp[0] NE -1 then PAang2[tmp]=PAang2[tmp]+360 else check=1
+;     ENDWHILE
+     
 ;Let's see how many of the inner rings we want to fix
      tmppos=where('VSYS' EQ firstfitvaluesnames)
      vsys=firstfitvalues[0,tmppos]
@@ -3791,6 +3920,12 @@ noconfig:
      tmp=WHERE(levels GT 2E20)
      IF tmp[0] NE -1 then innerfix=floor(tmp[n_elements(tmp)-1]/1.5)-1.
      IF innerfix LT 4 OR innerfix GE norings[0] OR finishafter EQ 1.1 then innerfix=4
+     IF centralexclude then begin
+        cen=0
+        WHILE levels[cen] LT 1E20 AND cen LT n_elements(levels)-1 DO cen++
+        IF cen GT innerfix then innerfix=cen else innerfix++
+     ENDIF
+  
      tmppos=where('NUR' EQ secondfitvaluesnames)
      norings[0]=secondfitvalues[0,tmppos]   
      sbr_check,tirificsecond, tirificsecondvars,sbrarr,sbrarr2,cutoff     
@@ -3843,7 +3978,7 @@ noconfig:
      ENDELSE
 
                                 ;additionallly we should updat the min
-                                ;and max in the fitting if more than
+                                ;and max in the fitting if
                                 ;two rings reach it
                                 ;This doesn't happen when the
                                 ;fit is accepted 
@@ -3858,7 +3993,7 @@ noconfig:
      IF double(INCLinput1[1]) LT 90. OR double(INCLinput2[1]) LT 90. OR  double(INCLinput3[1]) LT 90.  AND norings[0] GT 4 then begin
         tmp=WHERE(INCLang GE (double(INCLinput2[1])-double(INCLinput2[3])))
         tmp2=WHERE(INCLang2 GE (double(INCLinput3[1])-double(INCLinput3[3])))      
-        IF n_elements(tmp) GE 2 OR n_elements(tmp2) GT 2 then begin
+        IF n_elements(tmp) GE 2 OR n_elements(tmp2) GE 2 then begin
            boundaryadjustment=1
            IF double(INCLinput1[1]+5.) LT 90 then INCLinput1[1]=strtrim(strcompress(string(double(INCLinput1[1]+5.))),2) else INCLinput1[1]='90.'
            IF double(INCLinput2[1]+5.) LT 90. then INCLinput2[1]=strtrim(strcompress(string(double(INCLinput2[1]+5.))),2) else INCLinput2[1]='90.'
@@ -3877,7 +4012,7 @@ noconfig:
            tmp=WHERE(INCLang LE (double(INCLinput2[2])+double(INCLinput2[3])))
            tmp2=WHERE(INCLang2 LE (double(INCLinput2[2])+double(INCLinput2[3])))
         ENDELSE
-        IF n_elements(tmp) GE 2 OR n_elements(tmp2) GT 2 then begin
+        IF n_elements(tmp) GE 2 OR n_elements(tmp2) GE 2 then begin
            boundaryadjustment=1
            IF double(INCLinput1[2]-5.) GT 5. then INCLinput1[2]=strtrim(strcompress(string(double(INCLinput1[2]-5.))),2) else INCLinput1[2]='5.'
            IF double(INCLinput2[2]-5.) GT 5. then INCLinput2[2]=strtrim(strcompress(string(double(INCLinput2[2]-5.))),2) else INCLinput2[2]='5.'
@@ -3891,7 +4026,7 @@ noconfig:
      IF ABS(double(PAinput1[1])-double(PAinput1[2])) LT 400 OR ABS(double(PAinput2[1])-double(PAinput2[2])) LT 400 OR  ABS(double(PAinput3[1])-double(PAinput3[2])) LT 400 AND norings[0] GT 4 then begin
         tmp=WHERE(PAang GE (double(PAinput2[1])-double(PAinput2[3])))
         tmp2=WHERE(PAang2 GE (double(PAinput2[1])-double(PAinput2[3])))
-        IF n_elements(tmp) GE 2 OR n_elements(tmp2) GT 2 then begin
+        IF n_elements(tmp) GE 2 OR n_elements(tmp2) GE 2 then begin
            boundaryadjustment=1
            PAinput1[1]=strtrim(strcompress(string(double(PAinput1[1]+10.))),2)
            PAinput2[1]=strtrim(strcompress(string(double(PAinput2[1]+10.))),2)
@@ -3905,7 +4040,7 @@ noconfig:
            tmp=WHERE(PAang LE (double(PAinput2[2])+double(PAinput2[3])))
            tmp2=WHERE(PAang2 LE (double(PAinput2[2])+double(PAinput2[3])))
         ENDELSE
-        IF n_elements(tmp) GE 2 OR n_elements(tmp2) GT 2 then begin
+        IF n_elements(tmp) GE 2 OR n_elements(tmp2) GE 2 then begin
            boundaryadjustment=1
            PAinput1[2]=strtrim(strcompress(string(double(PAinput1[2]-10.))),2)
            PAinput2[2]=strtrim(strcompress(string(double(PAinput2[2]-10.))),2)
@@ -4193,7 +4328,13 @@ noconfig:
            tmppos=where('VARINDX' EQ tirificsecondvars)
            tmp=strsplit(tirificsecond[tmppos],': ',/extract)
            IF n_elements(tmp) GT 3 then begin
-              IF isnumeric(tmp[3]) then velconstused=tmp[3]-1 else velconstused=norings[0]
+                                ;IF we have a warp slope the location
+                                ;of VROT is different hence we need to
+                                ;look for the VROT keyword.
+              locv=WHERE('VROT' EQ strtrim(STRUPCASE(tmp),2))
+              IF n_elements(tmp)-1 GT locv[0]+2 then begin
+                 IF isnumeric(tmp[locv[0]+2]) then velconstused=tmp[locv[0]+2]-1 else velconstused=norings[0]
+              ENDIF else velconstused=norings[0]
            ENDIF else velconstused=norings[0]
         ENDIF
         velfixrings=norings[0]-velconstused
@@ -4933,7 +5074,7 @@ noconfig:
         openu,66,log,/APPEND
         printf,66,linenumber()+"Starting tirific check of the smoothed second estimate in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
         printf,66,linenumber()+"We have changed the ring numbers "+string(sbrmodify)+" times."
-        printf,66,linenumber()+"We have changed the fitting paramaters "+string(trytwo)+" times."
+        printf,66,linenumber()+"We have changed the fitting parameters "+string(trytwo)+" times."
         close,66
      ENDIF 
      print,linenumber()+"Starting tirific check of second estimate in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
@@ -5212,6 +5353,12 @@ noconfig:
         close,1
         goto,finishthisgalaxy
      ENDIF
+     IF warpoutput then begin
+        Basicinfovars=['RADI','SBR','SBR_2','PA','PA_2','PA_ERR','PA_2_ERR','INCL','INCL_2','INCL_ERR','INCL_2_ERR','VROT','VROT_ERR','RMS','BMAJ','BMIN']
+        tirificfirst=1
+        writenewtotemplate,tirificfirst,new_dir+'2ndfit.def',Arrays=Basicinfovalues,VariableChange=Basicinfovars,/EXTRACT
+        get_fixedringsv9,[[Basicinfovalues[*,3]],[Basicinfovalues[*,4]],[Basicinfovalues[*,7]],[Basicinfovalues[*,8]]],fixedrings,/warp_output,workingdir=new_dir,radii=[Basicinfovalues[*,0]],SBR=[[Basicinfovalues[*,1]],[Basicinfovalues[*,2]]]
+     ENDIF
 
 ;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!The current Code ends here!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                                 ;This is where the third estimate
@@ -5227,9 +5374,46 @@ noconfig:
      IF optimized then begin
         catcubename[i]= noptname[0]       
      ENDIF
+     
   
      cd, new_dir
-                                ;  names=[catcubename[i],catMom0name[i],catMom1name[i],catmaskname[i],noisemapname,catCatalogname[i],basicinfo]
+                                ;If we want information about the warp
+                                ;and we have a warp then make a
+                                ;directory for the warp output and
+                                ;write the tiltograms and info. Else
+                                ;log why not
+     IF warpoutput AND finishafter GE 2 AND bookkeeping LT 5 then begin
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"Creating the Warp_Info Directory for advanced information about the fitted warp"
+           close,66
+        ENDIF
+        Basicinfovars=['RADI','SBR','SBR_2','PA','PA_2','PA_ERR','PA_2_ERR','INCL','INCL_2','INCL_ERR','INCL_2_ERR','VROT','VROT_ERR','RMS','BMAJ','BMIN']
+        tirificfirst=1
+        writenewtotemplate,tirificfirst,'2ndfit.def',Arrays=Basicinfovalues,VariableChange=Basicinfovars,/EXTRACT
+        get_fixedringsv9,[[Basicinfovalues[*,3]],[Basicinfovalues[*,4]],[Basicinfovalues[*,7]],[Basicinfovalues[*,8]]],fixedrings,/warp_output,radii=[Basicinfovalues[*,0]],SBR=[[Basicinfovalues[*,1]],[Basicinfovalues[*,2]]]
+     ENDIF ELSE BEGIN
+        IF  warpoutput and finishafter EQ 1.1 then begin
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"As the galaxy is small and we have not allowed for a warp, the directory Warp_Info will not be created."
+              close,66
+           ENDIF
+        ENDIF
+        IF warpoutput and finishafter EQ 1 then begin
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"As you have chosen not to fit a warp, the directory Warp_Info will not be created."
+              close,66
+           ENDIF
+        ENDIF
+     ENDELSE 
+
+        
+                                ;Clearing up the direcory and
+                                ;organizing the output in proper names
+                                ;and such
+    
      names=[currentfitcube,catMom0name[i],catMom1name[i],catmaskname[i],noisemapname,catCatalogname[i],basicinfo]
      book_keeping,names,bookkeeping,catdistance[i],gdlidl,log=log,noise=catnoise[i],finishafter=finishafter
      IF size(log,/TYPE) EQ 7 then begin

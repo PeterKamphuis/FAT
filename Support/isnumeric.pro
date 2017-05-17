@@ -56,7 +56,8 @@ function isnumeric,input
   Ecount=0
   Dcount=0
   dotcount=0
-                                ;Loop through each element of the string to check it is numeric
+                                ;Loop through each element of the
+                                ;string to check it is numeric
   for i=0,tmp-1 do begin
      tmpcheck=STRMID(input,i,1)
      case 1 of

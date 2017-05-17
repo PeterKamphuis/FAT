@@ -42,6 +42,8 @@ Pro momentsv2,Cube,Momentmap,header,map,BLANK_VALUE=blanked
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       12-05-2017 P.Kamphuis; In the  maps the blanks should
+;                              propagate.   
 ;       16-11-2016 P.Kamphuis; Now dealing with the (non-)presence of
 ;                              CUNIT3 properly   
 ;       01-06-2016 P.Kamphuis; Added a condition to check that datamax
@@ -60,9 +62,10 @@ Pro momentsv2,Cube,Momentmap,header,map,BLANK_VALUE=blanked
 
 
 
-IF map EQ 0 then begin
-   blank=WHERE(FINITE(Cube) NE 1.)
-   IF blank[0] NE -1 then Cube[blank]=0
+  IF map EQ 0 then begin
+     ;In the case of moment 0 we want blanks to propagate through.
+;   blank=WHERE(FINITE(Cube) NE 1.)
+;   IF blank[0] NE -1 then Cube[blank]=0
    Momentmap=fltarr(n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]))
    Momentmap[*,*]=TOTAL(Cube,3)*ABS(sxpar(header,'CDELT3'))
    IF ~(sxpar(header,'CUNIT3')) then begin
@@ -81,8 +84,8 @@ IF map EQ 0 then begin
 endif
 IF map EQ 1 then begin
    buildaxii,header,xaxis,yaxis,zaxis=zaxis
-   blank=WHERE(FINITE(Cube) NE 1.)
-   IF blank[0] NE -1 then Cube[blank]=0  
+;   blank=WHERE(FINITE(Cube) NE 1.)
+;   IF blank[0] NE -1 then Cube[blank]=0  
    IF ~(sxpar(header,'CUNIT3')) then begin
       IF sxpar(header,'CDELT3') GT 500. then sxaddpar,header,'CUNIT3','M/S' else sxaddpar,header,'CUNIT3','KM/S'
    ENDIF

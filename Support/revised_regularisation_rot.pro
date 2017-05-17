@@ -70,6 +70,10 @@ Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       08-03-2017 P.Kamphuis; The reduction of the central point
+;                              pulls down the central point too much. Hence we will not pull
+;                              it down with the mean of the outer most point but by the
+;                              following 4 points (Or if less then 4 point the mean of all points  
 ;       07-03-2017 P.Kamphuis; Improved the error constuction for the
 ;                              inner part of well resolved galaxies  
 ;       30-03-2016 P.Kamphuis; A complete overhaul of this routine
@@ -97,12 +101,26 @@ Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
   COMPILE_OPT IDL2 
 
 ; First thing is to check all the input whether it is reasonable
+  centralerrmult=1
   IF KEYWORD_SET(NOCENTRAL) then begin 
      SBR=SBRin[1:n_elements(SBRin)-1]
      RADII=RADIIin[1:n_elements(SBRin)-1]
      PA0=PAin[0]
      PA=PAin[1:n_elements(SBRin)-1]
-     IF PA[0] GT 200. then PA[0]=PA[0]*(MEAN(PA[n_elements(PA)-4:n_elements(PA)-1])/PA[0])
+                                ;If the central value is above 200 we
+                                ;will draw it down toward the mean of
+                                ;the next 3 point to avoid outliers
+     IF PA[0] GT 200. then begin
+        IF n_elements(PA) GT 5 then begin
+           start=1
+           endin=4
+        ENDIF ELSE BEGIN
+           start=0
+           endin=n_elements(PA)-1
+        ENDELSE
+        PA[0]=(PA[0]+MEAN(PA[start:endin]))/2.
+        centralerrmult=1.5
+     ENDIF
      IF n_elements(cutoffin) GT 0 then cutoff=cutoffin[1:n_elements(SBRin)-1]
   ENDIF ELSE BEGIN
      SBR=SBRin
@@ -524,6 +542,7 @@ restartall:
   tmp=WHERE(errors LT ddiv)
   IF tmp[0] NE -1 then errors[tmp]=ddiv
   IF ~keyword_set(nocentral) then errors[n_elements(errors)-2:n_elements(errors)-1]=maxdev[0]/2.
+  errors[n_elements(errors)-1]=errors[n_elements(errors)-1]*centralerrmult
   IF keyword_set(debug) then begin
      print,'The final errors are:'
      print,errors
@@ -924,6 +943,7 @@ refit:
      ENDFOR
   endif
   IF SBRin[n_elements(PAin[*])-1] LT cutoffin[n_elements(PAin[*])-1] then errors[0]=MAX(errors[*])
+  errors[n_elements(errors)-1]= errors[n_elements(errors)-1]*centralerrmult
   If errors[0] LT errors[1] then errors[0]=errors[1]
   IF n_elements(errorin) NE 0 then errorin=REVERSE(errors)
   
