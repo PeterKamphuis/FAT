@@ -60,7 +60,7 @@ FUNCTION install_check,gdlidl
   checkpara=['RADI','SBR','SBR_2','VROT','VROT_2','PA','PA_2','INCL','INCL_2','BMAJ','SDIS','XPOS','XPOS_2','YPOS','VSYS']
   limits=[0.05,5e-4,5e-4,1,1,1,1,1,1,1e-6,1,1e-4,1e-4,1e-4,0.1]
   TemplateFit=1.
-  WriteNewToTemplate,TemplateFit,'Installation_Check/Finalmodel/Finalmodel.def',ARRAYS=ArraysFit,VARIABLECHANGE=checkpara,/EXTRACT
+  WriteNewToTemplate,TemplateFit,'Installation_Check/Def_Files/Finalmodel.def',ARRAYS=ArraysFit,VARIABLECHANGE=checkpara,/EXTRACT
 
                                 ;First we check that the rotation curve has indeed been held symmetrical
   tmppos=WHERE(checkpara EQ 'VROT')

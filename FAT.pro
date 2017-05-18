@@ -5446,7 +5446,6 @@ noconfig:
   close,3
   if keyword_set(installation_check) then begin
      check=install_check(gdlidl)
-     print,check
      check_error:
      case 1 of
         check EQ 0:begin
@@ -5496,6 +5495,7 @@ noconfig:
            print,'!!!!---------------------------------------------!!!!!'
         end
      endcase
+                                ;We always will want to clean up the directory
   endif
 end
 

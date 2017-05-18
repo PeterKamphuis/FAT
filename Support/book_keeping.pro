@@ -166,10 +166,10 @@ Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishaft
            spawn,'mv Finalmodel/*.def Def_Files',isthere
            spawn,'mv Intermediate/*.def Def_Files',isthere
            spawn,'mv Optimized/*.def Def_Files',isthere
-           spawn,'rm -Rf Optimized Intermediate Finalmodel No_Warp Moments PV-Diagrams Sofia_Output ',isthere 
+           spawn,'rm -Rf Optimized Intermediate Finalmodel No_Warp Moments PV-Diagrams Sofia_Output Residuals',isthere 
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+'BOOK_KEEPING:rm -Rf Optimized Intermediate Finalmodel No_Warp Moments PV-Diagrams Sofia_Output'
+              printf,66,linenumber()+'BOOK_KEEPING:rm -Rf Optimized Intermediate Finalmodel No_Warp Moments PV-Diagrams Sofia_Output Residuals'
               close,66
            ENDIF
         end
