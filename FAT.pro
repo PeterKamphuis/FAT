@@ -383,9 +383,9 @@ tryconfigagain:
                                 ;Log go into the
                                 ;originaldir+installationcheck.
   if keyword_set(Installation_Check) then begin
-     catalogue=originaldir+'/Installation_Check/FAT_Input_Catalogue.txt'
-     maindir=originaldir+'/Installation_Check/'
-     outputcatalogue=originaldir+'/Installation_Check/Output_N2903.txt'
+     catalogue=originaldir[0]+'/Installation_Check/FAT_Input_Catalogue.txt'
+     maindir=originaldir[0]+'/Installation_Check/'
+     outputcatalogue=originaldir[0]+'/Installation_Check/Output_N2903.txt'
   endif
                                 ;If maindir, outputcatalogue or
                                 ;catalog start with a ~ then replace
