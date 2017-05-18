@@ -58,7 +58,8 @@ This survey is decribed in [van der Hulst et al. (2001)](http://adsabs.harvard.e
 
 If you get any other message please do not hesitate to file an issue here.
 
-The fit done to check the installation will be removed after the program is done with the exception of the overview plot that is produced. The directory Installation_Check will contain three overview files. Overview.png is the plot produced by your installation. Overview_IDL.png is for comparison with and IDL run and Overview_GDL.png for comparison with a GDL fit.
+The fit done to check the installation will only leave the .def file and the overview plot that is produced. 
+The directory Installation_Check will contain three overview files. Overview.png is the plot produced by your installation. Overview_IDL.png is for comparison with and IDL run and Overview_GDL.png for comparison with a GDL fit.
 
 The plots should look like this:
 
