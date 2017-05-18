@@ -43,7 +43,21 @@ You will also have to make a softlink in the Support directory to file sofia_pip
 
         cd Support/
         ln -s pathtosofiainstallation/sofia_pipeline.py sofia_pipeline.py
+	
+Once you have installed FAT you can check that it has been installed properly by running FAT as 
+	
+	IDL/GDL>.r FAT.pro
+	IDL/GDL>FAT, /installation_check
 
+This should take typically 10 min and should finish with the message:
+
+	!!!!--------------------------------------------!!!!!
+	!!!! As far as we can tell FAT is installed     !!!!!
+	!!!! properly and runs smoothly.                !!!!!
+	!!!!--------------------------------------------!!!!!
+
+The check consists of fitting a flat disk on NGC 2903. The data for this galaxy were take as part of the WHISP program.
+This survey is decribed in van der Hulst et al. (2001)(http://adsabs.harvard.edu/abs/2001ASPC..240..451V)
 Running FAT
 -----------
 FAT is currently run under IDL. It is called as a regular IDL program, i.e. in IDL:
