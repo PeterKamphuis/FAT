@@ -4,9 +4,9 @@
 Introduction
 ------------
 
-The Fully Automated TiRiFiC is an IDL wrapper around the tilted ring fitting code  (TiRiFiC) that aims to fully automize the process of fitting tilted ring models to line emission cubes. This code is still very much in the development phase and hence errors and bugs are to be expected. Nevertheless the code has extensively been tested and the results and a more extensive description of the code are documented in [Kamphuis et al. 2015](http://arxiv.org/abs/1507.00413) 
+The Fully Automated TiRiFiC is an IDL/GDL wrapper around the tilted ring fitting code  (TiRiFiC) that aims to fully automize the process of fitting tilted ring models to line emission cubes. This code is still in the development phase and hence errors and bugs can be there. Nevertheless the code has extensively been tested and the results and a more extensive description of the code are documented in [Kamphuis et al. 2015](http://arxiv.org/abs/1507.00413) 
 
-The file [Current_Status.pdf](./Current_Status.pdf) contains an overview which shows the current performance of the current version on this branch.
+The file [Current_Status.pdf](./Current_Status.pdf) contains an overview which shows the current performance of the current version on the master branch. If you find any error, are unhappy with FAT's results or just want to chat about tilted ring modelling pipelines please do no hesitate to contact me.
 
 Requirements
 ------------
