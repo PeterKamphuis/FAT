@@ -36,6 +36,9 @@ Pro cleanup,name
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       28-04-2017 P. Kamphuis; Added the removal of the intermediate
+;                               files. This will cause problems when
+;                               using testing NE 0.   
 ;       Written 12-08-2015 P.Kamphuis v1.0
 ;
 ; NOTE:
@@ -77,6 +80,9 @@ for i=0,n_elements(dirs)-1 do begin
    endif
 endfor
 spawn,'rm -f '+name+'*_small*',isthere
+spawn,'rm -f 1stfit.* 1stfitold.* 1stfit_mom1.fits 1stfit_mom0.fits 1stfit_xv.fits 1stfit_opt.*',isthere
+spawn,'rm -f 2ndfit.* 2ndfitold.* 2ndfit_mom1.fits 2ndfit_mom0.fits 2ndfit_xv.fits 2ndfit_opt.*',isthere
+spawn,'rm -f tirific.def',isthere
 spawn,'rm -f '+name+'*_cut*',isthere	
 spawn,'rm -f '+name+'*_binmask*',isthere
 spawn,'rm -f '+name+'*_mom*',isthere

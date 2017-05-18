@@ -46,6 +46,8 @@ Pro WriteNewToTemplate,Template,NewFileName,VARIABLES=TemplateVariables,ARRAYS=A
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       07-03-2017 P.Kamphuis; added the cflux parameters to the
+;                              default variables 
 ;       25-02-2016 P.Kamphuis; Made an adjustment to always look for
 ;                              the presence of error parameters 
 ;       Written 01-01-2015 P.Kamphuis v1.0
@@ -67,7 +69,7 @@ Pro WriteNewToTemplate,Template,NewFileName,VARIABLES=TemplateVariables,ARRAYS=A
 ;Lets make an default array with variables we want to transfer if it is not given
   IF NOT keyword_set(VariableChange) then begin
      VariableChange=['BMIN','BMAJ','BPA','RMS','DISTANCE','NUR','RADI','VROT',  'Z0',$
-                     'SBR', 'INCL','PA','XPOS','YPOS','VSYS','SDIS','VROT_2',  'Z0_2','SBR_2', 'INCL_2','PA_2','XPOS_2','YPOS_2','VSYS_2','SDIS_2','CONDISP']
+                     'SBR', 'INCL','PA','XPOS','YPOS','VSYS','SDIS','VROT_2',  'Z0_2','SBR_2', 'INCL_2','PA_2','XPOS_2','YPOS_2','VSYS_2','SDIS_2','CONDISP','CFLUX','CFLUX_2']
   ENDIF
   
                                 ;then open the previous fit ;or when looping back open the previous fit

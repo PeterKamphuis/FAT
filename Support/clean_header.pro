@@ -40,6 +40,8 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       12-06-2016 P. Kamphuis; Fixed the condition for detecting a
+;       frequency axis to exit cleanly and check both unit and type.  
 ;       Written 04-01-2016 P.Kamphuis v1.0
 ;
 ; NOTE:
@@ -84,20 +86,11 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
      writecube=1
   ENDIF
   
-  IF n_elements(sxpar(header,'HISTORY')) GT 10. then begin
-     sxdelpar,header,'HISTORY'
-     writecube=1
-     IF size(log,/TYPE) EQ 7 then begin
-        openu,66,log,/APPEND
-        printf,66,linenumber()+'CLEAN_HEADER: Your cube has a significant history attached we are removing it for easier interpretation.'          
-        close,66
-     ENDIF ELSE BEGIN
-        print,linenumber()+'CLEAN_HEADER:  Your cube has a significant history attached we are removing it for easier interpretation.'    
-     ENDELSE
-  ENDIF
+ 
   channelwidth=ABS(sxpar(header,'CDELT3'))   
   veltype=strtrim(strcompress(sxpar(header,'CUNIT3')))
-  IF STRUPCASE(veltype) EQ 'HZ' then begin
+  velproj=sxpar(header,'CTYPE3')	
+  IF STRUPCASE(veltype) EQ 'HZ' OR  STRUPCASE(strtrim(velproj,2)) EQ 'FREQ' then begin
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         printf,66,linenumber()+'CLEAN_HEADER: FREQUENCY IS NOT A SUPPORTED VELOCITY AXIS.'          
@@ -108,9 +101,10 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
      openu,1,outputcatalogue,/APPEND
      printf,1,format='(A60,A90)', Dir,'The Cube has frequency as a velocity axis this is not supported'
      close,1
-     writecube=2  
+     writecube=2 
+     goto,finishup	 
   ENDIF
-  IF isnumeric(veltype) then begin
+  IF ~(sxpar(header,'CUNIT3')) then begin
      IF channelwidth GT 100. then begin
         veltype='M/S'
         sxaddpar,header,'CUNIT3','M/S',after='CDELT3'
@@ -130,7 +124,7 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
         print,linenumber()+'CLEAN_HEADER: We have set it to '+veltype+'. Please ensure that is correct.'     
      ENDELSE
   ENDIF
-  velproj=sxpar(header,'CTYPE3')
+ 
   IF STRUPCASE(strtrim(velproj,2)) NE 'VELO-HEL' AND $
      STRUPCASE(strtrim(velproj,2)) NE 'VELO-LSR' AND $
      STRUPCASE(strtrim(velproj,2)) NE 'FELO-HEL' AND $
@@ -185,19 +179,49 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
      IF sxpar(header,'BMMAJ') then begin
         sxaddpar,header,'BMAJ',sxpar(header,'BMMAJ')/3600.
          writecube=1
-     endif else begin
-        IF size(log,/TYPE) EQ 7 then begin
-           openu,66,log,/APPEND
-           printf,66,linenumber()+'CLEAN_HEADER: WE CANNOT FIND THE MAJOR AXIS FWHM IN THE HEADER'          
-           close,66
-        ENDIF ELSE BEGIN
-           print,linenumber()+'CLEAN_HEADER: WE CANNOT FIND THE MAJOR AXIS FWHM IN THE HEADER'   
-        ENDELSE
-        openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A90)', Dir,'The Cube has no major axis FWHM in the header.'
-        close,1
-        writecube=2
-        goto,finishup
+      endif else begin
+         IF n_elements(sxpar(header,'HISTORY')) GT 0 then begin
+            history=sxpar(header,'HISTORY')
+            found=0.
+            for j=n_elements(history)-1,0, -1 do begin
+               tmp=strtrim(strsplit(history[j],' ',/extract),2)
+               tmp2=WHERE(strupcase(tmp) EQ 'BMAJ=')
+               IF tmp2[0] NE -1 then begin
+                  sxaddpar,header,'BMAJ',double(tmp[tmp2[0]+1])
+                  found =1.
+                  writecube=1
+               ENDIF
+               tmp2=WHERE(strupcase(tmp) EQ 'BMIN=')
+               IF tmp2[0] NE -1 then begin
+                  sxaddpar,header,'BMIN',double(tmp[tmp2[0]+1])
+               ENDIF
+               tmp2=WHERE(strupcase(tmp) EQ 'BPA=')
+               IF tmp2[0] NE -1 then begin
+                  sxaddpar,header,'BPA',double(tmp[tmp2[0]+1])
+               ENDIF
+               IF found then break
+            endfor
+         ENDIF
+         IF NOT found then begin
+            IF beam[0] NE 1 then begin
+               sxaddpar,header,'BMAJ',double(beam[0]/3600.)
+               If beam[1] NE 1 then  sxaddpar,header,'BMIN',double(beam[1]/3600.) else  sxaddpar,header,'BMIN',double(beam[0]/3600.)
+               writecube=1
+            ENDIF ELSE BEGIN
+               IF size(log,/TYPE) EQ 7 then begin
+                  openu,66,log,/APPEND
+                  printf,66,linenumber()+'CLEAN_HEADER: WE CANNOT FIND THE MAJOR AXIS FWHM IN THE HEADER'          
+                  close,66
+               ENDIF ELSE BEGIN
+                  print,linenumber()+'CLEAN_HEADER: WE CANNOT FIND THE MAJOR AXIS FWHM IN THE HEADER'   
+               ENDELSE
+               openu,1,outputcatalogue,/APPEND
+               printf,1,format='(A60,A90)', Dir,'The Cube has no major axis FWHM in the header.'
+               close,1
+               writecube=2
+               goto,finishup
+            ENDELSE
+         ENDIF
      ENDELSE
     
   ENDIF 
@@ -229,7 +253,17 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
      ENDELSE
   ENDIF
  
-  
+  IF n_elements(sxpar(header,'HISTORY')) GT 10. then begin
+     sxdelpar,header,'HISTORY'
+     writecube=1
+     IF size(log,/TYPE) EQ 7 then begin
+        openu,66,log,/APPEND
+        printf,66,linenumber()+'CLEAN_HEADER: Your cube has a significant history attached we are removing it for easier interpretation.'          
+        close,66
+     ENDIF ELSE BEGIN
+        print,linenumber()+'CLEAN_HEADER:  Your cube has a significant history attached we are removing it for easier interpretation.'    
+     ENDELSE
+  ENDIF
   
   beam=[sxpar(header,'BMAJ')*3600,sxpar(header,'BMIN')*3600.]
   finishup:

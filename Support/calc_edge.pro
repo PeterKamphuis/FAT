@@ -67,4 +67,5 @@ ringarea[n_elements(radii)-1]=!pi*((radii[n_elements(radii)-1]+0.5*(radii[n_elem
 cutoffrings=9E-4*(ringarea/beamsolid)^(-0.82)*ratio
 if ringarea[0] EQ 0. then cutoffrings[0]=0.
 
+
 end

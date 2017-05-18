@@ -1,4 +1,4 @@
-Pro columndensity,levels,vsys,beam,VWIDTH=vwidth,NCOLUMN=ncolumn,DENSITIES=densities,ARCSQUARE=arcsquare
+Pro columndensity,levels,vsys,beam,VWIDTH=vwidth,NCOLUMN=ncolumn,DENSITIES=densities,ARCSQUARE=arcsquare,MSOLAR=Msolar
 
 ;+
 ; NAME:
@@ -32,7 +32,10 @@ Pro columndensity,levels,vsys,beam,VWIDTH=vwidth,NCOLUMN=ncolumn,DENSITIES=densi
 ;       /ARCSQUARE - if set it is assumed that levels is in
 ;                    mJy/arcsec^2 this is specifically useful
 ;                    for converting tirific's SBR to
-;                    columndensities program to calculate the column density      
+;                    columndensities program to calculate the column
+;                    density
+;        /MSOLAR - Give output in M_solar pc^2,  if ncolumn is set it
+;                  is assumed the input is in M_solar pc^2  
 ;
 ; OUTPUTS:
 ;       levels = the transformed units if densities is unset
@@ -50,6 +53,8 @@ Pro columndensity,levels,vsys,beam,VWIDTH=vwidth,NCOLUMN=ncolumn,DENSITIES=densi
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       16-12-2016 P.Kamphuis; Added the option to have the levels
+;       converted to Msolar pc^2  
 ;       Written by P.Kamphuis 01-01-2015 
 ;
 ; NOTE:
@@ -57,7 +62,10 @@ Pro columndensity,levels,vsys,beam,VWIDTH=vwidth,NCOLUMN=ncolumn,DENSITIES=densi
 ;-
   COMPILE_OPT IDL2 
   f0=1.420405751786E9           ;Hz rest freq
-  c=299792.458
+  c=299792.458                  ;light speed in km/s 
+  pc=3.086e+18                  ;parsec in cm
+  solarmass=1.98855e30          ;Solar mass in kg
+  mHI=1.6737236e-27             ;neutral hydrogen mass in kg
   IF vsys GT 10000 then vsys=vsys/1000.
   f=f0*(1-(vsys/c))             ;Systemic frequency
   IF keyword_set(arcsquare) then begin
@@ -75,9 +83,15 @@ Pro columndensity,levels,vsys,beam,VWIDTH=vwidth,NCOLUMN=ncolumn,DENSITIES=densi
                                 ;so let's leave it out in this
                                 ;one note that this one gives you
                                 ;column densities in mJy/arcsec^2
+                             
         IF n_elements(densities) GE 1 then begin
            levels=dblarr(n_elements(densities))
            levels[*]=densities[*]
+        ENDIF
+                                ;if msolar is set we want to convert
+                                ;back to column densities
+        if keyword_set(msolar) then begin
+           levels[*]=levels[*]*solarmass/(mHI*pc^2)
         ENDIF
         IF n_elements(vwidth) NE 0. then  levels[*]=levels[*]/(HIconv*vwidth) else  levels[*]=levels[*]/(HIconv)
      ENDIF ELSE BEGIN
@@ -104,6 +118,12 @@ Pro columndensity,levels,vsys,beam,VWIDTH=vwidth,NCOLUMN=ncolumn,DENSITIES=densi
            levels=dblarr(n_elements(densities))
            levels[*]=densities[*]
         ENDIF 
+                                ;if msolar is set we want to convert
+                                ;back to column densities
+        if keyword_set(msolar) then begin
+           levels[*]=levels[*]*solarmass/(mHI*pc^2)
+        ENDIF
+      
         TK=dblarr(n_elements(levels))
         IF n_elements(vwidth) NE  0 then TK=levels[*]/(1.823E18*vwidth) else  TK=levels[*]/(1.823E18)
         levels[*]=TK[*]/(((605.7383)/(b))*(f0/f)^2)  
@@ -120,4 +140,8 @@ Pro columndensity,levels,vsys,beam,VWIDTH=vwidth,NCOLUMN=ncolumn,DENSITIES=densi
         endelse
      endelse
   endelse
+  
+  IF ~keyword_set(ncolumn)  and keyword_set(msolar) then begin
+     levels[*]=levels[*]*mHI*pc^2/solarmass
+  ENDIF
 end

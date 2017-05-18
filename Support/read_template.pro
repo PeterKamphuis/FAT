@@ -63,7 +63,7 @@ Pro read_template, name, array, variables,SOFIA=sofia
      filelength=FILE_LINES(name)
      h=' '
      array=strarr(filelength)
-     variables=intarr(2)
+     variables=intarr(4)
      for j=0,filelength-1 do begin
            readf,1,h
            tmp=strtrim(strcompress(str_sep(h,'=')),2)
@@ -71,6 +71,8 @@ Pro read_template, name, array, variables,SOFIA=sofia
               case tmp[0] of
                  'import.inFile':variables[0]=j
                  'steps.doReliability':variables[1]=j
+                 'parameters.dilatePixMax':variables[2]=j
+                 'SCfind.threshold':variables[3]=j
                  else:
               endcase
            ENDIF

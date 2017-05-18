@@ -39,6 +39,7 @@ Pro convertradec,RA,DEC,INVERT=invert,COLON=colon
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       15-12-2016 P. Kamphuis; Improved handling of -00d  
 ;       Written by P.Kamphuis 01-01-2015 
 ;
 ; NOTE:
@@ -58,13 +59,14 @@ Pro convertradec,RA,DEC,INVERT=invert,COLON=colon
         yposm=floor((((ABS(ypos[i]*1.))-yposh)*60.))
         yposs=(((((ABS(ypos[i]*1.))-yposh)*60.)-yposm)*60)
         sign=string(round(ypos[i]/ABS(ypos[i])))
-        yposh=yposh*sign
         IF keyword_set(colon) then begin
-           RA[i]=strtrim(string(xposh,format='(i2)'),2)+':'+strtrim(string(xposm,format='(i2)'),2)+':'+strtrim(string(xposs,format='(f5.2)'),2)
-           DEC[i]=strtrim(string(yposh,format='(i3)'),2)+':'+strtrim(string(yposm,format='(i2)'),2)+':'+strtrim(string(yposs,format='(f5.2)'),2)
+           RA[i]=strtrim(string(xposh,format='(i02)'),2)+':'+strtrim(string(xposm,format='(i02)'),2)+':'+strtrim(string(xposs,format='(f05.2)'),2)
+           DEC[i]=strtrim(string(yposh,format='(i02)'),2)+':'+strtrim(string(yposm,format='(i02)'),2)+':'+strtrim(string(yposs,format='(f05.2)'),2)
+           IF sign LT 0. then DEC[i]='-'+DEC[i]
         ENDIF ELSE BEGIN
-           RA[i]=string(xposh,format='(i2)')+'h '+string(xposm,format='(i2)')+'m '+string(xposs,format='(f5.2)')+'s '
-           DEC[i]=string(yposh,format='(i3)')+'d '+string(yposm,format='(i2)')+'m '+string(yposs,format='(f5.2)')+'s '
+           RA[i]=string(xposh,format='(i02)')+'h'+string(xposm,format='(i02)')+'m'+string(xposs,format='(f05.2)')+'s'
+           DEC[i]=string(yposh,format='(i02)')+'d'+string(yposm,format='(i02)')+"'"+string(yposs,format='(f05.2)')+'"'
+           IF sign LT 0. then DEC[i]='-'+DEC[i]
         ENDELSE
      endfor
   ENDIF ELSE BEGIN
@@ -77,7 +79,8 @@ Pro convertradec,RA,DEC,INVERT=invert,COLON=colon
         RA[i]=(tmp[0]+((tmp[1]+(tmp[2]/60.))/60.))*15.
         tmp=str_sep(strtrim(strcompress(ypos[i]),2),':')
         DEC[i]=ABS(tmp[0])+((tmp[1]+(tmp[2]/60.))/60.)
-        IF tmp[0] LT 0 then DEC[i]=-DEC[i]
+        sign=STRMID(ypos[i],0,1)
+        IF sign EQ '-' then DEC[i]=-DEC[i]
      endfor
   ENDELSE
 end

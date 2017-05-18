@@ -60,7 +60,7 @@ Pro getdhi,momentmap,header,PA,center,DHI
   yrange=[-0.5*sxpar(header,'BMAJ'),0.5*sxpar(header,'BMAJ')]
   test=1
   int_profilev2,momentmap,majprofile,header=header,xcenter=center[0],ycenter=center[1],pa=pa,range=yrange,axis=xaxis,rotimage=test
-  clevels=1E20
+  clevels=1.24773E20
   Columndensity,clevels,center[2],[sxpar(header,'BMAJ')*3600.,sxpar(header,'BMIN')*3600.],/NCOLUMN
   clevels=clevels/1000.
 
