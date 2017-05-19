@@ -41,17 +41,23 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
-;      17-05-2017 P.Kamphuis;  
+;      19-05-2017 P.Kamphuis; It appears that the offset centre was
+;                             caused by a mismatch in translating CRPIX
+;                             when doing the regridding. Oddly a factor
+;                             of 1-1/ratio should be added.   
+;      17-05-2017 P.Kamphuis; Added the option to check the
+;                             installation of FAT against my own runs
+;                             in IDL and GDL.
 ;      17-05-2017 P.Kamphuis; Added a coherent error message for when
 ;                             the code crashes.  
 ;      11-05-2017 P.Kamphuis; If the warp was sloped the code would
-;                             take that number for the roatation
+;                             take that number for the rotation
 ;                             curve. Now checks for VROT in VARINDX
 ;      10-05-2017 P.Kamphuis; The boundary conditions check demanded
-;                              2 rings to hit the boundary on the
-;                              receding side and more then 2 on the
-;                              approaching side. Have now set both
-;                              sides to 2. 
+;                             2 rings to hit the boundary on the
+;                             receding side and more then 2 on the
+;                             approaching side. Have now set both
+;                             sides to 2. 
 ;      06-05-2017 P.Kamphuis; Added the warp output possibility.  
 ;      28-03-2017 P.Kamphuis; Added a check for the use of ~ in the
 ;                             directory paths. If used the append
@@ -66,86 +72,112 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;      07-03-2017 P.Kamphuis; Removed the debug parameter from the
 ;                             regularisation calls. 
 ;      06-03-2017 P.Kamphuis; Added a part such that central continuum
-;      sources can be blanked no matter what way SoFiA swings on it.  
+;                             sources can be blanked no matter what
+;                             way SoFiA swings on it.  
 ;      23-02-2017 P.Kamphuis; reduced all instances of velconstused
-;      and set 2 instead of 3.5 times cutoff level
+;                             and set 2 instead of 3.5 times cutoff level
 ;      23-02-2017 P.Kamphuis; Lowered the satisfaction size of ypos
-;      and xpos and expressed values in pixelsize in order to ensure a
-;      better determination of the center and that SoFiA offsets are compensated for.
+;                             and xpos and expressed values in
+;                             pixelsize in order to ensure a
+;                             better determination of the center and
+;                             that SoFiA offsets are compensated for.
 ;      22-02-2017 P.Kamphuis; Compressed the sofia run in a single
-;      module called run SoFiA.  
+;                             module called run SoFiA.  
 ;      21-06-2016 P.Kamphuis; Modified the sofia run to use kernels
-;      with 0,0.5,1,2 the beam at a threshold of 7.5 and no
-;      reliability check.  
+;                             with 0,0.5,1,2 the beam at a threshold
+;                             of 7.5  and no reliability check.  
 ;      15-06-2016 P.Kamphuis; Adapted the cutoff correction to be
-;      applying to the inclination+1/10th of the upper limit.  
+;                             applying to the inclination+1/10th of
+;                             the upper limit.  
 ;      09-06-2016 P.Kamphuis; Removed the /CENTER keyword from the
-;      CONGRID call as it does not work in GDL. This means a +1/ratio
-;      addition to the CRPIX values. Additionally, divided the
-;      verror based on resolution by 2 as it is the 1 sigma error it
-;      should be half a channel.   
+;                             CONGRID call as it does not work in GDL.
+;                             This means a +1/ratio addition to the
+;                             CRPIX values. Additionally, divided the
+;                             verror based on resolution by 2 as it is
+;                             the 1 sigma error it should be half a channel.   
 ;      20-04-2016 P.Kamphuis; Replaced revised_regulation with
-;      revised_regulation_com and revised_regulation_rot thus
-;      splitting the procedures used for the rotation curve
-;      (revised_regulation_rot) and PA and INCL
-;      (revised_regulation_com). revised_regulation_com now looks at
-;      both PA and Inclination to determine the sawtooth pattern and
-;      significant outliers. The error estimation has been completely
-;      revised. leading to much better fits.  
+;                             revised_regulation_com and
+;                             revised_regulation_rot thus splitting
+;                             the procedures used for the rotation
+;                             curve (revised_regulation_rot) and PA and INCL
+;                             (revised_regulation_com). revised_regulation_com
+;                             now looks at both PA and Inclination to
+;                             determine the sawtooth pattern and
+;                             significant outliers. The error
+;                             estimation has been completely
+;                             revised. leading to much better fits.  
 ;      05-03-2016 P.Kamphuis; Replaced parameterreguv87 with
-;      revised_regulation for increased compatibility with GDL as well
-;      as increased control over the fitting process. !This is a major
-;      change and version becomes 4.0. The new routine takes the
-;      amount of fixed rings into account when doing the chisqr
-;      minimization.  As well as doing the mc chain to a specific
-;      accuracy this increases the stability between fits enormously.  
+;                             revised_regulation for increased
+;                             compatibility with GDL as well as
+;                             increased control over the fitting
+;                             process. !This is a major change and
+;                             version becomes 4.0. The new routine
+;                             takes the amount of fixed rings into
+;                             account when doing the chisqr
+;                             minimization.  As well as doing the mc
+;                             chain to a specific accuracy this
+;                             increases the stability between fits enormously.  
 ;      03-03-2016 P.Kamphuis; The PA regularisation had a bug which is
-;      removed, also replaced the poly_fit routine with fat_fit for
-;      increased GDL compatibility  
+;                             removed, also replaced the poly_fit
+;                             routine with fat_fit for increased GDL compatibility  
 ;      27-02-2016 P.Kamphuis; Added overviewplot to be produced for
-;      every galaxy and introduced the variable gdlidl which
-;      indentifies wether we are running idl or gdl   
-;      16-02-2016 P.Kamphuis, N. Giese; Replaced the eigenql function in
-;      fit_ellipse with a normal calculation as the function is not
-;      avalaible in GDL. Additionally adapted the use of Array_Indices to
-;      be GDL compatible.    
+;                             every galaxy and introduced the variable
+;                             gdlidl which indentifies wether we are
+;                             running idl or gdl   
+;      16-02-2016 P.Kamphuis,; Replaced the eigenql function
+;                 N.Giese   ; in fit_ellipse with a normal calculation
+;                             as the function is not avalaible in
+;                             GDL. Additionally adapted the use of
+;                             Array_Indices to be GDL compatible.    
 ;      05-01-2016 P.Kamphuis; Restructered the whole preprocessing
-;      into a more logical flow.    
+;                             into a more logical flow.    
 ;      04-01-2016 P.Kamphuis; Added fail conditions when final model
-;      is outside the boundaries set in Kamphuis et al. 2015. 
+;                             is outside the boundaries set in Kamphuis et al. 2015. 
 ;      04-01-2016 P.Kamphuis; Removed the usage of the rename command
-;      and replaced it with a tirific specific idl routine.
+;                             and replaced it with a tirific specific
+;                             idl routine.
 ;      04-01-2016 P.Kamphuis; Extensive editing of output messages to
-;      keep log clear and readable.
+;                             keep log clear and readable.
 ;      04-01-2016 P.Kamphuis; Minor bug fixes.
 ;      29-12-2016 P.Kamphuis: Replaced GAUSS_SMOOTH and SMOOTH with FAT_SMOOTH
-;      for increased compatibility with IDL 7.0 and GDL 
+;                             for increased compatibility with IDL 7.0 and GDL 
 ;      29-12-2015 P.Kamphuis; Updated interaction to the latest
-;      version of SoFiA. Also introduced column recognition in order
-;      to facilitate future changes more easily. Additionally this
-;      allows the user to add extra output to the SofiA file. S+C
-;      threshold is changed from 4.0 to 5.5 to get similar masks dues
-;      to SoFiA moving back to their initial way of defining the
-;      threshold. SNR values no longer present in SoFiA.
+;                             version of SoFiA. Also introduced column
+;                             recognition in order to facilitate
+;                             future changes more easily. Additionally
+;                             this allows the user to add extra output
+;                             to the SofiA file. S+C threshold is
+;                             changed from 4.0 to 5.5 to get similar
+;                             masks dues to SoFiA moving back to their
+;                             initial way of defining the
+;                             threshold. SNR values no longer present in SoFiA.
 ;      29-12-2015 P.Kamphuis; There is an issue with the usage of
-;      NAXIS3 as the commit history show going back and forth between
-;      making this an integer or Double precision. I do not remember
-;      the reason for going to double precision but it has been
-;      reversed now because SoFiA requires and integer (As it should be)  
-;      12-08-2015 P. Kamphuis; Improved Bookkeeping for failed fits,
-;      improved noise determination  and fixed an issue with spaces in
-;      the config file
-;      10-08-2015 P. Kamphuis; On line 4012 it was possible to set the
-;      rotation curve to zero by having the inner INCL and PA hit the
-;      border. Made sure that if taking ring 0 for PA and INCL that
-;      the mean is taken for VROT.
-;      30-07-2015 P. Kamphuis; Added a set of routines for
-;      bookkeeping. Still need to implement proper removal.  
-;      24-07-2015 P. Kamphuis; Added routine for the creation of residual files
-;      24-07-2015 P. Kamphuis; Replaced the usage of SNR from Sofia
-;      with a proper flux from the integrated intensity map. Improved
-;      clean up and cflux handling. Also improved treatment of small
-;      galaxies and a better determination of CONDISP.  
+;                             NAXIS3 as the commit history show going
+;                             back and forth between making this an
+;                             integer or Double precision. I do not
+;                             remember the reason for going to double
+;                             precision but it has been reversed now
+;                             because SoFiA requires and integer (As
+;                             it should be)  
+;      12-08-2015 P.Kamphuis; Improved Bookkeeping for failed fits,
+;                             improved noise determination  and fixed
+;                             an issue with spaces in the config file
+;      10-08-2015 P.Kamphuis; On line 4012 it was possible to set the
+;                             rotation curve to zero by having the
+;                             inner INCL and PA hit the border. Made
+;                             sure that if taking ring 0 for PA and
+;                             INCL that the mean is taken for VROT.
+;      30-07-2015 P.Kamphuis; Added a set of routines for
+;                             bookkeeping. Still need to implement
+;                             proper removal.  
+;      24-07-2015 P.Kamphuis; Added routine for the creation of
+;                             residual files
+;      24-07-2015 P.Kamphuis; Replaced the usage of SNR from Sofia
+;                             with a proper flux from the integrated
+;                             intensity map. Improved clean up and
+;                             cflux handling. Also improved treatment
+;                             of small galaxies and a better
+;                             determination of CONDISP.  
 ;      Written by P.Kamphuis 01-01-2015 
 ; NOTES:
                                 ; please note that this pipeline uses the following command line
@@ -1645,15 +1677,25 @@ noconfig:
         newcdelt=catminbeam[i]/double(optpixelbeam)
         ratio=double(newcdelt/double((cubecdelt*3600.)))
         new_header=header
-      
-        new_Cube=CONGRID(dummy,fix(sxpar(header,'NAXIS1')/ratio),fix(sxpar(header,'NAXIS2')/ratio),sxpar(header,'NAXIS3'),/MINUS_ONE)
-       
-        sxaddpar,new_header,'CDELT1',sxpar(header,'CDELT1')*(double(sxpar(header,'NAXIS1'))/(fix(sxpar(header,'NAXIS1')/ratio)-1)),format='(E20.12)'
-        sxaddpar,new_header,'CDELT2',sxpar(header,'CDELT2')*(double(sxpar(header,'NAXIS2'))/(fix(sxpar(header,'NAXIS2')/ratio)-1)),format='(E20.12)'
-        sxaddpar,new_header,'CRPIX1',sxpar(header,'CRPIX1')/(double(sxpar(header,'NAXIS1'))/(fix(sxpar(header,'NAXIS1')/ratio)))+(1.0/ratio),format='(E20.12)'
-        sxaddpar,new_header,'CRPIX2',sxpar(header,'CRPIX2')/(double(sxpar(header,'NAXIS2'))/(fix(sxpar(header,'NAXIS2')/ratio)))+(1.0/ratio),format='(E20.12)'
+        new_Cube=CONGRID(dummy,fix(sxpar(header,'NAXIS1')/ratio),fix(sxpar(header,'NAXIS2')/ratio),sxpar(header,'NAXIS3'))
+        ratio=double(sxpar(header,'NAXIS1'))/fix(sxpar(header,'NAXIS1')/ratio)    
+        sxaddpar,new_header,'CDELT1',sxpar(header,'CDELT1')*(double(sxpar(header,'NAXIS1'))/(fix(sxpar(header,'NAXIS1')/ratio))),format='(E20.12)'
+        sxaddpar,new_header,'CDELT2',sxpar(header,'CDELT2')*(double(sxpar(header,'NAXIS2'))/(fix(sxpar(header,'NAXIS2')/ratio))),format='(E20.12)'
+        sxaddpar,new_header,'CRPIX1',sxpar(header,'CRPIX1')/(double(sxpar(header,'NAXIS1'))/(fix(sxpar(header,'NAXIS1')/ratio)))+(1.-1./ratio),format='(E20.12)'
+        sxaddpar,new_header,'CRPIX2',sxpar(header,'CRPIX2')/(double(sxpar(header,'NAXIS2'))/(fix(sxpar(header,'NAXIS2')/ratio)))+(1.-1./ratio),format='(E20.12)'
         sxaddpar,new_header,'NAXIS1',fix(sxpar(header,'NAXIS1')/ratio)
         sxaddpar,new_header,'NAXIS2',fix(sxpar(header,'NAXIS2')/ratio)
+                                ;This was the old congrid
+                                ;change that gave
+                                ;offsets. Let's try the new one.
+  ;      new_Cube=CONGRID(dummy,fix(sxpar(header,'NAXIS1')/ratio),fix(sxpar(header,'NAXIS2')/ratio),sxpar(header,'NAXIS3'),/MINUS_ONE)
+       
+   ;     sxaddpar,new_header,'CDELT1',sxpar(header,'CDELT1')*(double(sxpar(header,'NAXIS1'))/(fix(sxpar(header,'NAXIS1')/ratio)-1)),format='(E20.12)'
+    ;    sxaddpar,new_header,'CDELT2',sxpar(header,'CDELT2')*(double(sxpar(header,'NAXIS2'))/(fix(sxpar(header,'NAXIS2')/ratio)-1)),format='(E20.12)'
+     ;   sxaddpar,new_header,'CRPIX1',sxpar(header,'CRPIX1')/(double(sxpar(header,'NAXIS1'))/(fix(sxpar(header,'NAXIS1')/ratio)))+(1.0/ratio),format='(E20.12)'
+      ;  sxaddpar,new_header,'CRPIX2',sxpar(header,'CRPIX2')/(double(sxpar(header,'NAXIS2'))/(fix(sxpar(header,'NAXIS2')/ratio)))+(1.0/ratio),format='(E20.12)'
+     ;   sxaddpar,new_header,'NAXIS1',fix(sxpar(header,'NAXIS1')/ratio)
+     ;   sxaddpar,new_header,'NAXIS2',fix(sxpar(header,'NAXIS2')/ratio)
         CD,new_dir,CURRENT=old_dir
         currentfitcube=currentfitcube+'_opt'    
         writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+cubeext,float(new_Cube),new_header
@@ -3745,10 +3787,6 @@ noconfig:
                        
                                 ;If the first fit is accepted we only change the central position minimally
      IF AC1 EQ 1 then begin     
-  ;      xposinput1=[ ' XPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-  ;                   ' XPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), '360','0','1E-3','1E-5','1E-4','1E-6','3','70','70']
-    ;    yposinput1=[ ' YPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-    ;                 ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), '90','-90','1E-3','1E-5','1E-4','1E-6','3','70','70']
         xposinput1=[ ' XPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                       ' XPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),'360','0', +$
                       strtrim(string(pixelsizeRA)),strtrim(string(pixelsizeRA/20.)),+$
@@ -3779,10 +3817,6 @@ noconfig:
                      ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),'90','-90',+$
                      strtrim(string(pixelsizeDEC*3.)),strtrim(string(pixelsizeDEC/10.)),+$
                      strtrim(string(pixelsizeDEC)),strtrim(string(pixelsizeDEC/10.)),'3','70','70']
-  ;      xposinput1=[ ' XPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-  ;                   ' XPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), '360','0','1E-3','1E-5','1E-4','1E-5','3','70','70']
-  ;      yposinput1=[ ' YPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-   ;                  ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1), '90','-90','1E-3','1E-5','1E-4','1E-5','3','70','70']
         vsysinput1=[ ' VSYS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                      ' VSYS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),strtrim(strcompress(string(catvsys[i]+100.)),1),strtrim(strcompress(string(catvsys[i]-100.)),1),'2','0.5','2','0.5','3','70','70']
         IF norings[0] LE 4 or finishafter EQ 1.1 then begin
@@ -3962,10 +3996,25 @@ noconfig:
      get_newringsv9,SBRarr,SBRarr2,2.*cutoff,velconstused
      velconstused--
      IF norings[0] GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
-     IF TOTAL(VROTarr[1:2])/2. GT 150 AND VROTarr[1] GT VROTarr[2] AND VROTarr[1] GT VROTarr[3] then begin
+     IF (TOTAL(VROTarr[1:2])/2. GT 150 AND VROTarr[1] GT VROTarr[2] AND VROTarr[1] GT VROTarr[3]) OR MEAN(VROTarr) GT 250. then begin
         x=n_elements(VROTarr)-1
         WHILE VROTarr[x] GT  VROTarr[x-1] AND x GT fix(n_elements(VROTarr)/2) DO x--
-        VROTarr[x:n_elements(VROTarr)-1]=VROTarr[x]        
+        IF x LT n_elements(VROTarr)-1 then begin
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+'This is a massive galaxy hence we flatten the outer part'
+              printf,66,linenumber()+'From ring'+strtrim(string(x),2)+' on we have the value '+strtrim(string(VROTarr[x]),2)
+              close,66
+           ENDIF
+        
+           VROTarr[x:n_elements(VROTarr)-1]=VROTarr[x]
+           stringVROT='VROT= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
+           tmppos=where('VROT' EQ tirificsecondvars)
+           tirificsecond[tmppos]=stringVROT
+           stringVROT='VROT_2= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
+           tmppos=where('VROT_2' EQ tirificsecondvars)
+           tirificsecond[tmppos]=stringVROT
+        ENDIF
      ENDIF
      locmax=WHERE(MAX(VROTarr) EQ VROTarr)
      IF size(log,/TYPE) EQ 7 then begin
@@ -4333,12 +4382,27 @@ noconfig:
      prefunc=0. 
      IF norings[0]-velconstused LT 2 then velconstused=norings[0]-1
      IF norings[0] GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
-     IF TOTAL(VROTarr[1:2])/2. GT 150 AND VROTarr[1] GT VROTarr[2] AND VROTarr[1] GT VROTarr[3] then begin
+     IF (TOTAL(VROTarr[1:2])/2. GT 150 AND VROTarr[1] GT VROTarr[2] AND VROTarr[1] GT VROTarr[3]) OR MEAN(VROTarr) GT 250. then begin
         x=n_elements(VROTarr)-1
         WHILE VROTarr[x] GT  VROTarr[x-1] AND x GT fix(n_elements(VROTarr)/2) DO x--
-        VROTarr[x:n_elements(VROTarr)-1]=VROTarr[x]
+        IF x LT n_elements(VROTarr)-1 then begin
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+'This is a massive galaxy hence we flatten the outer part'
+              printf,66,linenumber()+'From ring'+strtrim(string(x),2)+' on we have the value '+strtrim(string(VROTarr[x]),2)
+              close,66
+           ENDIF
         
+           VROTarr[x:n_elements(VROTarr)-1]=VROTarr[x]
+           stringVROT='VROT= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
+           tmppos=where('VROT' EQ tirificsecondvars)
+           tirificsecond[tmppos]=stringVROT
+           stringVROT='VROT_2= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
+           tmppos=where('VROT_2' EQ tirificsecondvars)
+           tirificsecond[tmppos]=stringVROT
+        ENDIF
      ENDIF
+   
      if finalsmooth LE 1 then begin
                          
         IF finalsmooth EQ 1 AND norings[0] GT 4 then prefunc=0 else prefunc=1
@@ -4385,7 +4449,8 @@ noconfig:
            set_vrotv6,vrotslopinput,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,start=start,centralexclude=centralexclude,finish_after=finishafter,slope=slope 
            INCLinputall=['INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' '+$
                     'INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
-                    '90','5',string(0.5),string(0.1),string(0.5),string(0.1),'3','70','70'] 
+                         '90','5',string(0.5),string(0.1),string(0.5),string(0.1),'3','70','70']
+           
            Writefittingvariables,tirificsecond,INCLinputall,vrotslopinput
            openw,1,maindir+'/'+catdirname[i]+'/tirific.def'
            for index=0,n_elements(tirificsecond)-1 do begin
