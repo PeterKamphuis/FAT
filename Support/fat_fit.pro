@@ -54,7 +54,9 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
 ; EXAMPLE:
 ;      
 ;
-; MODIFICATION HISTORY: 
+; MODIFICATION HISTORY:
+;       20-05-2015 P.Kamphuis; Added a condition for real massive
+;                              galaxies to always be declining.  
 ;       Written 29-02-2016 by P.Kamphuis, N. Giese
 ;
 ; NOTE:
@@ -177,18 +179,46 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
                        newy[fixedrings+3]=(newy[fixedrings+3]*3.+newy[fixedrings+2])/4.
                     ENDELSE
                  ENDIF  ELSE BEGIN
+                                ; IF the roation curve is supermassive
+                                ; we want it to decline
+                    IF (TOTAL(newy[n_elements(newy)-2:n_elements(newy)-1])/2. GT 150 AND newy[n_elements(newy)-1] GT newy[n_elements(newy)-2] AND newy[n_elements(newy)-1] GT newy[n_elements(newy)-3]) OR $
+                       (MEAN(newy[0:n_elements(newy)-1]) GT 250.) then begin
+                       x=0
+                       WHILE newy[x] GT  newy[x+1] AND x LT fix(n_elements(newy)/2) DO x++
+                       IF x GT 0 then begin
+                          newy[0:x]=newy[x]       
+                       ENDIF ELSE BEGIN
+                          IF MEAN(newy[1:n_elements(newy)-1]) GT 250. then begin
+                             min=MAX(newy)
+                             xind=0
+                             for x=0,fix(n_elements(newy)/2) do begin
+                                IF newy[x] LT min then begin
+                                   min=newy[x]
+                                   xind=x
+                                ENDIF
+                             ENDFOR
+                             IF xind GT 0 then begin          
+                                newy[0:xind]=newy[xind]
+                                
+                             ENDIF
+                          endif
+                       ENDELSE
+                    ENDIF
+                
+   
+
+                    
                                 ;If we have a declining rotation curve
                                 ;we want the outer part to be reset to
                                 ;flat.
-             ;       if locmax[n_elements(locmax)-1] LT fixedrings then newy[0:fixedrings]=newy[fixedrings+1] else begin
-             ;          IF locmax[n_elements(locmax)-1] LT fix(n_elements(yor)/2.) then newy[0:locmax[n_elements(locmax)-1]]=newy[locmax[n_elements(locmax)-1]]
-             ;       ENDELSE
+         
                     if locmax[n_elements(locmax)-1] GT fixedrings then begin
                        IF locmax[n_elements(locmax)-1] LT fix(n_elements(yor)/2.) then newy[0:locmax[n_elements(locmax)-1]]=newy[locmax[n_elements(locmax)-1]]
                     ENDIF
                     IF keyword_set(nocentral) AND n_elements(xin) GT 15. then newy[0:fixedrings]=newy[fixedrings+1]
- ;                   if locmax[n_elements(locmax)-1] GT n_elements(yor)/2. then newy[0:fixedrings]=newy[fixedrings+1]
-                    ;newy[0:fixedrings]=TOTAL(y[0:fixedrings])/n_elements(y[0:fixedrings])
+                                ; Also if it is supermassive we want
+                                ; it flat 
+                    
                  ENDELSE
               ENDIF
               
@@ -303,6 +333,32 @@ skippenalize:
                  newy[fixedrings+3]=(newy[fixedrings+3]*3.+newy[fixedrings+2])/4.
               ENDELSE
            ENDIF  ELSE BEGIN
+                                ; IF the roation curve is supermassive
+                                ; we want it to decline
+              IF (TOTAL(newy[n_elements(newy)-2:n_elements(newy)-1])/2. GT 150 AND newy[n_elements(newy)-1] GT newy[n_elements(newy)-2] AND newy[n_elements(newy)-1] GT newy[n_elements(newy)-3]) OR $
+                 (MEAN(newy[0:n_elements(newy)-1]) GT 250.) then begin
+                 x=0
+                 WHILE newy[x] GT  newy[x+1] AND x LT fix(n_elements(newy)/2) DO x++
+                 IF x GT 0 then begin
+                    newy[0:x]=newy[x]       
+                 ENDIF ELSE BEGIN
+                    IF MEAN(newy[1:n_elements(newy)-1]) GT 250. then begin
+                       min=MAX(newy)
+                       xind=0
+                       for x=0,fix(n_elements(newy)/2)-1 do begin
+                          IF newy[x] LT min then begin
+                             min=newy[x]
+                             xind=x
+                          ENDIF
+                       ENDFOR
+                       IF xind GT 0 then begin          
+                          newy[0:xind]=newy[xind]
+                          
+                       ENDIF
+                    ENDIF
+                 ENDELSE
+              ENDIF
+              
                                 ;If we have a declining rotation curve
                                 ;we want the outer part to be reset to
                                 ;flat.

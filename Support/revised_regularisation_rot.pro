@@ -878,6 +878,29 @@ refit:
      for i=1,n_elements(newPAcoeff)-1 do begin
         newPA[*]= newPA[*]+newPAcoeff[i]*RADII[*]^i 
      endfor
+     IF (TOTAL(newPA[n_elements(newPA)-2:n_elements(newPA)-1])/2. GT 150 AND newPA[n_elements(newPA)-1] GT newPA[n_elements(newPA)-2] AND newPA[n_elements(newPA)-1] GT newPA[n_elements(newPA)-3]) OR $
+        (MEAN(newPA[0:n_elements(newPA)-1]) GT 250.) then begin
+        x=0
+        WHILE newPA[x] GT  newPA[x+1] AND x LT fix(n_elements(newPA)/2) DO x++
+        IF x GT 0 then begin
+           newPA[0:x]=newPA[x]       
+        ENDIF ELSE BEGIN
+           IF MEAN(newPA[1:n_elements(newPA)-1]) GT 250. then begin
+              min=MAX(newPA)
+              xind=0
+              for x=0,fix(n_elements(newPA)/2)-1 do begin
+                 IF newPA[x] LT min then begin
+                    min=newPA[x]
+                    xind=x
+                 ENDIF
+              ENDFOR
+              IF xind GT 0 then begin          
+                 newPA[0:xind]=newPA[xind]
+                 
+              ENDIF
+           ENDIF
+        ENDELSE
+     ENDIF
      locmax=WHERE(MAX(PA) EQ PA)
      if locmax[n_elements(locmax)-1] GT n_elements(PA)/2. then newPA[0:fixedrings]=newPA[fixedrings+1]
      endch=floor(n_elements(PA)/3.)
