@@ -37,10 +37,13 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;  INT_PROFILEV2, INTERPOLATE, ISNUMERIC(), LINENUMBER(), MOMENTSV2,
 ;  OBTAIN_INCLINATIONV8, OBTAIN_PAV2, OBTAIN_VELPA, OBTAIN_W50, OVERVIEW_PLOT
 ;  PARAMETERREGUV87, PREPROCESSING, READ_TEMPLATE, SBR_CHECK, SET_SBR, SET_VROTV6,
-;  SET_WARP_SLOPEV3, TOTAL(), WRITEFITTINGVARIABLES, WRITENEWTOTEMPLATE
+;  SET_WARP_SLOPEV3, TOTAL(), WRITEFITTINGVARIABLES, WRITENEWTOTEMPLATESS
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      20-05-2015 P.Kamphuis; Added a condition for real massive
+;                             galaxies to always be declining.  
+;
 ;      19-05-2017 P.Kamphuis; It appears that the offset centre was
 ;                             caused by a mismatch in translating CRPIX
 ;                             when doing the regridding. Oddly a factor
@@ -3996,17 +3999,20 @@ noconfig:
      get_newringsv9,SBRarr,SBRarr2,2.*cutoff,velconstused
      velconstused--
      IF norings[0] GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
-     IF (TOTAL(VROTarr[1:2])/2. GT 150 AND VROTarr[1] GT VROTarr[2] AND VROTarr[1] GT VROTarr[3]) OR MEAN(VROTarr) GT 250. then begin
+     IF (TOTAL(VROTarr[1:2])/2. GT 150 AND VROTarr[1] GT VROTarr[2] AND VROTarr[1] GT VROTarr[3]) OR $
+        (MEAN(VROTarr[1:n_elements(vrotarr)-1]) GT 250.) then begin
         x=n_elements(VROTarr)-1
         WHILE VROTarr[x] GT  VROTarr[x-1] AND x GT fix(n_elements(VROTarr)/2) DO x--
+        
+        
         IF x LT n_elements(VROTarr)-1 then begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+'This is a massive galaxy hence we flatten the outer part'
-              printf,66,linenumber()+'From ring'+strtrim(string(x),2)+' on we have the value '+strtrim(string(VROTarr[x]),2)
+              printf,66,linenumber()+'This is a massive galaxy hence we flatten the outer part if x is less '+$
+                     strtrim(string(n_elements(VROTarr)-1),2)
+              printf,66,linenumber()+'From ring '+strtrim(string(x),2)+' on we have the value '+strtrim(string(VROTarr[x]),2)
               close,66
            ENDIF
-        
            VROTarr[x:n_elements(VROTarr)-1]=VROTarr[x]
            stringVROT='VROT= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
            tmppos=where('VROT' EQ tirificsecondvars)
@@ -4014,8 +4020,41 @@ noconfig:
            stringVROT='VROT_2= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
            tmppos=where('VROT_2' EQ tirificsecondvars)
            tirificsecond[tmppos]=stringVROT
-        ENDIF
+           slope=1
+           IF norings[0]-x GT velconstused then velconstused=norings[0]-x
+        ENDIF ELSE BEGIN
+           IF MEAN(VROTarr[1:n_elements(vrotarr)-1]) GT 250. then begin
+              min=MAX(VROTarr)
+              xind=n_elements(VROTarr)-1
+              for x=fix(n_elements(VROTarr)/2),n_elements(VROTarr)-1 do begin
+                 IF VROTarr[x] LT min then begin
+                    min=VROTarr[x]
+                    xind=x
+                 ENDIF
+              ENDFOR
+              IF xind LT n_elements(VROTarr)-1 then begin          
+                 VROTarr[xind:n_elements(VROTarr)-1]=VROTarr[xind]
+                 stringVROT='VROT= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
+                 tmppos=where('VROT' EQ tirificsecondvars)
+                 tirificsecond[tmppos]=stringVROT
+                 stringVROT='VROT_2= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
+                 tmppos=where('VROT_2' EQ tirificsecondvars)
+                 tirificsecond[tmppos]=stringVROT
+                 slope=1
+                 IF norings[0]-xind GT velconstused then velconstused=norings[0]-xind
+                 IF size(log,/TYPE) EQ 7 then begin
+                    openu,66,log,/APPEND
+                    printf,66,linenumber()+'This is a massive galaxy hence we flatten the outer part if xind is less '+$
+                           strtrim(string(n_elements(VROTarr)-1),2)
+                    printf,66,linenumber()+'From ring '+strtrim(string(xind),2)+' on we have the value '+strtrim(string(VROTarr[xind]),2)
+                    close,66
+                 ENDIF
+              ENDIF
+           ENDIF
+        ENDELSE
      ENDIF
+
+
      locmax=WHERE(MAX(VROTarr) EQ VROTarr)
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
@@ -4382,26 +4421,7 @@ noconfig:
      prefunc=0. 
      IF norings[0]-velconstused LT 2 then velconstused=norings[0]-1
      IF norings[0] GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
-     IF (TOTAL(VROTarr[1:2])/2. GT 150 AND VROTarr[1] GT VROTarr[2] AND VROTarr[1] GT VROTarr[3]) OR MEAN(VROTarr) GT 250. then begin
-        x=n_elements(VROTarr)-1
-        WHILE VROTarr[x] GT  VROTarr[x-1] AND x GT fix(n_elements(VROTarr)/2) DO x--
-        IF x LT n_elements(VROTarr)-1 then begin
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+'This is a massive galaxy hence we flatten the outer part'
-              printf,66,linenumber()+'From ring'+strtrim(string(x),2)+' on we have the value '+strtrim(string(VROTarr[x]),2)
-              close,66
-           ENDIF
-        
-           VROTarr[x:n_elements(VROTarr)-1]=VROTarr[x]
-           stringVROT='VROT= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
-           tmppos=where('VROT' EQ tirificsecondvars)
-           tirificsecond[tmppos]=stringVROT
-           stringVROT='VROT_2= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
-           tmppos=where('VROT_2' EQ tirificsecondvars)
-           tirificsecond[tmppos]=stringVROT
-        ENDIF
-     ENDIF
+     
    
      if finalsmooth LE 1 then begin
                          
@@ -4423,6 +4443,68 @@ noconfig:
               ENDIF else velconstused=norings[0]
            ENDIF else velconstused=norings[0]
         ENDIF
+        slope=0
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"This is VROT before checking for a massive galaxy."
+           printf,66,VROTarr
+           close,66
+        ENDIF
+        IF (TOTAL(VROTarr[1:2])/2. GT 150 AND VROTarr[1] GT VROTarr[2] AND VROTarr[1] GT VROTarr[3]) OR $
+           (MEAN(VROTarr[1:n_elements(vrotarr)-1]) GT 250.) then begin
+           x=n_elements(VROTarr)-1
+           WHILE VROTarr[x] GT  VROTarr[x-1] AND x GT fix(n_elements(VROTarr)/2) DO x--
+      
+           
+           IF x LT n_elements(VROTarr)-1 then begin
+              IF size(log,/TYPE) EQ 7 then begin
+                 openu,66,log,/APPEND
+                 printf,66,linenumber()+'This is a massive galaxy hence we flatten the outer part if x is less '+$
+                        strtrim(string(n_elements(VROTarr)-1),2)
+                 printf,66,linenumber()+'From ring '+strtrim(string(x),2)+' on we have the value '+strtrim(string(VROTarr[x]),2)
+                 close,66
+              ENDIF
+              VROTarr[x:n_elements(VROTarr)-1]=VROTarr[x]
+              stringVROT='VROT= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
+              tmppos=where('VROT' EQ tirificsecondvars)
+              tirificsecond[tmppos]=stringVROT
+              stringVROT='VROT_2= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
+              tmppos=where('VROT_2' EQ tirificsecondvars)
+              tirificsecond[tmppos]=stringVROT
+              slope=1
+              IF norings[0]-x GT velconstused then velconstused=norings[0]-x
+           ENDIF ELSE BEGIN
+              IF MEAN(VROTarr[1:n_elements(vrotarr)-1]) GT 250. then begin
+                 min=MAX(VROTarr)
+                 xind=n_elements(VROTarr)-1
+                 for x=fix(n_elements(VROTarr)/2),n_elements(VROTarr)-1 do begin
+                    IF VROTarr[x] LT min then begin
+                       min=VROTarr[x]
+                       xind=x
+                    ENDIF
+                 ENDFOR
+                 IF xind LT n_elements(VROTarr)-1 then begin          
+                    VROTarr[xind:n_elements(VROTarr)-1]=VROTarr[xind]
+                    stringVROT='VROT= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
+                    tmppos=where('VROT' EQ tirificsecondvars)
+                    tirificsecond[tmppos]=stringVROT
+                    stringVROT='VROT_2= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
+                    tmppos=where('VROT_2' EQ tirificsecondvars)
+                    tirificsecond[tmppos]=stringVROT
+                    slope=1
+                    IF norings[0]-xind GT velconstused then velconstused=norings[0]-xdins
+                    IF size(log,/TYPE) EQ 7 then begin
+                       openu,66,log,/APPEND
+                       printf,66,linenumber()+'This is a massive galaxy hence we flatten the outer part if xind is less '+$
+                              strtrim(string(n_elements(VROTarr)-1),2)
+                       printf,66,linenumber()+'From ring '+strtrim(string(xind),2)+' on we have the value '+strtrim(string(VROTarr[xind]),2)
+                       close,66
+                    ENDIF
+                 ENDIF
+              ENDIF
+           ENDELSE
+        ENDIF
+   
         velfixrings=norings[0]-velconstused
         IF velfixrings LT 1 then velfixrings=1
         IF velfixrings EQ 1 AND norings[0] GT 5 then velfixrings=2
@@ -4433,7 +4515,6 @@ noconfig:
            printf,66,linenumber()+"Vmax occurs at ring no "+string(locmax[n_elements(locmax)-1]+1)
            close,66
         ENDIF
-        slope=0
         if locmax[n_elements(locmax)-1] LT n_elements(VROTarr)/2. then begin
             IF size(log,/TYPE) EQ 7 then begin
                openu,66,log,/APPEND

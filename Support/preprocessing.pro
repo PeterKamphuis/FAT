@@ -333,15 +333,17 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
   IF tmp[0] NE -1 then begin
      cube[tmp]=!values.f_nan
      writecube=3
-     IF size(log,/TYPE) EQ 7 then begin
-        openu,66,log,/APPEND
-        printf,66,linenumber()+'PREPROCESSING: Your cube had values below -10*sigma. If you do not have a central absorption source there is something seriously wrong with the cube'
-        printf,66,linenumber()+'PREPROCESSING: We blanked these values.'
-        close,66
-     ENDIF ELSE BEGIN
-        print,linenumber()+'PREPROCESSING: Your cube had values below -10.*sigma. If you do not have a central absorption source there is something seriously wrong with the cube.'        
-     ENDELSE
-  ENDIF
+     IF n_elements(tmp) GT 5 then begin
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+'PREPROCESSING: Your cube had values below -10*sigma. If you do not have a central absorption source there is something seriously wrong with the cube'
+           printf,66,linenumber()+'PREPROCESSING: We blanked these values.'
+           close,66
+        ENDIF ELSE BEGIN
+           print,linenumber()+'PREPROCESSING: Your cube had values below -10.*sigma. If you do not have a central absorption source there is something seriously wrong with the cube.'        
+        ENDELSE
+     ENDIF
+  endif
                                 ;if the moment maps or the proper binmask do not yet exist we create
                                 ;them here
   IF size(log,/TYPE) EQ 7 then begin
