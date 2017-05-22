@@ -37,7 +37,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;  INT_PROFILEV2, INTERPOLATE, ISNUMERIC(), LINENUMBER(), MOMENTSV2,
 ;  OBTAIN_INCLINATIONV8, OBTAIN_PAV2, OBTAIN_VELPA, OBTAIN_W50, OVERVIEW_PLOT
 ;  PARAMETERREGUV87, PREPROCESSING, READ_TEMPLATE, SBR_CHECK, SET_SBR, SET_VROTV6,
-;  SET_WARP_SLOPEV3, TOTAL(), WRITEFITTINGVARIABLES, WRITENEWTOTEMPLATESS
+;  SET_WARP_SLOPEV3, TOTAL(), WRITEFITTINGVARIABLES, WRITENEWTOTEMPLATES,
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
@@ -673,7 +673,9 @@ noconfig:
 
   endfor
   close,1
-                                ;if our end galaxy is -1 then we want to fit the full catalog
+                                ;if our end galaxy is -1 then we want
+                                ;to fit the full catalog
+  IF startgalaxy LT 0 then startgalaxy = 0
   IF endgalaxy EQ -1 then begin
      endgalaxy=filelength-1-counter
   ENDIF
