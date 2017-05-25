@@ -4494,7 +4494,7 @@ noconfig:
                     tmppos=where('VROT_2' EQ tirificsecondvars)
                     tirificsecond[tmppos]=stringVROT
                     slope=1
-                    IF norings[0]-xind GT velconstused then velconstused=norings[0]-xdins
+                    IF norings[0]-xind GT velconstused then velconstused=norings[0]-xind
                     IF size(log,/TYPE) EQ 7 then begin
                        openu,66,log,/APPEND
                        printf,66,linenumber()+'This is a massive galaxy hence we flatten the outer part if xind is less '+$
