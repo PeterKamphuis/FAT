@@ -49,7 +49,7 @@ pro dec_names, values, tick_value = tv, tick_name = tn, n_ticks = n_ticks, $
   start = values[0]
   finish = values[nelts-1]
   range = finish-start
-
+print,values
 ; Establish the array of legitimate values for an increment.
   legit = [[60, 30, 15, 10, 5, 2, 1], 1/60d0*[30, 15, 10, 5, 2, 1], $
            1/3.6d3*[30, 15, 10, 5, 2, 1], 1/3.6d4*[5, 2, 1], $
@@ -136,7 +136,11 @@ pro dec_names, values, tick_value = tv, tick_name = tn, n_ticks = n_ticks, $
      degreesymbol='!9'+string("260B)+'!X'
   endelse
   if tv[0] LT 0. then begin
-     deg_name[0] =  strcompress(string(deg[0]), /rem)+degreesymbol
+     if fix(tv[0]) EQ 0 then begin
+        deg_name[0] = '-'+strcompress(string(deg[0]), /rem)+degreesymbol
+     endif else begin
+        deg_name[0] = strcompress(string(deg[0]), /rem)+degreesymbol
+     endelse
   endif else begin
      deg_name[0] =  strcompress(string(deg[0]), /rem)+degreesymbol
   endelse
@@ -148,7 +152,11 @@ pro dec_names, values, tick_value = tv, tick_name = tn, n_ticks = n_ticks, $
   for i = 1, n_elements(tv)-1 do begin
      if deg[i]-deg[i-1] ne 0 then begin
         if tv[i] LT 0. then begin
-           deg_name[i] =  strcompress(string(deg[i]), /rem)+degreesymbol
+           if fix(tv[i]) EQ 0 then begin
+              deg_name[i] = '-'+strcompress(string(deg[i]), /rem)+degreesymbol
+           endif else begin
+              deg_name[i] = strcompress(string(deg[i]), /rem)+degreesymbol
+           endelse
        endif else begin
            deg_name[i] =  strcompress(string(deg[i]), /rem)+degreesymbol
         endelse
