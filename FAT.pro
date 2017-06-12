@@ -3944,6 +3944,12 @@ noconfig:
      RADarr=secondfitvalues[*,tmppos]
      tmppos=where('VROT' EQ secondfitvaluesnames)
      VROTarr=secondfitvalues[*,tmppos]
+                                ;We check that it is not out off bound
+     tmp=WHERE(VROTarr GT VROTmax)
+     IF tmp[0] ne -1 then VROTarr[tmp]=VROTmax*0.8
+     tmp=WHERE(VROTarr LT VROTmin)
+     IF tmp[0] ne -1 then VROTarr[tmp]=VROTmin*2.
+     
      tmppos=where('SBR' EQ secondfitvaluesnames)
      SBRarr=secondfitvalues[*,tmppos]
      SBRarror=SBRarr
@@ -3953,6 +3959,13 @@ noconfig:
      PAang=secondfitvalues[*,tmppos]
      tmppos=where('VROT_2' EQ secondfitvaluesnames)
      VROTarr2=secondfitvalues[*,tmppos]
+                                   ;We check that it is not out off bound
+     tmp=WHERE(VROTarr2 GT VROTmax)
+     IF tmp[0] ne -1 then VROTarr2[tmp]=VROTmax*0.8
+     tmp=WHERE(VROTarr2 LT VROTmin)
+     IF tmp[0] ne -1 then VROTarr2[tmp]=VROTmin*2.
+     
+ 
      tmppos=where('SBR_2' EQ secondfitvaluesnames)
      SBRarr2=secondfitvalues[*,tmppos]
      SBRarr2or=SBRarr2
