@@ -1755,6 +1755,19 @@ noconfig:
             string(strtrim(strcompress(string(HIMass[0],format='(E10.3)')),2)),$
             string(strtrim(strcompress(string(convertskyanglefunction(DHI,catDistance[i]),format='(F8.1)')),2))
      close,1
+
+     IF Totflux[0] LT 0. then begin
+         IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"This galaxy has negative total flux. That will not work. Aborting "
+           close,66
+        ENDIF
+        openu,1,outputcatalogue,/APPEND
+        printf,1,format='(A60,A80)', catDirname[i],'We found an initial negative total flux.'
+        close,1 
+        bookkeeping=5
+        goto,finishthisgalaxy
+     ENDIF
      
                                 ;and we make a pv-diagram based on these parameters
      IF optimized then begin
@@ -1778,7 +1791,6 @@ noconfig:
            currentfitcube=tmp[0]
         endif
                                 ;       bookkeeping=0
-        print,'are we doinf this one?',setfinishafter
         goto,finishthisgalaxy
      ENDIF
                                 ;build up moment 0 axis
