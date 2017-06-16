@@ -60,7 +60,7 @@ Pro WriteNewToTemplate,Template,NewFileName,VARIABLES=TemplateVariables,ARRAYS=A
   IF NOT keyword_set(TemplateVariables) then begin
      TemplateVariables=strarr(n_elements(Template))
      for i=0,n_elements(Template)-1 do begin
-        tmp=str_sep(strtrim(strcompress(Template[i]),2),'=')     
+        tmp=strtrim(str_sep(strtrim(strcompress(Template[i]),2),'='),2)     
         TemplateVariables[i]=tmp[0]
      ENDFOR
   ENDIF
@@ -81,7 +81,7 @@ Pro WriteNewToTemplate,Template,NewFileName,VARIABLES=TemplateVariables,ARRAYS=A
   rings=0
   WHILE rings EQ 0 Do begin
      readf,1,h
-     tmp=str_sep(strtrim(strcompress(h),2),'=')
+     tmp=strtrim(str_sep(strtrim(strcompress(h),2),'='),2)
      IF tmp[0] EQ 'NUR' then begin
         Arrays=dblarr(fix(tmp[1]),n_elements(VariableChange))
         rings++
@@ -93,7 +93,7 @@ Pro WriteNewToTemplate,Template,NewFileName,VARIABLES=TemplateVariables,ARRAYS=A
 
   WHILE (NOT EOF(1)) DO BEGIN
      readf,1,h
-     tmp=str_sep(strtrim(strcompress(h),2),'=')
+     tmp=strtrim(str_sep(strtrim(strcompress(h),2),'='),2)
      varpos = WHERE(tmp[0] EQ VariableChange)
      IF varpos[0] NE -1 then begin
         tmppos=where(string(VariableChange[varpos[0]]) EQ string(TemplateVariables))
