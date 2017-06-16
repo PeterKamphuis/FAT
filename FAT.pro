@@ -41,6 +41,9 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      16-06-2017 P.Kamphuis; Upgraded to v5.0.2, added hanning
+;                             smoothing of the SBR profile.
+;  
 ;      20-05-2015 P.Kamphuis; Added a condition for real massive
 ;                             galaxies to always be declining.  
 ;
@@ -256,7 +259,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
      stop
   ENDIF
   skipcatch:
-  version='v5.0.1'
+  version='v5.0.2'
                                 ;First thing we do is to check whether we run IDL or GDL
   DEFSYSV, '!GDL', EXISTS = gdlidl ;is 1 when running GDL
   if n_elements(supportdir) EQ 0 then supportdir='Support'
@@ -2524,9 +2527,6 @@ noconfig:
            IF newinclination[0]+newinclination[1]/2. GT 50 then cutoffcorrection=1.
            IF newinclination[0]+newinclination[1]/2. LT 50 AND newinclination[0]+newinclination[1]/2. GT 40  then cutoffcorrection=1.+(50-(newinclination[0]+newinclination[1]/2.))*0.05
     
-        ;   cutoffcorrection=SIN(75.*!DtoR)/SIN(newinclination[0]*!DtoR)
-        ;   IF newinclination[0] GT 50 then cutoffcorrection=1.
-        ;   IF newinclination[0] LT 50 AND newinclination[0] GT 40  then cutoffcorrection=1.+(50-newinclination[0])*0.05
            IF cutoffcorrection GT 2.5 then cutoffcorrection=2.5
            IF doubled and cutoffcorrection GT 1. then cutoffcorrection=SQRT(cutoffcorrection)
   
@@ -2542,6 +2542,10 @@ noconfig:
         
         tmppos=where('SBR_2' EQ VariablesWanted)
         SBRarr2=firstfitvalues[*,tmppos]
+                                ;We always want to smooth the surface brightnes. Added 16-06-2017
+        SBRarr=fat_hanning(SBRarr)
+        SBRarr2=fat_hanning(SBRarr2)
+        
       
 
         
@@ -2810,9 +2814,11 @@ noconfig:
      SBRarr=firstfitvalues[*,tmppos]
      tmppos=where('SBR_2' EQ VariablesWanted)
      SBRarr2=firstfitvalues[*,tmppos]
-     tmppos=where('VROT' EQ VariablesWanted)
-    
+                                ;We always want to smooth the surface brightnes. Added 16-06-2017
+     SBRarr=fat_hanning(SBRarr)
+     SBRarr2=fat_hanning(SBRarr2)
      
+     tmppos=where('VROT' EQ VariablesWanted)
      VROTarr=firstfitvalues[*,tmppos]
      stringvelocities='VROT= 0. '+STRJOIN(VROTarr[1:n_elements(VROTarr)-1],' ')
      IF size(log,/TYPE) EQ 7 then begin
@@ -3406,6 +3412,8 @@ noconfig:
         smoothrotation=1
         VROTarr=firstfitvalues[*,7]
         SBRarr=(firstfitvalues[*,2]+firstfitvalues[*,8])/2.
+          ;We always want to smooth the surface brightnes. Added 16-06-2017
+        SBRarr=fat_hanning(SBRarr)
         VROTarr[0]=0.
         vmaxdev=MAX([30,7.5*channelwidth*(1.+vresolution)])
         verror=MAX([5.,channelwidth/2.*(1.+vresolution)/SQRT(sin(catinc[i]*!DtoR))])
@@ -3594,6 +3602,11 @@ noconfig:
      VROTarr2=VROTarr
      tmppos=where('SBR_2' EQ firstfitvaluesnames)
      SBRarr2=firstfitvalues[*,tmppos]
+                                ;We always want to smooth the surface brightnes. Added 16-06-2017
+     SBRarr=fat_hanning(SBRarr)
+     SBRarr2=fat_hanning(SBRarr2)
+
+     
      tmppos=where('INCL_2' EQ firstfitvaluesnames)
      INCLang2=firstfitvalues[*,tmppos]
      IF catinc[i] GT 80. then begin
@@ -3964,7 +3977,10 @@ noconfig:
      
      tmppos=where('SBR' EQ secondfitvaluesnames)
      SBRarr=secondfitvalues[*,tmppos]
+                                ;We always want to smooth the surface brightnes. Added 16-06-2017
+     SBRarr=fat_hanning(SBRarr)      
      SBRarror=SBRarr
+     
      tmppos=where('INCL' EQ secondfitvaluesnames)
      INCLang=secondfitvalues[*,tmppos]
      tmppos=where('PA' EQ secondfitvaluesnames)
@@ -3980,7 +3996,10 @@ noconfig:
  
      tmppos=where('SBR_2' EQ secondfitvaluesnames)
      SBRarr2=secondfitvalues[*,tmppos]
+                                ;We always want to smooth the surface brightnes. Added 16-06-2017
+     SBRarr2=fat_hanning(SBRarr2)
      SBRarr2or=SBRarr2
+     
      tmppos=where('INCL_2' EQ secondfitvaluesnames)
      INCLang2=secondfitvalues[*,tmppos]
      tmppos=where('PA_2' EQ secondfitvaluesnames)
@@ -5379,6 +5398,15 @@ noconfig:
         SBRarr=firstfitvalues[*,tmp]
         tmp=WHERE(firstfitvaluesnames EQ 'SBR_2')
         SBRarr2=firstfitvalues[*,tmp]
+                                ;We always want to smooth the surface brightnes. Added 16-06-2017
+        SBRarr=fat_hanning(SBRarr)
+        SBRarr2=fat_hanning(SBRarr2)
+                                ;In this case we want to add them back
+                                ;in
+        tmppos=WHERE(tirificsecondvars EQ 'SBR')
+        tirificsecond[tmppos]='SBR = '+STRJOIN(SBRarr,' ')
+        tmppos=WHERE(tirificsecondvars EQ 'SBR_2')
+        tirificsecond[tmppos]='SBR_2 = '+STRJOIN(SBRarr2,' ')
         tmpSBR=(SBRarr+SBRarr2)/2.
         IF finishafter EQ 1.1 then begin
            get_newringsv9,tmpSBR,tmpSBR,cutoff,newend
