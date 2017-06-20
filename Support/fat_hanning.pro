@@ -1,4 +1,4 @@
-Function fat_hanning,SBRin
+Function fat_hanning,SBRin,rings=rings
 
 ;+
 ; NAME:
@@ -16,7 +16,7 @@ Function fat_hanning,SBRin
 ;
 ; INPUTS:
 ;      SBRin = the profile to be smoothed 
-;
+;      rings = the amount of rings that are valid
 ; OPTIONAL INPUTS:
 ;       - 
 ;
@@ -80,9 +80,16 @@ Function fat_hanning,SBRin
   ENDIF
   skipcatch:
   SBR=SBRin
+                                ;If we provide a number of valid rings
+                                ;then we want to set all rings outside
+                                ;that to 0.
+;  IF n_elements(rings) GT 0 then begin
+;     IF rings[0] LT n_elements(SBR) then SBR[rings[0]-1:n_elements(SBR)-1]=0.
+;  ENDIF
+  
   SBRout=dblarr(n_elements(SBR))
   case 1 of
-     n_elements(SBR) LT 3:return,SBR
+     n_elements(SBR) LE 3:return,SBR
      n_elements(SBR) LT 15:points=5
      else:points=7
   endcase
@@ -100,7 +107,13 @@ Function fat_hanning,SBRin
                                 ;at the outer edge we can use
                                 ;zer0-padding
   for i=n_elements(SBR)-fix((points-1)/2.),n_elements(SBR)-1 do begin
-    SBRout[i]=TOTAL([SBR[i-fix((points-1)/2.):n_elements(SBR)-1],replicate(0.,i-(n_elements(SBR)-(fix((points-1)/2.)+1)))]*window)
+     SBRout[i]=TOTAL([SBR[i-fix((points-1)/2.):n_elements(SBR)-1],replicate(0.,i-(n_elements(SBR)-(fix((points-1)/2.)+1)))]*window)
   endfor
+  IF n_elements(rings) GT 0 then begin
+     IF rings[0] LT n_elements(SBR) then SBRout[rings[0]:n_elements(SBRout)-1]=1e-16
+  ENDIF
+  tmp=WHERE(SBRout LT 1e-16)
+  if tmp[0] NE -1 then SBRout[tmp]=1e-16
+  
   return,SBRout
 end

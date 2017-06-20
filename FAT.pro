@@ -305,6 +305,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   RESOLVE_ROUTINE, 'extract_pv'
   RESOLVE_ROUTINE, 'fat_fit',/IS_FUNCTION
   IF gdlidl then RESOLVE_ROUTINE,'fat_gdlgauss',/IS_FUNCTION,/COMPILE_FULL_FILE
+  RESOLVE_ROUTINE, 'fat_hanning',/IS_FUNCTION
   RESOLVE_ROUTINE, 'fat_ploterror'
   RESOLVE_ROUTINE, 'fat_smooth',/IS_FUNCTION
   RESOLVE_ROUTINE, 'fit_ellipse',/IS_FUNCTION
@@ -3603,8 +3604,9 @@ noconfig:
      tmppos=where('SBR_2' EQ firstfitvaluesnames)
      SBRarr2=firstfitvalues[*,tmppos]
                                 ;We always want to smooth the surface brightnes. Added 16-06-2017
-     SBRarr=fat_hanning(SBRarr)
-     SBRarr2=fat_hanning(SBRarr2)
+     get_newringsv9,SBRarr,SBRarr2,cutoff,newindrings,/individual
+     SBRarr=fat_hanning(SBRarr,rings=newindrings[0])
+     SBRarr2=fat_hanning(SBRarr2,rings=newindrings[1])
 
      
      tmppos=where('INCL_2' EQ firstfitvaluesnames)
@@ -3978,7 +3980,8 @@ noconfig:
      tmppos=where('SBR' EQ secondfitvaluesnames)
      SBRarr=secondfitvalues[*,tmppos]
                                 ;We always want to smooth the surface brightnes. Added 16-06-2017
-     SBRarr=fat_hanning(SBRarr)      
+     get_newringsv9,SBRarr,SBRarr2,cutoff,newindrings,/individual
+     SBRarr=fat_hanning(SBRarr,rings=newindrings[0])      
      SBRarror=SBRarr
      
      tmppos=where('INCL' EQ secondfitvaluesnames)
@@ -3997,7 +4000,8 @@ noconfig:
      tmppos=where('SBR_2' EQ secondfitvaluesnames)
      SBRarr2=secondfitvalues[*,tmppos]
                                 ;We always want to smooth the surface brightnes. Added 16-06-2017
-     SBRarr2=fat_hanning(SBRarr2)
+     get_newringsv9,SBRarr,SBRarr2,cutoff,newindrings,/individual
+     SBRarr2=fat_hanning(SBRarr2,rings=newindrings[1])
      SBRarr2or=SBRarr2
      
      tmppos=where('INCL_2' EQ secondfitvaluesnames)
@@ -5283,16 +5287,16 @@ noconfig:
         close,66
      ENDIF
                                 ;set the parameters for single fitting
-     SBRinput1=['!SBR '+strtrim(strcompress(string(newindrings[0],format='(F7.4)')),1)+':3','1',strtrim(strcompress(string(cutoff[n_elements(cutoff)-1]/2.,format='(E12.5)')),1),'1E-6','1E-7','1E-5','1E-7','3','70','70']
+     SBRinput1=['SBR '+strtrim(strcompress(string(newindrings[0],format='(F7.4)')),1)+':1','1',strtrim(strcompress(string(cutoff[n_elements(cutoff)-1]/2.,format='(E12.5)')),1),'1E-6','1E-7','1E-5','1E-7','3','70','70']
      SBRinput2=SBRinput1
-     SBRinput2[0]='!SBR_2 '+strtrim(strcompress(string(newindrings[1],format='(F7.4)')),1)+':3'
-     SBRinput3=SBRinput1
-     SBRinput3[0]='SBR 1 SBR_2 1'
-     SBRinput3[1]=strtrim(strcompress(string(SBRarr[1],format='(E12.5)')),1)
-     SBRinput3[2]=strtrim(strcompress(string(cutoff[n_elements(cutoff)-1],format='(E12.5)')),1)
-     SBRinput4=SBRinput1
-     SBRinput4[0]='SBR 2 SBR_2 2'
-     SBRinput4[2]=strtrim(strcompress(string(cutoff[n_elements(cutoff)-1],format='(E12.5)')),1)
+     SBRinput2[0]='SBR_2 '+strtrim(strcompress(string(newindrings[1],format='(F7.4)')),1)+':1'
+;     SBRinput3=SBRinput1
+;     SBRinput3[0]='SBR 1 SBR_2 1'
+;     SBRinput3[1]=strtrim(strcompress(string(SBRarr[1],format='(E12.5)')),1)
+;     SBRinput3[2]=strtrim(strcompress(string(cutoff[n_elements(cutoff)-1],format='(E12.5)')),1)
+;     SBRinput4=SBRinput1
+;     SBRinput4[0]='SBR 2 SBR_2 2'
+;     SBRinput4[2]=strtrim(strcompress(string(cutoff[n_elements(cutoff)-1],format='(E12.5)')),1)
      IF norings GT 4 and finishafter NE 1.1 then begin 
                                 ;PA
         PAinput1=['PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' '+$
@@ -5340,7 +5344,7 @@ noconfig:
                     ,'500',string(channelwidth),string(channelwidth*0.1),string(0.05*channelwidth),string(0.5*channelwidth),string(0.1*channelwidth),'3','70','70',' ']
      ENDELSE
                                 ;write the parameters to the tirific array
-     Writefittingvariables,tirificsecond,PAinput1,INCLinput1,VROTinput1,SBRinput1,SBRinput2,SBRinput4,SDISinput1,Z0input1 
+     Writefittingvariables,tirificsecond,PAinput1,INCLinput1,VROTinput1,SBRinput1,SBRinput2,SDISinput1,Z0input1 
      IF testing GE 2 OR finalsmooth EQ 2. then goto,testing2check
                                 ;Write to file
      openw,1,maindir+'/'+catdirname[i]+'/tirific.def'
@@ -5398,15 +5402,15 @@ noconfig:
         SBRarr=firstfitvalues[*,tmp]
         tmp=WHERE(firstfitvaluesnames EQ 'SBR_2')
         SBRarr2=firstfitvalues[*,tmp]
-                                ;We always want to smooth the surface brightnes. Added 16-06-2017
-        SBRarr=fat_hanning(SBRarr)
-        SBRarr2=fat_hanning(SBRarr2)
+;                                ;We always want to smooth the surface brightnes. Added 16-06-2017
+;        SBRarr=fat_hanning(SBRarr)
+;        SBRarr2=fat_hanning(SBRarr2)
                                 ;In this case we want to add them back
                                 ;in
-        tmppos=WHERE(tirificsecondvars EQ 'SBR')
-        tirificsecond[tmppos]='SBR= '+STRJOIN(SBRarr,' ')
-        tmppos=WHERE(tirificsecondvars EQ 'SBR_2')
-        tirificsecond[tmppos]='SBR_2= '+STRJOIN(SBRarr2,' ')
+;        tmppos=WHERE(tirificsecondvars EQ 'SBR')
+;        tirificsecond[tmppos]='SBR= '+STRJOIN(SBRarr,' ')
+;        tmppos=WHERE(tirificsecondvars EQ 'SBR_2')
+;        tirificsecond[tmppos]='SBR_2= '+STRJOIN(SBRarr2,' ')
         tmpSBR=(SBRarr+SBRarr2)/2.
         IF finishafter EQ 1.1 then begin
            get_newringsv9,tmpSBR,tmpSBR,cutoff,newend
