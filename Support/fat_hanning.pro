@@ -110,9 +110,9 @@ Function fat_hanning,SBRin,rings=rings
      SBRout[i]=TOTAL([SBR[i-fix((points-1)/2.):n_elements(SBR)-1],replicate(0.,i-(n_elements(SBR)-(fix((points-1)/2.)+1)))]*window)
   endfor
   IF n_elements(rings) GT 0 then begin
-     IF rings[0] LT n_elements(SBR) then SBRout[rings[0]:n_elements(SBRout)-1]=1e-16
+     IF rings[0]+1 LT n_elements(SBR) then SBRout[rings[0]+1:n_elements(SBRout)-1]=1e-16
   ENDIF
-  tmp=WHERE(SBRout LT 1e-16)
+  tmp=WHERE(SBRout LT 1e-8)
   if tmp[0] NE -1 then SBRout[tmp]=1e-16
   
   return,SBRout
