@@ -282,9 +282,11 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
            tmp[*,*,0:n_elements(tmp[0,0,*])-1]=cube[*,*,1:n_elements(cube[0,0,*])-1]
            sxaddpar,header,'CRPIX3',sxpar(header,'CRPIX3')-1.
         ENDIF ELSE BEGIN
-           secondcompprev=secondcomp
-           secondcut++
-           tmp[*,*,0:n_elements(tmp[0,0,*])-1]=cube[*,*,0:n_elements(cube[0,0,*])-2]
+           IF (ABS((secondcomp-secondcompprev)/secondcomp)) GT ABS((firstcomp-firstcompprev)/firstcomp) AND secondcut LT 8) OR NOT FINITE(rmslastchannel) then begin
+              secondcompprev=secondcomp
+              secondcut++
+              tmp[*,*,0:n_elements(tmp[0,0,*])-1]=cube[*,*,0:n_elements(cube[0,0,*])-2]
+           ENDIF ELSE difference=0.
         endelse
         IF firstcut GE 8 AND secondcut GE 8 then begin
            difference=0.
