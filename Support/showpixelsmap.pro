@@ -75,13 +75,13 @@ pro showpixelsmap, xaxis, yaxis, int, BLANK_VALUE=blankval,RANGE=range, PLOT_ALL
 ; NOTE:
 ;  
 
-  CATCH,Error_status
+;  CATCH,Error_status
+  Error_Status=0.
   IF  Error_status NE 0. THEN BEGIN
      print, 'Oops the following went wrong:'
      print, !ERROR_STATE.MSG
      print, 'Use Showpixelsmap in this way:'
-     print,'CALLING SEQUENCE:showpixelsmap,xaxis,yaxis, int, EXTRA=extra'
-     
+     print,'CALLING SEQUENCE:showpixelsmap,xaxis,yaxis, int, EXTRA=extra'     
      print, '      xaxis = the x central positions of the cells'
      print, '      yaxis = the y central positions of the cells'
      print, '        int = the values of the image. Has to be a 2D array'

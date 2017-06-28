@@ -78,7 +78,7 @@ if keyword_set(gaussian) then begin
 endif
 if keyword_set(box) then begin
    inf=WHERE(FINITE(mapor) EQ 0)
-   mapor[inf]=0.
+   IF inf[0] NE -1 then  mapor[inf]=0.
    startpixx=fix(sigma/2.)
    endpixx=n_elements(map[*,0])-startpixx-1
    startpixy=fix(sigma/2.)

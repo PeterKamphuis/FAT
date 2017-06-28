@@ -12,7 +12,6 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ; CALLING SEQUENCE:
 ;      FAT,support='supportdir',configuration_file='configfile' 
 ;
-
 ; INPUTS:
 ;      - 
 ; OPTIONAL INPUT KEYWORDS:
@@ -41,6 +40,9 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      16-06-2017 P.Kamphuis; Upgraded to v5.0.2, added hanning
+;                             smoothing of the SBR profile.
+;  
 ;      20-05-2015 P.Kamphuis; Added a condition for real massive
 ;                             galaxies to always be declining.  
 ;
@@ -256,7 +258,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
      stop
   ENDIF
   skipcatch:
-  version='v5.0'
+  version='v5.0.2'
                                 ;First thing we do is to check whether we run IDL or GDL
   DEFSYSV, '!GDL', EXISTS = gdlidl ;is 1 when running GDL
   if n_elements(supportdir) EQ 0 then supportdir='Support'
@@ -302,6 +304,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   RESOLVE_ROUTINE, 'extract_pv'
   RESOLVE_ROUTINE, 'fat_fit',/IS_FUNCTION
   IF gdlidl then RESOLVE_ROUTINE,'fat_gdlgauss',/IS_FUNCTION,/COMPILE_FULL_FILE
+  RESOLVE_ROUTINE, 'fat_hanning',/IS_FUNCTION
   RESOLVE_ROUTINE, 'fat_ploterror'
   RESOLVE_ROUTINE, 'fat_smooth',/IS_FUNCTION
   RESOLVE_ROUTINE, 'fit_ellipse',/IS_FUNCTION
@@ -1755,6 +1758,19 @@ noconfig:
             string(strtrim(strcompress(string(HIMass[0],format='(E10.3)')),2)),$
             string(strtrim(strcompress(string(convertskyanglefunction(DHI,catDistance[i]),format='(F8.1)')),2))
      close,1
+
+     IF Totflux[0] LT 0. then begin
+         IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"This galaxy has negative total flux. That will not work. Aborting "
+           close,66
+        ENDIF
+        openu,1,outputcatalogue,/APPEND
+        printf,1,format='(A60,A80)', catDirname[i],'We found an initial negative total flux.'
+        close,1 
+        bookkeeping=5
+        goto,finishthisgalaxy
+     ENDIF
      
                                 ;and we make a pv-diagram based on these parameters
      IF optimized then begin
@@ -1778,7 +1794,6 @@ noconfig:
            currentfitcube=tmp[0]
         endif
                                 ;       bookkeeping=0
-        print,'are we doinf this one?',setfinishafter
         goto,finishthisgalaxy
      ENDIF
                                 ;build up moment 0 axis
@@ -2512,9 +2527,6 @@ noconfig:
            IF newinclination[0]+newinclination[1]/2. GT 50 then cutoffcorrection=1.
            IF newinclination[0]+newinclination[1]/2. LT 50 AND newinclination[0]+newinclination[1]/2. GT 40  then cutoffcorrection=1.+(50-(newinclination[0]+newinclination[1]/2.))*0.05
     
-        ;   cutoffcorrection=SIN(75.*!DtoR)/SIN(newinclination[0]*!DtoR)
-        ;   IF newinclination[0] GT 50 then cutoffcorrection=1.
-        ;   IF newinclination[0] LT 50 AND newinclination[0] GT 40  then cutoffcorrection=1.+(50-newinclination[0])*0.05
            IF cutoffcorrection GT 2.5 then cutoffcorrection=2.5
            IF doubled and cutoffcorrection GT 1. then cutoffcorrection=SQRT(cutoffcorrection)
   
@@ -2530,6 +2542,10 @@ noconfig:
         
         tmppos=where('SBR_2' EQ VariablesWanted)
         SBRarr2=firstfitvalues[*,tmppos]
+                                ;We always want to smooth the surface brightnes. Added 16-06-2017
+        SBRarr=fat_hanning(SBRarr)
+        SBRarr2=fat_hanning(SBRarr2)
+        
       
 
         
@@ -2798,9 +2814,11 @@ noconfig:
      SBRarr=firstfitvalues[*,tmppos]
      tmppos=where('SBR_2' EQ VariablesWanted)
      SBRarr2=firstfitvalues[*,tmppos]
-     tmppos=where('VROT' EQ VariablesWanted)
-    
+                                ;We always want to smooth the surface brightnes. Added 16-06-2017
+     SBRarr=fat_hanning(SBRarr)
+     SBRarr2=fat_hanning(SBRarr2)
      
+     tmppos=where('VROT' EQ VariablesWanted)
      VROTarr=firstfitvalues[*,tmppos]
      stringvelocities='VROT= 0. '+STRJOIN(VROTarr[1:n_elements(VROTarr)-1],' ')
      IF size(log,/TYPE) EQ 7 then begin
@@ -3394,6 +3412,8 @@ noconfig:
         smoothrotation=1
         VROTarr=firstfitvalues[*,7]
         SBRarr=(firstfitvalues[*,2]+firstfitvalues[*,8])/2.
+          ;We always want to smooth the surface brightnes. Added 16-06-2017
+        SBRarr=fat_hanning(SBRarr)
         VROTarr[0]=0.
         vmaxdev=MAX([30,7.5*channelwidth*(1.+vresolution)])
         verror=MAX([5.,channelwidth/2.*(1.+vresolution)/SQRT(sin(catinc[i]*!DtoR))])
@@ -3560,6 +3580,11 @@ noconfig:
                                 ;then open the previous fit 
      firstfitvaluesnames=0.
      writenewtotemplate,tirificsecond,maindir+'/'+catdirname[i]+'/1stfit.def',Arrays=firstfitvalues,VariableChange=firstfitvaluesnames,Variables=tirificsecondvars
+     tmppos=where('XPOS' EQ firstfitvaluesnames)
+     Final1stXPOS=firstfitvalues[0,tmppos]
+     tmppos=where('YPOS' EQ firstfitvaluesnames)
+     Final1stYPOS=firstfitvalues[0,tmppos]
+
      tmppos=where('RADI' EQ firstfitvaluesnames)
      RADarr=firstfitvalues[*,tmppos]
      tmppos=where('VROT' EQ firstfitvaluesnames)
@@ -3577,6 +3602,12 @@ noconfig:
      VROTarr2=VROTarr
      tmppos=where('SBR_2' EQ firstfitvaluesnames)
      SBRarr2=firstfitvalues[*,tmppos]
+                                ;We always want to smooth the surface brightnes. Added 16-06-2017
+     get_newringsv9,SBRarr,SBRarr2,cutoff,newindrings,/individual
+     SBRarr=fat_hanning(SBRarr,rings=newindrings[0])
+     SBRarr2=fat_hanning(SBRarr2,rings=newindrings[1])
+
+     
      tmppos=where('INCL_2' EQ firstfitvaluesnames)
      INCLang2=firstfitvalues[*,tmppos]
      IF catinc[i] GT 80. then begin
@@ -3846,12 +3877,16 @@ noconfig:
      lastaddrings=0.
      polorder1=[!values.f_nan,!values.f_nan]
      polorder2=[!values.f_nan,!values.f_nan]
-     
+     centrejump=0.
      prevrings=norings[0]
      secondtime=0.
+     prevXPOS=Final1stXPOS
+     prevYPOS=Final1stYPOS
                                 ;If the second fit is not accepted we
                                 ;come back to this point to do the refitting 
      notacceptedtwo:
+     prevXPOS=newXPOS
+     prevYPOS=newYPOS    
      prevslopedrings=slopedrings
                                 ;If we have optimized the cube we want
                                 ;to set the _opt extension to the
@@ -3884,7 +3919,10 @@ noconfig:
      print,linenumber()+"Starting tirific Second estimate in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
                                 ;rename the files
      counter++
-     
+     IF MEAN(VROTarr) GT 1000. then begin
+        print,'something has gone horribly wrong'
+        stop
+     ENDIF
 ;     spawn,'mv 2ndfit.def 2ndfit_'+strtrim(strcompress(string(fix(counter))),2)+'.def'
      rename,'2ndfit.','2ndfitold.'
      gipsyfirst=strarr(1)
@@ -3924,22 +3962,47 @@ noconfig:
  
                                 ;We get the previous fit and read it into the fitting template
      writenewtotemplate,tirificsecond,maindir+'/'+catdirname[i]+'/2ndfit.def',Arrays=secondfitvalues,VariableChange=secondfitvaluesnames,Variables=tirificsecondvars
+     tmppos=where('XPOS' EQ secondfitvaluesnames)
+     newXPOS=secondfitvalues[0,tmppos]
+     tmppos=where('YPOS' EQ secondfitvaluesnames)
+     newYPOS=secondfitvalues[0,tmppos]
      tmppos=where('RADI' EQ secondfitvaluesnames)
      RADarr=secondfitvalues[*,tmppos]
      tmppos=where('VROT' EQ secondfitvaluesnames)
      VROTarr=secondfitvalues[*,tmppos]
+                                ;We check that it is not out off bound
+     tmp=WHERE(VROTarr GT VROTmax)
+     IF tmp[0] ne -1 then VROTarr[tmp]=VROTmax*0.8
+     tmp=WHERE(VROTarr LT VROTmin)
+     IF tmp[0] ne -1 then VROTarr[tmp]=VROTmin*2.
+     
      tmppos=where('SBR' EQ secondfitvaluesnames)
      SBRarr=secondfitvalues[*,tmppos]
+                                ;We always want to smooth the surface brightnes. Added 16-06-2017
+     get_newringsv9,SBRarr,SBRarr2,cutoff,newindrings,/individual
+     SBRarr=fat_hanning(SBRarr,rings=newindrings[0])      
      SBRarror=SBRarr
+     
      tmppos=where('INCL' EQ secondfitvaluesnames)
      INCLang=secondfitvalues[*,tmppos]
      tmppos=where('PA' EQ secondfitvaluesnames)
      PAang=secondfitvalues[*,tmppos]
      tmppos=where('VROT_2' EQ secondfitvaluesnames)
      VROTarr2=secondfitvalues[*,tmppos]
+                                   ;We check that it is not out off bound
+     tmp=WHERE(VROTarr2 GT VROTmax)
+     IF tmp[0] ne -1 then VROTarr2[tmp]=VROTmax*0.8
+     tmp=WHERE(VROTarr2 LT VROTmin)
+     IF tmp[0] ne -1 then VROTarr2[tmp]=VROTmin*2.
+     
+ 
      tmppos=where('SBR_2' EQ secondfitvaluesnames)
      SBRarr2=secondfitvalues[*,tmppos]
+                                ;We always want to smooth the surface brightnes. Added 16-06-2017
+     get_newringsv9,SBRarr,SBRarr2,cutoff,newindrings,/individual
+     SBRarr2=fat_hanning(SBRarr2,rings=newindrings[1])
      SBRarr2or=SBRarr2
+     
      tmppos=where('INCL_2' EQ secondfitvaluesnames)
      INCLang2=secondfitvalues[*,tmppos]
      tmppos=where('PA_2' EQ secondfitvaluesnames)
@@ -3951,6 +4014,55 @@ noconfig:
            Close,66
         ENDIF        
      ENDIF
+                                ;First we check that the center has not jumped. If it has we reset the central position. And make sure that SBR is at least 2 the cutoff and refit
+     IF ABS(newXPOS-prevXPOS) GT catmajbeam[i]/1800. OR  ABS(newYPOS-prevYPOS) GT catmajbeam[i]/1800. OR $
+        ABS(newXPOS-Final1stXPOS) GT catmajbeam[i]/900. OR ABS(newYPOS-Final1stYPOS) GT catmajbeam[i]/900. then begin       
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"The center shifted more than 2 major beams. Not applying this shift and refitting."
+           printf,66,linenumber()+"The center is bad at "+strtrim(string(newXPOS),2)+', '+strtrim(string(newYPOS),2)
+           printf,66,linenumber()+"It was at "+strtrim(string(prevXPOS),2)+', '+strtrim(string(prevYPOS),2)    
+           close,66
+        ENDIF ELSE BEGIN
+           print,linenumber()+"The center shifted than 2 major beams. Not applying this shift and refitting."
+        ENDELSE
+                                ;If we have jumped from the centre too often then abort
+        IF  (ABS(newXPOS-prevXPOS) LT pixelsizeRA OR ABS(newYPOS-prevYPOS) LT pixelsizeDEC) AND centrejump GT 4 then begin
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"The center shifted more than 4 major beams from the first fit."
+              printf,66,linenumber()+"Finished "+catDirname[i]+" which is galaxy #  "+strtrim(string(fix(i)),2)+" at "+systime()
+              close,66
+           ENDIF   
+           openu,1,outputcatalogue,/APPEND
+           printf,1,format='(A60,A80)', catDirname[i],'The first fit centre kept jumping away.'
+           close,1 
+           bookkeeping=5
+           goto,finishthisgalaxy
+        ENDIF
+           
+        tmppos=where('XPOS' EQ tirificsecondvars)
+        tirificsecond[tmppos]=' XPOS= '+string(prevXPOS)
+        tmppos=where('XPOS_2' EQ tirificsecondvars)
+        tirificsecond[tmppos]=' XPOS_2= '+string(prevXPOS)
+        tmppos=where('YPOS' EQ tirificsecondvars)
+        tirificsecond[tmppos]=' YPOS= '+string(prevYPOS)
+        tmppos=where('YPOS_2' EQ tirificsecondvars)
+        tirificsecond[tmppos]=' YPOS_2= '+string(prevYPOS)
+        for j=0,n_elements(SBRarr)-1 do begin
+           IF SBRarr[j] LT cutoff[j] then SBRarr[j]=cutoff[j]*3.
+           IF SBRarr2[j] LT cutoff[j] then SBRarr2[j]=cutoff[j]*3.
+        endfor
+        AC2=0
+        centrejump++
+     ENDIF ELSE BEGIN
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"The center is swell it is at "+strtrim(string(newXPOS),2)+', '+strtrim(string(newYPOS),2)
+           printf,66,linenumber()+"It was at "+strtrim(string(prevXPOS),2)+', '+strtrim(string(prevYPOS),2)
+           close,66
+        ENDIF  
+     ENDELSE
                                 ;Sometimes TiRiFiC can place values
                                 ;outside the boundaries leading to
                                 ;peculiar effects. Hence we first check
@@ -4064,7 +4176,7 @@ noconfig:
         close,66
      ENDIF
      slope=0
-     if locmax[n_elements(locmax)-1] LT n_elements(VROTarr)/2. then begin
+     if locmax[n_elements(locmax)-1] LT n_elements(VROTarr)/2. AND MEAN(VROTarr[fix(n_elements(VROTarr)/2.):n_elements(VROTarr)-1]) GT 120. then begin
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+"This curve is declining so we flatten the outerpart instead of fitting a slope"
@@ -4074,7 +4186,7 @@ noconfig:
         velfixrings=norings[0]-velconstused
         IF velfixrings LT 1 then velfixrings=1
         IF velfixrings EQ 1 AND norings[0] GT 5 then velfixrings=2
-        VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1]=TOTAL(VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1])/n_elements(VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1])
+        IF velfixrings GT 1 then VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1]=TOTAL(VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1])/n_elements(VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1])
      ENDIF
      set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,finish_after=finishafter,slope=slope
                                 ;Then set the surface brighness profile parameters
@@ -4231,9 +4343,9 @@ noconfig:
         tmpSBR=(SBRarror+SBRarr2or)/2.
         verror=MAX([5.,channelwidth/2.*(1.+vresolution)/SQRT(sin(catinc[i]*!DtoR))])
         IF double(VROTarr[1]) LT 120. AND  double(VROTarr[2]) LT 120. then begin
-           revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=1,order=polorder,error=sigmarot,log=log  
+           revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=1,order=polorder,error=sigmarot,log=log,max_par=VROTmax,min_par=channelwidth  
         ENDIF ELSE BEGIN
-           revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=1,/NOCENTRAL,error=sigmarot,log=log  
+           revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=1,/NOCENTRAL,error=sigmarot,log=log,max_par=VROTmax,min_par=channelwidth    
         ENDELSE
 
         stringVROT='VROT= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
@@ -4494,7 +4606,7 @@ noconfig:
                     tmppos=where('VROT_2' EQ tirificsecondvars)
                     tirificsecond[tmppos]=stringVROT
                     slope=1
-                    IF norings[0]-xind GT velconstused then velconstused=norings[0]-xdins
+                    IF norings[0]-xind GT velconstused then velconstused=norings[0]-xind
                     IF size(log,/TYPE) EQ 7 then begin
                        openu,66,log,/APPEND
                        printf,66,linenumber()+'This is a massive galaxy hence we flatten the outer part if xind is less '+$
@@ -4517,14 +4629,14 @@ noconfig:
            printf,66,linenumber()+"Vmax occurs at ring no "+string(locmax[n_elements(locmax)-1]+1)
            close,66
         ENDIF
-        if locmax[n_elements(locmax)-1] LT n_elements(VROTarr)/2. then begin
+        if locmax[n_elements(locmax)-1] LT n_elements(VROTarr)/2.  AND MEAN(VROTarr[fix(n_elements(VROTarr)/2.):n_elements(VROTarr)-1]) GT 120. then begin
             IF size(log,/TYPE) EQ 7 then begin
                openu,66,log,/APPEND
                printf,66,linenumber()+"This curve is declining so we fit a flat outer part"
                close,66
             ENDIF
            slope=1
-           VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1]=TOTAL(VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1])/n_elements(VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1])
+           IF velfixrings GT 1 then VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1]=TOTAL(VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1])/n_elements(VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1])
         ENDIF
         IF finalsmooth EQ 1 AND velconstused LT norings[0] AND (norings[0] LT 15 OR (polorder1[1] LT 4. AND polorder2[1] LT 4)) then begin
            vrotslopinput=strarr(10)
@@ -4545,7 +4657,11 @@ noconfig:
               openu,66,log,/APPEND
               printf,66,linenumber()+"Starting slope adjustment in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
               close,66
-           ENDIF 
+           ENDIF
+           IF MEAN(VROTarr) GT 1000. then begin
+              print,'something has gone horribly wrong'
+              stop
+           ENDIF
            print,linenumber()+"Starting slope adjustment in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
            rename,'2ndfit.','2ndfittmp.'
            gipsyfirst=strarr(1)
@@ -5170,16 +5286,16 @@ noconfig:
         close,66
      ENDIF
                                 ;set the parameters for single fitting
-     SBRinput1=['!SBR '+strtrim(strcompress(string(newindrings[0],format='(F7.4)')),1)+':3','1',strtrim(strcompress(string(cutoff[n_elements(cutoff)-1]/2.,format='(E12.5)')),1),'1E-6','1E-7','1E-5','1E-7','3','70','70']
+     SBRinput1=['SBR '+strtrim(strcompress(string(newindrings[0],format='(F7.4)')),1)+':1','1',strtrim(strcompress(string(cutoff[n_elements(cutoff)-1]/2.,format='(E12.5)')),1),'1E-6','1E-7','1E-5','1E-7','3','70','70']
      SBRinput2=SBRinput1
-     SBRinput2[0]='!SBR_2 '+strtrim(strcompress(string(newindrings[1],format='(F7.4)')),1)+':3'
-     SBRinput3=SBRinput1
-     SBRinput3[0]='SBR 1 SBR_2 1'
-     SBRinput3[1]=strtrim(strcompress(string(SBRarr[1],format='(E12.5)')),1)
-     SBRinput3[2]=strtrim(strcompress(string(cutoff[n_elements(cutoff)-1],format='(E12.5)')),1)
-     SBRinput4=SBRinput1
-     SBRinput4[0]='SBR 2 SBR_2 2'
-     SBRinput4[2]=strtrim(strcompress(string(cutoff[n_elements(cutoff)-1],format='(E12.5)')),1)
+     SBRinput2[0]='SBR_2 '+strtrim(strcompress(string(newindrings[1],format='(F7.4)')),1)+':1'
+;     SBRinput3=SBRinput1
+;     SBRinput3[0]='SBR 1 SBR_2 1'
+;     SBRinput3[1]=strtrim(strcompress(string(SBRarr[1],format='(E12.5)')),1)
+;     SBRinput3[2]=strtrim(strcompress(string(cutoff[n_elements(cutoff)-1],format='(E12.5)')),1)
+;     SBRinput4=SBRinput1
+;     SBRinput4[0]='SBR 2 SBR_2 2'
+;     SBRinput4[2]=strtrim(strcompress(string(cutoff[n_elements(cutoff)-1],format='(E12.5)')),1)
      IF norings GT 4 and finishafter NE 1.1 then begin 
                                 ;PA
         PAinput1=['PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' '+$
@@ -5227,7 +5343,7 @@ noconfig:
                     ,'500',string(channelwidth),string(channelwidth*0.1),string(0.05*channelwidth),string(0.5*channelwidth),string(0.1*channelwidth),'3','70','70',' ']
      ENDELSE
                                 ;write the parameters to the tirific array
-     Writefittingvariables,tirificsecond,PAinput1,INCLinput1,VROTinput1,SBRinput1,SBRinput2,SBRinput4,SDISinput1,Z0input1 
+     Writefittingvariables,tirificsecond,PAinput1,INCLinput1,VROTinput1,SBRinput1,SBRinput2,SDISinput1,Z0input1 
      IF testing GE 2 OR finalsmooth EQ 2. then goto,testing2check
                                 ;Write to file
      openw,1,maindir+'/'+catdirname[i]+'/tirific.def'
@@ -5242,7 +5358,11 @@ noconfig:
         printf,66,linenumber()+"We have changed the ring numbers "+string(sbrmodify)+" times."
         printf,66,linenumber()+"We have changed the fitting parameters "+string(trytwo)+" times."
         close,66
-     ENDIF 
+     ENDIF
+     IF MEAN(VROTarr) GT 1000. then begin
+        print,'something has gone horribly wrong'
+        stop
+     ENDIF
      print,linenumber()+"Starting tirific check of second estimate in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
      rename,'2ndfit.','2ndfitunsmooth.'
      gipsyfirst=strarr(1)
@@ -5281,6 +5401,15 @@ noconfig:
         SBRarr=firstfitvalues[*,tmp]
         tmp=WHERE(firstfitvaluesnames EQ 'SBR_2')
         SBRarr2=firstfitvalues[*,tmp]
+;                                ;We always want to smooth the surface brightnes. Added 16-06-2017
+        SBRarr=fat_hanning(SBRarr)
+        SBRarr2=fat_hanning(SBRarr2)
+                                ;In this case we want to add them back
+                                ;in
+        tmppos=WHERE(tirificsecondvars EQ 'SBR')
+        tirificsecond[tmppos]='SBR= '+STRJOIN(SBRarr,' ')
+        tmppos=WHERE(tirificsecondvars EQ 'SBR_2')
+        tirificsecond[tmppos]='SBR_2= '+STRJOIN(SBRarr2,' ')
         tmpSBR=(SBRarr+SBRarr2)/2.
         IF finishafter EQ 1.1 then begin
            get_newringsv9,tmpSBR,tmpSBR,cutoff,newend
