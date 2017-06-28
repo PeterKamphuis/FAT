@@ -255,6 +255,7 @@ Pro revised_regularisation_com,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
            newPA[*,i]=PAin[*,i]
            errors[*,i]=ABS(PA[*,i]-PAsmooth[*,i])
         endfor
+        
      endif else begin
         for i=0,n_elements(PAin[0,*])-1 do begin
            newPA[*,i]=PAsmooth[*,i]
@@ -337,6 +338,7 @@ restartall:
      errors[*,1]=ddiv[1]
   ENDIF ELSE BEGIN
      IF n_elements(RADII) LT 15 then ratio=cutoff[0:n_elements(SBR)-1]/(SBR[*]*RADII[*]) else ratio=cutoff[0:n_elements(SBR)-1]/SBR
+ 
      tmp=MAX(ratio,min=norm)
      tmp=WHERE(ratio EQ norm)
      ratio=ratio/norm
@@ -464,8 +466,8 @@ restartall:
            IF j EQ n_elements(PA[*,0])-2 then begin
               IF sawtooth then begin
                  tmp=ABS((PA[j,*]-PA[j+1,*])/2.)
-                 IF tmp[0] LT Ddiv[0] then errors[j+1,0]=errors[j,0] else  errors[j+1,0]=tmp[0]
-                 IF tmp[1] LT Ddiv[1] then errors[j+1,1]=errors[j,1] else  errors[j+1,1]=tmp[1]
+                 IF tmp[0]/2. LT Ddiv[0] then errors[j+1,0]=errors[j,0] else  errors[j+1,0]=tmp[0]
+                 IF tmp[1]/2. LT Ddiv[1] then errors[j+1,1]=errors[j,1] else  errors[j+1,1]=tmp[1]
            ;      errors[j+1,*]=ABS((PA[j,*]-PA[j+1,*])/2.)
                  IF ABS((PA[j,0]-PA[j+1,0])) GT maxdev[0]*2 then begin
                     errors[j+1,0]=ABS((PA[j,0]-PA[j+1,0]))*(ABS((PA[j,0]-PA[j+1,0])/maxdev[0]))
@@ -480,7 +482,7 @@ restartall:
                     ;*ratio[j+1]
                  ENDIF
                  IF ABS((PA[j,0]-PA[j+1,0])) GT maxdev[0]  OR ABS((PA[j,1]-PA[j+1,1])) GT maxdev[1] then begin
-                    errors[j+1,0]=errors[j+1,0]^2.
+                    errors[j+1,0]=errors[j+1,0]^2
                     errors[j+1,1]=errors[j+1,1]^2
                  ENDIF
                      
@@ -499,7 +501,7 @@ restartall:
            ENDIF
          
            IF sawtooth then begin
-              IF counter GT 0 then errors[j,*]=ABS(ABS(PA[j-1,*]+PA[j+1,*])/2.-PA[j,*])
+              IF counter GT 0 then errors[j,*]=ABS(ABS(PA[j-1,*]+PA[j+1,*])/2.-PA[j,*])/2.
               maxdevfac[*]=ABS(deltaslope[*]/(maxdev[*]/accuracy[*]))
               tmp=WHERE(maxdevfac LT 1.2)
               IF tmp[0] NE -1 then maxdevfac[tmp]=1.2
@@ -581,9 +583,20 @@ restartall:
         j--
      ENDWHILE
   endfor
-  
-
-  
+                                ;errors should kind off be increasing unless there is a drop in SBR
+;  for j=0,1 do begin
+;     for i=1,n_elements(SBR)-1 do begin
+;        if errors[i,j] LT errors[i-1,j] AND SBR[i]/cutoff[i] LT SBR[i-1]/cutoff[i-1] then begin
+;           errors[i,j]=errors[i-1,j]
+;        ENDIF
+;        if n_elements(ddiv) GT 0 then begin
+;           if errors[i,j] GT 2*ddiv[j]*errors[i-1,j] then begin
+;              errors[i,j]=2*ddiv[j]*errors[i-1,j]
+;           ENDIF
+;        ENDIF
+;        
+ ;    endfor
+;  endfor
   IF keyword_set(extending) then errors[n_elements(errors[*,0])-1,*]=errors[n_elements(errors[*,0])-2,*]
 ; There can't be zeros in the errors let's check
   for i=0,1 do begin
@@ -686,7 +699,8 @@ restartall:
    
 refit:
 
-
+;  errors[*,0]=cutoff/SBR*Ddiv[0]/(cutoff[1]/SBR[1])
+;  errors[*,1]=cutoff/SBR*Ddiv[1]/(cutoff[1]/SBR[1])
   shifterrors=errors
   if keyword_set(debug) then begin
      print,'Input to the polynomial fit'
@@ -696,12 +710,14 @@ refit:
      print,'RADII'
      print,RADII
      help,RADII
+     
      print,'error'
      print,errors
      help,errors
      print,'SBR/cutoff'
      print,SBR/cutoff
-    
+     
+     
   ENDIF
                                 ;If all reliable rings are fixed we
                                 ;can skip the fitting of polynomials

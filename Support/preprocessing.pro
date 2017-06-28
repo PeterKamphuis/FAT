@@ -41,6 +41,10 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       27-06-2017 P.Kamphuis; Some bug fix while checking if a
+;                              channel should be cut. Also limit the
+;                              amount of noise based cuts to maximum
+;                              10% on both sides.
 ;       28-03-2016 P.Kamphuis; Added a check against the spatial axes
 ;                              to make sure RA is on first axis DEcC is on second 
 ;       18-02-2016 P.Kamphuis; Replaced sigma with STDDEV 
@@ -276,18 +280,25 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
         tmp=fltarr(n_elements(cube[*,0,0]),n_elements(cube[0,*,0]),n_elements(cube[0,0,*])-1)
         firstcomp=ABS((rmsfirstchannel-rmscorn)/rmscorn)
         secondcomp=ABS((rmslastchannel-rmscorn)/rmscorn)
-        IF (firstcomp GT secondcomp AND ABS((firstcomp-firstcompprev)/firstcomp) GT ABS((secondcomp-secondcompprev)/secondcomp) AND firstcut LT 8.) OR NOT FINITE(rmsfirstchannel) then begin
+        if firstcompprev EQ 0 then firstcompprev=firstcomp
+        if secondcompprev EQ 0 then secondcompprev=secondcomp
+        IF (firstcomp GT secondcomp AND ABS((firstcomp-firstcompprev)/firstcomp) GE ABS((secondcomp-secondcompprev)/secondcomp) AND firstcut LT 0.1*n_elements(cube[0,0,*])) OR NOT FINITE(rmsfirstchannel) then begin
            firstcompprev=firstcomp
            firstcut++
            tmp[*,*,0:n_elements(tmp[0,0,*])-1]=cube[*,*,1:n_elements(cube[0,0,*])-1]
            sxaddpar,header,'CRPIX3',sxpar(header,'CRPIX3')-1.
         ENDIF ELSE BEGIN
-           IF (ABS((secondcomp-secondcompprev)/secondcomp) GT ABS((firstcomp-firstcompprev)/firstcomp) AND secondcut LT 8) OR NOT FINITE(rmslastchannel) then begin
+           IF secondcut LT 0.1*n_elements(cube[0,0,*]) OR NOT FINITE(rmslastchannel) then begin
               secondcompprev=secondcomp
+             
               secondcut++
               tmp[*,*,0:n_elements(tmp[0,0,*])-1]=cube[*,*,0:n_elements(cube[0,0,*])-2]
-           ENDIF ELSE difference=0.
+           ENDIF ELSE BEGIN
+              difference=0.
+              tmp=cube
+           ENDELSE
         endelse
+        
         IF firstcut GE 8 AND secondcut GE 8 then begin
            difference=0.
            IF size(log,/TYPE) EQ 7 then begin

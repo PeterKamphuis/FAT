@@ -12,7 +12,6 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ; CALLING SEQUENCE:
 ;      FAT,support='supportdir',configuration_file='configfile' 
 ;
-
 ; INPUTS:
 ;      - 
 ; OPTIONAL INPUT KEYWORDS:
@@ -5403,14 +5402,14 @@ noconfig:
         tmp=WHERE(firstfitvaluesnames EQ 'SBR_2')
         SBRarr2=firstfitvalues[*,tmp]
 ;                                ;We always want to smooth the surface brightnes. Added 16-06-2017
-;        SBRarr=fat_hanning(SBRarr)
-;        SBRarr2=fat_hanning(SBRarr2)
+        SBRarr=fat_hanning(SBRarr)
+        SBRarr2=fat_hanning(SBRarr2)
                                 ;In this case we want to add them back
                                 ;in
-;        tmppos=WHERE(tirificsecondvars EQ 'SBR')
-;        tirificsecond[tmppos]='SBR= '+STRJOIN(SBRarr,' ')
-;        tmppos=WHERE(tirificsecondvars EQ 'SBR_2')
-;        tirificsecond[tmppos]='SBR_2= '+STRJOIN(SBRarr2,' ')
+        tmppos=WHERE(tirificsecondvars EQ 'SBR')
+        tirificsecond[tmppos]='SBR= '+STRJOIN(SBRarr,' ')
+        tmppos=WHERE(tirificsecondvars EQ 'SBR_2')
+        tirificsecond[tmppos]='SBR_2= '+STRJOIN(SBRarr2,' ')
         tmpSBR=(SBRarr+SBRarr2)/2.
         IF finishafter EQ 1.1 then begin
            get_newringsv9,tmpSBR,tmpSBR,cutoff,newend
