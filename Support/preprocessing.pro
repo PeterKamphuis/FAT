@@ -124,7 +124,7 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
                  print,linenumber()+'PREPROCESSING: We found CTYPE1='+sxpar(header,'CTYPE1')+' CTYPE2='+sxpar(header,'CTYPE2')     
               ENDELSE
               openu,1,outputcatalogue,/APPEND
-              printf,1,format='(A60,A90)', dir,'The Cube has incorrect spatial axes'
+              printf,1,format='(A60,2A12,A120)',dir,0.,0.,'The Cube has incorrect spatial axes'
               close,1
               writecube=2
               goto,finishup
@@ -140,7 +140,7 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
               print,linenumber()+'PREPROCESSING: We found CTYPE1='+sxpar(header,'CTYPE1')+' CTYPE2='+sxpar(header,'CTYPE2')     
            ENDELSE
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,A90)', dir,'The Cube has incorrect spatial axes'
+           printf,1,format='(A60,2A12,A120)',dir,0.,0.,'The Cube has incorrect spatial axes'
            close,1
            writecube=2
            goto,finishup
@@ -195,7 +195,7 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
               printf,linenumber()+'PREPROCESSING: '+dir+'/'+name+'has too many blanked channels.'
            ENDELSE         
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,A90)', dir,'The Cube has too many blanked channels'
+           printf,1,format='(A60,2A12,A120)',dir,0.,0.,'The Cube has too many blanked channels'
            close,1
            writecube=2
            goto,finishup
@@ -227,7 +227,7 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
               printf,linenumber()+'PREPROCESSING: '+dir+'/'+name+'has too many blanked channels.'
            ENDELSE         
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,A90)', dir,'The cube has too many blanked channels'
+           printf,1,format='(A60,2A12,A120)',dir,0.,0.,'The cube has too many blanked channels'
            close,1    
            writecube=2
            goto,finishup
@@ -321,7 +321,7 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
               print,linenumber()+'PREPROCESSING: '+dir+'/'+name+' has noise statistics that cannot be dealt with.'
            ENDELSE         
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,A90)', dir,'The Cube has noise statistics that cannot be dealt with'
+           printf,1,format='(A60,2A12,A120)',dir,0.,0.,'The Cube has noise statistics that cannot be dealt with'
            close,1    
            writecube=2
            goto,finishup

@@ -99,7 +99,7 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
         print,linenumber()+'CLEAN_HEADER: FREQUENCY IS NOT A SUPPORTED VELOCITY AXIS.'    
      ENDELSE
      openu,1,outputcatalogue,/APPEND
-     printf,1,format='(A60,A90)', Dir,'The Cube has frequency as a velocity axis this is not supported'
+     printf,1,format='(A60,2A12,A120)',Dir,0.,0.,'The Cube has frequency as a velocity axis this is not supported'
      close,1
      writecube=2 
      goto,finishup	 
@@ -143,7 +143,7 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
            print,linenumber()+'CLEAN_HEADER: Please arrange your cube logically'
         ENDELSE
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A90)', Dir,'The Cube is not arranged properly'
+        printf,1,format='(A60,2A12,A120)',Dir,0.,0.,'The Cube is not arranged properly'
         close,1
         writecube=2
         goto,finishup
@@ -216,7 +216,7 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
                   print,linenumber()+'CLEAN_HEADER: WE CANNOT FIND THE MAJOR AXIS FWHM IN THE HEADER'   
                ENDELSE
                openu,1,outputcatalogue,/APPEND
-               printf,1,format='(A60,A90)', Dir,'The Cube has no major axis FWHM in the header.'
+               printf,1,format='(A60,2A12,A120)',Dir,0.,0.,'The Cube has no major axis FWHM in the header.'
                close,1
                writecube=2
                goto,finishup

@@ -40,6 +40,12 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      29-06-2017 P.Kamphuis; Added a condition that the centre in the
+;                             second fit cannot vary by more than 10%
+;                             from the maximum radius. Also made the
+;                             outputcatalogue messages more uniform by
+;                             always including the fit results.
+;  
 ;      16-06-2017 P.Kamphuis; Upgraded to v5.0.2, added hanning
 ;                             smoothing of the SBR profile.
 ;  
@@ -528,7 +534,7 @@ noconfig:
                                 ;Create a file to write the results to
   If not FILE_TEST(outputcatalogue) OR strupcase(newresult) EQ 'Y' then begin
      openw,1,outputcatalogue
-     printf,1,format='(A60,2A12)','Name','AC1','AC2'
+     printf,1,format='(A60,2A12,A120)','Name','AC1','AC2','Comments on Fit Result'
      close,1
   endif
                                 ;read the input catalogue
@@ -763,7 +769,7 @@ noconfig:
      ENDIF
      if fitsexists EQ 0 then begin
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A100)',catDirname[i],' This galaxy has no fits cube to work with, it is skipped.'
+        printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,' This galaxy has no fits cube to work with, it is skipped.'
         close,1   
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
@@ -984,7 +990,7 @@ noconfig:
            close,66
         ENDIF
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A90)', catDirname[i],errormessage[1]
+        printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,errormessage[1]
         close,1 
         bookkeeping=5
         goto,finishthisgalaxy
@@ -1301,7 +1307,7 @@ noconfig:
      maxSN=maxbright/catnoise[i]
      IF maxSN LT 4. then begin
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A90)', catDirname[i],' The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit.'
+        printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,' The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit.'
         close,1    
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
@@ -1351,7 +1357,7 @@ noconfig:
     
      IF norings LT 1.5 OR maxrings LE 4 then begin
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A80)', catDirname[i],"This Cube is too small"
+        printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,"This Cube is too small"
         close,1
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
@@ -1766,7 +1772,7 @@ noconfig:
            close,66
         ENDIF
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A80)', catDirname[i],'We found an initial negative total flux.'
+        printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,'We found an initial negative total flux.'
         close,1 
         bookkeeping=5
         goto,finishthisgalaxy
@@ -1786,7 +1792,7 @@ noconfig:
      IF finishafter EQ 0. then begin
         if setfinishafter NE 1 then begin 
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,A80)', catDirname[i],'You have chosen to skip the fitting process after all preparations for the fit'
+           printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,'You have chosen to skip the fitting process after all preparations for the fit'
            close,1
         ENDIF
         if optimized then begin
@@ -2731,7 +2737,7 @@ noconfig:
            close,66
         ENDIF
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A80)', catDirname[i],'We could not find a proper center.'
+        printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,'We could not find a proper center.'
         close,1 
         bookkeeping=5
         goto,finishthisgalaxy
@@ -3384,7 +3390,7 @@ noconfig:
               print,linenumber()+"The fit diverged out of the boundaries set by the parameterization. That can't be good."
            ENDELSE  
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,A80)',catDirname[i],'This galaxy diverged out of the set boundaries.'
+           printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,'This galaxy diverged out of the set boundaries.'
            close,1   
            bookkeeping=5
            goto,finishthisgalaxy
@@ -3512,7 +3518,7 @@ noconfig:
      tmpix=WHERE(tmpcube GT catnoise[i])
      IF tmpix[0] EQ -1 then begin
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A12,A80)', catDirname[i],AC1,'The first fit does not have flux above the noise level, this means a mis fit.'
+        printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,'The first fit does not have flux above the noise level, this means a mis fit.'
         close,1
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
@@ -3561,7 +3567,7 @@ noconfig:
                        
      IF finishafter EQ 1 then begin
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A12,A80)', catDirname[i],AC1,'You have chosen to skip the fitting process after the first fit'
+        printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,'You have chosen to skip the fitting process after the first fit'
         close,1
         bookkeeping=bookkeeping+0.5
         goto,finishthisgalaxy
@@ -3968,6 +3974,7 @@ noconfig:
      newYPOS=secondfitvalues[0,tmppos]
      tmppos=where('RADI' EQ secondfitvaluesnames)
      RADarr=secondfitvalues[*,tmppos]
+     maxrad=MAX(RADarr)
      tmppos=where('VROT' EQ secondfitvaluesnames)
      VROTarr=secondfitvalues[*,tmppos]
                                 ;We check that it is not out off bound
@@ -4014,28 +4021,63 @@ noconfig:
            Close,66
         ENDIF        
      ENDIF
-                                ;First we check that the center has not jumped. If it has we reset the central position. And make sure that SBR is at least 2 the cutoff and refit
+                                ;First we check that the center has
+                                ;not jumped. If it has we reset the
+                                ;central position. And make sure that
+                                ;SBR is at least 2 the cutoff and
+                                ;refit
+
+                                ; We do not want the center to deviate
+                                ; more than 2 beams from the previous
+                                ; fit, 4 beams of the 1st fit or more
+                                ; than a 20th of the diameter of the galaxy
+     
      IF ABS(newXPOS-prevXPOS) GT catmajbeam[i]/1800. OR  ABS(newYPOS-prevYPOS) GT catmajbeam[i]/1800. OR $
-        ABS(newXPOS-Final1stXPOS) GT catmajbeam[i]/900. OR ABS(newYPOS-Final1stYPOS) GT catmajbeam[i]/900. then begin       
-        IF size(log,/TYPE) EQ 7 then begin
-           openu,66,log,/APPEND
-           printf,66,linenumber()+"The center shifted more than 2 major beams. Not applying this shift and refitting."
-           printf,66,linenumber()+"The center is bad at "+strtrim(string(newXPOS),2)+', '+strtrim(string(newYPOS),2)
-           printf,66,linenumber()+"It was at "+strtrim(string(prevXPOS),2)+', '+strtrim(string(prevYPOS),2)    
-           close,66
-        ENDIF ELSE BEGIN
-           print,linenumber()+"The center shifted than 2 major beams. Not applying this shift and refitting."
-        ENDELSE
-                                ;If we have jumped from the centre too often then abort
-        IF  (ABS(newXPOS-prevXPOS) LT pixelsizeRA OR ABS(newYPOS-prevYPOS) LT pixelsizeDEC) AND centrejump GT 4 then begin
+        ABS(newXPOS-Final1stXPOS) GT catmajbeam[i]/900. OR ABS(newYPOS-Final1stYPOS) GT catmajbeam[i]/900. OR $
+        ABS(newXPOS-prevXPOS) GT maxrad/36000. OR ABS(newYPOS-prevYPOS) GT  maxrad/36000. then begin
+        IF ABS(newXPOS-prevXPOS) GT catmajbeam[i]/1800. OR  ABS(newYPOS-prevYPOS) GT catmajbeam[i]/1800. then begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"The center shifted more than 4 major beams from the first fit."
+              printf,66,linenumber()+"The center shifted more than 2 major beams. Not applying this shift and refitting."
+              printf,66,linenumber()+"The center is bad at "+strtrim(string(newXPOS),2)+', '+strtrim(string(newYPOS),2)
+              printf,66,linenumber()+"It was at "+strtrim(string(prevXPOS),2)+', '+strtrim(string(prevYPOS),2)    
+              close,66
+           ENDIF ELSE BEGIN
+              print,linenumber()+"The center shifted than 2 major beams. Not applying this shift and refitting."
+           ENDELSE
+        ENDIF
+        IF ABS(newXPOS-Final1stXPOS) GT catmajbeam[i]/900. OR ABS(newYPOS-Final1stYPOS) GT catmajbeam[i]/900.  then begin
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"The center shifted more than 4 major beams from the original fit. Not applying this shift and refitting."
+              printf,66,linenumber()+"The center is bad at "+strtrim(string(newXPOS),2)+', '+strtrim(string(newYPOS),2)
+              printf,66,linenumber()+"It was at "+strtrim(string(prevXPOS),2)+', '+strtrim(string(prevYPOS),2)    
+              close,66
+           ENDIF ELSE BEGIN
+              print,linenumber()+"The center shifted than 4 major beams from the original fit. Not applying this shift and refitting."
+           ENDELSE
+        ENDIF
+        IF ABS(newXPOS-prevXPOS) GT maxrad/36000. OR ABS(newYPOS-prevYPOS) GT  maxrad/36000. then begin
+        IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"The center shifted more 10% of the galaxy maximum radius from the original fit. Not applying this shift and refitting."
+              printf,66,linenumber()+"The center is bad at "+strtrim(string(newXPOS),2)+', '+strtrim(string(newYPOS),2)
+              printf,66,linenumber()+"It was at "+strtrim(string(prevXPOS),2)+', '+strtrim(string(prevYPOS),2)    
+              close,66
+           ENDIF ELSE BEGIN
+              print,linenumber()+"The center  shifted more 10% of the galaxy maximum radius from the original fit. Not applying this shift and refitting."
+           ENDELSE
+        ENDIF
+;If we have jumped from the centre too often then abort
+        IF centrejump GT 10 then begin
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"The center shifted too often out of the set boundaries."
               printf,66,linenumber()+"Finished "+catDirname[i]+" which is galaxy #  "+strtrim(string(fix(i)),2)+" at "+systime()
               close,66
            ENDIF   
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,A80)', catDirname[i],'The first fit centre kept jumping away.'
+           printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,'The first fit centre kept jumping away.'
            close,1 
            bookkeeping=5
            goto,finishthisgalaxy
