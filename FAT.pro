@@ -537,6 +537,7 @@ noconfig:
      printf,1,format='(A60,2A12,A120)','Name','AC1','AC2','Comments on Fit Result'
      close,1
   endif
+ 
                                 ;read the input catalogue
   openr,1,catalogue
   filelength=FILE_LINES(catalogue)-1
@@ -1112,7 +1113,7 @@ noconfig:
         tmpmask[WHERE(mask GT 0.)]=dummy[WHERE(mask GT 0.)]
         headervel=header
                                 ;Same as in gipsy
-        momentsv2,tmpmask,moment1map,headervel,1.
+        momentsv2,tmpmask,moment1map,headervel,1.,gdlidl=gdlidl
         writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_mom1.fits',float(moment1map),headervel
                                 ;reset the mom 1 map to the one just created
         catMom1name[i]=currentfitcube+'_mom1'
@@ -3540,7 +3541,7 @@ noconfig:
      momentsv2,tmpmask,tmpmap,hedtmp1st,0.
      writefits,maindir+'/'+catdirname[i]+'/1stfit_mom0.fits',float(tmpmap),hedtmp1st
      hedtmp1stv=hedtmp1stcube
-     momentsv2,tmpmask,tmpmapv,hedtmp1stv,1.
+     momentsv2,tmpmask,tmpmapv,hedtmp1stv,1.,gdlidl=gdlidl
      writefits,maindir+'/'+catdirname[i]+'/1stfit_mom1.fits',float(tmpmapv),hedtmp1stv
      getDHI,tmpmap,hedtmp1st,Basicinfovalues[0,3],[RAhr,DEChr,Basicinfovalues[0,4]],DHI
      totflux=[TOTAL(tmpcube[tmpix])/pixperbeam,(TOTAL(2.*cutoff[0:norings[0]-1]))/(n_elements(tmpix)/pixperbeam)]
@@ -4300,9 +4301,9 @@ noconfig:
         tmp2=WHERE(PAang2 GE (double(PAinput2[1])-double(PAinput2[3])))
         IF n_elements(tmp) GE 2 OR n_elements(tmp2) GE 2 then begin
            boundaryadjustment=1
-           PAinput1[1]=strtrim(strcompress(string(double(PAinput1[1]+10.))),2)
-           PAinput2[1]=strtrim(strcompress(string(double(PAinput2[1]+10.))),2)
-           PAinput3[1]=strtrim(strcompress(string(double(PAinput3[1]+10.))),2)
+           IF PAinput1[1] LT 400 then PAinput1[1]=strtrim(strcompress(string(double(PAinput1[1]+10.))),2)
+           IF PAinput2[1] LT 400 then PAinput2[1]=strtrim(strcompress(string(double(PAinput2[1]+10.))),2)
+           IF PAinput3[1] LT 400 then PAinput3[1]=strtrim(strcompress(string(double(PAinput3[1]+10.))),2)
            PArings++
         ENDIF
         IF norings[0] LE 4 or finishafter EQ 1.1 then begin
@@ -4314,9 +4315,9 @@ noconfig:
         ENDELSE
         IF n_elements(tmp) GE 2 OR n_elements(tmp2) GE 2 then begin
            boundaryadjustment=1
-           PAinput1[2]=strtrim(strcompress(string(double(PAinput1[2]-10.))),2)
-           PAinput2[2]=strtrim(strcompress(string(double(PAinput2[2]-10.))),2)
-           PAinput3[2]=strtrim(strcompress(string(double(PAinput3[2]-10.))),2)
+           IF PAinput1[2] GT -40 then PAinput1[2]=strtrim(strcompress(string(double(PAinput1[2]-10.))),2)
+           IF PAinput2[1] GT -40 then PAinput2[2]=strtrim(strcompress(string(double(PAinput2[2]-10.))),2)
+           IF PAinput3[1] GT -40 then PAinput3[2]=strtrim(strcompress(string(double(PAinput3[2]-10.))),2)
            IF tmp[0] EQ -1 then tmp[0]=n_elements(INCLang)
            IF tmp2[0] EQ -1 then tmp2[0]=n_elements(INCLang)
            tmp=MAX([tmp,tmp2,lastreliablerings],min=lastreliablerings)
@@ -5588,7 +5589,7 @@ noconfig:
      momentsv2,tmpmask,tmpmap,hedtmp1st,0.
      writefits,maindir+'/'+catdirname[i]+'/2ndfit_mom0.fits',float(tmpmap),hedtmp1st
      hedtmp1stv=hedtmp1stcube
-     momentsv2,tmpmask,tmpmapv,hedtmp1stv,1.
+     momentsv2,tmpmask,tmpmapv,hedtmp1stv,1.,gdlidl=gdlidl
      writefits,maindir+'/'+catdirname[i]+'/2ndfit_mom1.fits',float(tmpmapv),hedtmp1stv
      getDHI,tmpmap,hedtmp1st,Basicinfovalues[0,3],[RAhr,DEChr,Basicinfovalues[0,4]],DHI
      VSYSdiff=maxchangevel

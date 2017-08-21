@@ -1,4 +1,4 @@
-Pro momentsv2,Cube,Momentmap,header,map,BLANK_VALUE=blanked
+Pro momentsv2,Cube,Momentmap,header,map,BLANK_VALUE=blanked,gdlidl=gdlidl
 
 
 ;+
@@ -21,7 +21,7 @@ Pro momentsv2,Cube,Momentmap,header,map,BLANK_VALUE=blanked
 ;       map = 1 or 0 indicating the requested moment
 ;
 ; OPTIONAL INPUTS:
-;       - 
+;       gdlidl = indicator of running gdl or idl. Is 1 when running GDL
 ;
 ; KEYWORD PARAMETERS:
 ;       -
@@ -42,6 +42,11 @@ Pro momentsv2,Cube,Momentmap,header,map,BLANK_VALUE=blanked
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       20-08-2017 P.Kamphuis; Rebin is broken on the mac 0.9.7 hence
+;                              we have added a condition to rebin in
+;                              loop when running GDL. This is only
+;                              used for velocity fields so no need to
+;                              add to intergrated moment map  
 ;       12-05-2017 P.Kamphuis; In the  maps the blanks should
 ;                              propagate.   
 ;       16-11-2016 P.Kamphuis; Now dealing with the (non-)presence of
@@ -94,7 +99,19 @@ IF map EQ 1 then begin
       zaxis=zaxis/1000.
    ENDIF
    Momentmap=fltarr(n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]))
-   c=rebin(reform(zaxis,1,1,n_elements(zaxis)),n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]),n_elements(Cube[0,0,*]))
+  
+   if gdlidl then begin
+                                ;this is necessary for gdl as rebin is
+                                ;broken in gdl on the mac. This seems
+                                ;an issue of 0.9.7. We should check on ubuntu and
+                                ;issu a ticket or some such.
+      c=dblarr(n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]),n_elements(Cube[0,0,*]))
+      for i=0,n_elements(Cube[0,0,*])-1 do begin
+         c[*,*,i]=zaxis[i]
+      endfor
+   endif else begin
+      c=rebin(reform(zaxis,1,1,n_elements(zaxis)),n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]),n_elements(Cube[0,0,*]))
+   endelse
    Momentmap=TOTAL(c*Cube,3)/TOTAL(Cube,3)
    maxmap=MAX(momentmap,MIN=minmap)
    if FINITE(maxmap) then sxaddpar,header,'DATAMAX',maxmap else sxaddpar,header,'DATAMAX',zaxis[n_elements(zaxis)-1]
