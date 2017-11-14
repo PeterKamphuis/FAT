@@ -33,6 +33,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
 ;       AXIS,COLORMAPS,COLOUR_BAR,COLUMNDENSITY,CONTOUR,DEVICE,FILE_TEST(),LOADCT,MAX(),N_ELEMENTS(),OPLOT,PLOT,FAT_PLOTERR,READFITS(),SET_PLOT,SHOWPIXELSMAP,WRITENEWTOTEMPLATE,XYOUTS
 ;
 ; MODIFICATION HISTORY:
+;       14-11-2017 P.Kamphuis; Increased and improved checking for convert      
 ;       22-03-2017 P.Kamphuis; Increased checking for Imagick convert
 ;                              in order to trim the png. Improved
 ;                              plotting limits on velocity contours
@@ -420,37 +421,53 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         spawn,'rm -f Overview.ps'
      ENDIF
   ENDIF
+  converted=0
   spawn,'convert --help',result,notfound
   IF n_elements(result) GT 1 then begin
      gf=strsplit(result[0],' ',/extract)
      IF n_elements(gf) GT 1 then begin
-        IF strtrim(gf[1],2) EQ 'ImageMagick' then spawn,'convert Overview.png -trim Overview.png'
-     ENDIF ELSE BEGIN
-        spawn,'/usr/bin/convert --help',result,notfound
-        IF n_elements(result) GT 1 then begin
-           gf=strsplit(result[0],' ',/extract)
-           IF n_elements(gf) GT 1 then begin
-              IF strtrim(gf[1],2) EQ 'ImageMagick' then spawn,'/usr/bin/convert Overview.png -trim Overview.png'
-           ENDIF
+        IF strtrim(gf[1],2) EQ 'ImageMagick' then begin
+           converted=1
+           spawn,'convert Overview.png -trim Overview.png'
         ENDIF
-     ENDELSE
-  ENDIF ELSE BEGIN
+     ENDIF
+  ENDIF
+  IF converted LT 1 then begin
      spawn,'/usr/bin/convert --help',result,notfound
      IF n_elements(result) GT 1 then begin
         gf=strsplit(result[0],' ',/extract)
         IF n_elements(gf) GT 1 then begin
-           IF strtrim(gf[1],2) EQ 'ImageMagick' then spawn,'/usr/bin/convert Overview.png -trim Overview.png'
-        ENDIF 
-     ENDIF ELSE BEGIN
-        spawn,'imconvert --help',result,notfound
-        IF n_elements(result) GT 1 then begin
-           gf=strsplit(result[0],' ',/extract)
-           IF n_elements(gf) GT 1 then begin
-              IF strtrim(gf[1],2) EQ 'ImageMagick' then spawn,'imconvert Overview.png -trim Overview.png'
+           IF strtrim(gf[1],2) EQ 'ImageMagick' then begin
+              converted=1
+              spawn,'/usr/bin/convert Overview.png -trim Overview.png'
            ENDIF
         ENDIF
-     ENDELSE 
-  ENDELSE
+     ENDIF
+  ENDIF
+  IF converted LT 1 then begin
+     spawn,'imconvert --help',result,notfound
+     IF n_elements(result) GT 1 then begin
+        gf=strsplit(result[0],' ',/extract)
+        IF n_elements(gf) GT 1 then begin
+           IF strtrim(gf[1],2) EQ 'ImageMagick' then begin
+              converted=1
+              spawn,'imconvert Overview.png -trim Overview.png'
+           ENDIF
+        ENDIF
+     ENDIF
+  ENDIF
+  IF converted LT 1 then begin
+     spawn,'convert-im6 --help',result,notfound
+     IF n_elements(result) GT 1 then begin
+        gf=strsplit(result[0],' ',/extract)
+        IF n_elements(gf) GT 1 then begin
+           IF strtrim(gf[1],2) EQ 'ImageMagick' then begin
+              converted=1
+              spawn,'convert-im6 Overview.png -trim Overview.png'
+           ENDIF
+        ENDIF
+     ENDIF
+  ENDIF
 
   
 end

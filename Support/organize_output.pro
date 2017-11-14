@@ -175,7 +175,7 @@ Pro organize_output,names,version,directories
            IF filled[0] EQ '' then spawn,'rm -Rf Intermediate'
         end
         'Def_Files':begin
-           spawn,'mv *.def Def_Files/',isthere
+      ;     spawn,'mv *.def Def_Files/',isthere
            IF fix(version) EQ version then begin 
               IF FILE_TEST('1stfit.def') then spawn,'mv 1stfit.def Def_Files/No_Warp.def',isthere
               IF FILE_TEST('1stfit_opt.def') then spawn,'mv 1stfit_opt.def Def_Files/No_Warp_opt.def',isthere
