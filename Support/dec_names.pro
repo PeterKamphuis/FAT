@@ -49,7 +49,6 @@ pro dec_names, values, tick_value = tv, tick_name = tn, n_ticks = n_ticks, $
   start = values[0]
   finish = values[nelts-1]
   range = finish-start
-print,values
 ; Establish the array of legitimate values for an increment.
   legit = [[60, 30, 15, 10, 5, 2, 1], 1/60d0*[30, 15, 10, 5, 2, 1], $
            1/3.6d3*[30, 15, 10, 5, 2, 1], 1/3.6d4*[5, 2, 1], $
@@ -170,9 +169,6 @@ print,values
     tracksec=tracksec+double(string(sec[i], format = '(i2.2)')+"."+string(decs, format = '(i1.1)' ))
  endfor
 
-  ;print,'well lets look'
- ; print,sec,sec_name, total(sec),tracksec
- 
   if total(sec) eq 0 then sec_name = strarr(n_elements(tv))
   if total(minute) eq 0 then min_name = strarr(n_elements(tv))
   if tracksec eq 0. then tn = deg_name+min_name else tn = deg_name+min_name+sec_name
