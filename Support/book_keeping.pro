@@ -56,7 +56,6 @@ Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishaft
 ;-
   COMPILE_OPT IDL2
   spawn,'pwd',currentdir
-  print,version,'Just have a look'
   IF version NE 5 AND finishafter NE 0 then create_residuals,filenames,version
    print,version,'Just have a look after residual'
   organize_output,filenames,version, ['Optimized','Intermediate','Finalmodel','No_Warp','Moments','PV-Diagrams','Sofia_Output']
@@ -77,7 +76,6 @@ Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishaft
         close,66
      ENDIF
   ENDIF ELSE BEGIN
-     print,'It claims ersion is something else',version
      case version of
         1:begin
            spawn,'rm -Rf Optimized'
@@ -177,13 +175,8 @@ Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishaft
            ENDIF
         end
         4.5: begin
-           spawn,'pwd'
-           help,version
-           print,'What is going wrong'
            spawn,'mkdir Def_Files',isthere
-           print,isthere
            spawn,'mv No_Warp/*.def Def_Files',isthere
-           print,isthere
            spawn,'mv Finalmodel/*.def Def_Files',isthere
            spawn,'mv Intermediate/*.def Def_Files',isthere
            spawn,'mv Optimized/*.def Def_Files',isthere
@@ -195,8 +188,6 @@ Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishaft
            ENDIF
         end
         else:begin
-           print,'how come',version
-           help,version
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
               printf,66,linenumber()+"BOOK_KEEPING: none "+currentdir
