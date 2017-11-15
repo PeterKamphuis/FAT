@@ -1,4 +1,4 @@
-Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATION_CHECK=installation_check
+Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATION_CHECK=installation_check,LVHIS_TEST=lvhistest,PAPER_TEST=papertest,RES_TEST=restest
 
 ;+
 ; NAME:
@@ -13,13 +13,26 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;      FAT,support='supportdir',configuration_file='configfile' 
 ;
 ; INPUTS:
-;      - 
-; OPTIONAL INPUT KEYWORDS:
+;      -  
+; OPTIONAL INPUTS:
 ;      SUPPORT  = path to the directory where FAT's support
 ;      routines are located. The default location is ./Support/
 ;      CONFIGURATION_FILE = A configuration file for FAT. This file
 ;      should contain the locations of the galaxies to be fitted. See
 ;      readme for more detailed info.
+;  
+; OPTIONAL INPUT KEYWORDS
+;     /INSTALLATION_CHECK = Flag to run the Installation check.
+; --------------------------------------------------------------------------------- 
+;     The following input keywords are only meant to be used by
+;     developers. Except for the /debug flag they will not work for
+;     the common user. If you want to know about these please contact Peter
+;     Kamphuis. 
+; ---------------------------------------------------------------------------------
+;     /DEBUG = Flag to print debugging information in several routines   
+;     /LVHIS_TEST = Flag to run the LVHIS Test.
+;     /PAPER_TEST = Flag to run the paper artificial galaxies.
+;     /RESOLUTION_TEST = Flag to run the additional resolution tests   
 ; OPTIONAL KEYWORD OUTPUT:
 ;      -
 ;
@@ -40,6 +53,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      15-11-2017 P.Kamphuis; Added flag for easy running of the tests   
 ;      29-06-2017 P.Kamphuis; Added a condition that the centre in the
 ;                             second fit cannot vary by more than 10%
 ;                             from the maximum radius. Also made the
@@ -224,6 +238,12 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 
                           
   COMPILE_OPT IDL2
+                                ;If you have to run a specific config
+                                ;file needs to be run over and over
+                                ;again you could create a abbreviated
+                                ;name here. In this case the test file
+                                ;directories are listed
+  
   DEFSYSV, '!GDL', EXISTS = gdlidl ;is 1 when running GDL
   spawn,'pwd',originaldir
 ;  goto,skipcatch
@@ -264,7 +284,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
      stop
   ENDIF
   skipcatch:
-  version='v5.0.2'
+  version='v5.0.3'
                                 ;First thing we do is to check whether we run IDL or GDL
   DEFSYSV, '!GDL', EXISTS = gdlidl ;is 1 when running GDL
   if n_elements(supportdir) EQ 0 then supportdir='Support'
@@ -286,10 +306,25 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   supportdirchecked=STRJOIN(spacecheck,'\ ')
                                 ;Location of the input configuration file
   if keyword_set(installation_check) then $
-     configfile='Installation_Check/FAT_INPUT.config'
+     configfile='Installation_Check/FAT_INPUT.config'  
+  if keyword_set(lvhistest) then begin
+     spawn,'printenv FAT_TEST_DIR',fatmaintest
+     configfile=fatmaintest+'/LVHIS-26_3/Input.config'
+  endif
+  if keyword_set(papertest) then begin
+     spawn,'printenv FAT_TEST_DIR',fatmaintest
+     configfile=fatmaintest+'/SmallCat_Warps/Input_1.config'
+  endif
+  if keyword_set(restest) then begin
+     spawn,'printenv FAT_TEST_DIR',fatmaintest
+     configfile=fatmaintest+'Test_Res_v5.0/FAT_INPUT.config'
+  endif
   IF n_elements(configfile) EQ 0 then begin
      configfile='FAT_INPUT.config'
   endif
+
+
+  
                                 ;dumb resolve routine doesn't accept paths so cd to support dir
   CD,supportdir,current=old_dir
   RESOLVE_ROUTINE, 'beam_plot'
