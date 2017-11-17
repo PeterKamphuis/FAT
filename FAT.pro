@@ -53,6 +53,8 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      17-11-2017 P.Kamphuis; Fixed a bug where FAT could go into an
+;                             infinite loop by doing PA boundary adjustments.  
 ;      15-11-2017 P.Kamphuis; Added flag for easy running of the tests   
 ;      29-06-2017 P.Kamphuis; Added a condition that the centre in the
 ;                             second fit cannot vary by more than 10%
@@ -4336,9 +4338,9 @@ noconfig:
         tmp2=WHERE(PAang2 GE (double(PAinput2[1])-double(PAinput2[3])))
         IF n_elements(tmp) GE 2 OR n_elements(tmp2) GE 2 then begin
            boundaryadjustment=1
-           IF PAinput1[1] LT 400 then PAinput1[1]=strtrim(strcompress(string(double(PAinput1[1]+10.))),2)
-           IF PAinput2[1] LT 400 then PAinput2[1]=strtrim(strcompress(string(double(PAinput2[1]+10.))),2)
-           IF PAinput3[1] LT 400 then PAinput3[1]=strtrim(strcompress(string(double(PAinput3[1]+10.))),2)
+           IF PAinput1[1] LT 400 then PAinput1[1]=strtrim(strcompress(string(double(PAinput1[1]+10.))),2) else  boundaryadjustment=0
+           IF PAinput2[1] LT 400 then PAinput2[1]=strtrim(strcompress(string(double(PAinput2[1]+10.))),2) else  boundaryadjustment=0
+           IF PAinput3[1] LT 400 then PAinput3[1]=strtrim(strcompress(string(double(PAinput3[1]+10.))),2) else  boundaryadjustment=0
            PArings++
         ENDIF
         IF norings[0] LE 4 or finishafter EQ 1.1 then begin
@@ -4350,9 +4352,9 @@ noconfig:
         ENDELSE
         IF n_elements(tmp) GE 2 OR n_elements(tmp2) GE 2 then begin
            boundaryadjustment=1
-           IF PAinput1[2] GT -40 then PAinput1[2]=strtrim(strcompress(string(double(PAinput1[2]-10.))),2)
-           IF PAinput2[1] GT -40 then PAinput2[2]=strtrim(strcompress(string(double(PAinput2[2]-10.))),2)
-           IF PAinput3[1] GT -40 then PAinput3[2]=strtrim(strcompress(string(double(PAinput3[2]-10.))),2)
+           IF PAinput1[2] GT -40 then PAinput1[2]=strtrim(strcompress(string(double(PAinput1[2]-10.))),2) else  boundaryadjustment=0
+           IF PAinput2[1] GT -40 then PAinput2[2]=strtrim(strcompress(string(double(PAinput2[2]-10.))),2) else  boundaryadjustment=0
+           IF PAinput3[1] GT -40 then PAinput3[2]=strtrim(strcompress(string(double(PAinput3[2]-10.))),2) else  boundaryadjustment=0
            IF tmp[0] EQ -1 then tmp[0]=n_elements(INCLang)
            IF tmp2[0] EQ -1 then tmp2[0]=n_elements(INCLang)
            tmp=MAX([tmp,tmp2,lastreliablerings],min=lastreliablerings)
