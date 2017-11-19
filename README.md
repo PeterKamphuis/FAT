@@ -32,7 +32,7 @@ The GDL version is tested under Ubuntu 16.04 and runs after running the command
 
 Under ubuntu the astrolib package and mpfit package were not found after installation and hence a .gdlstartup file is required with the line
 
-	!PATH=!PATH+':usr/share/gnudatalanguage/astrolib:usr/share/gnudatalanguage/coyote:usr/share/gnudatalanguage/mpfit'
+	!PATH=!PATH+':/usr/share/gnudatalanguage/astrolib:/usr/share/gnudatalanguage/coyote:/usr/share/gnudatalanguage/mpfit'
 
 Installation
 ------------
