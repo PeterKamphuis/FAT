@@ -1,4 +1,4 @@
-Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATION_CHECK=installation_check
+Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATION_CHECK=installation_check,LVHIS_TEST=lvhistest,PAPER_TEST=papertest,RES_TEST=restest
 
 ;+
 ; NAME:
@@ -13,13 +13,26 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;      FAT,support='supportdir',configuration_file='configfile' 
 ;
 ; INPUTS:
-;      - 
-; OPTIONAL INPUT KEYWORDS:
+;      -  
+; OPTIONAL INPUTS:
 ;      SUPPORT  = path to the directory where FAT's support
 ;      routines are located. The default location is ./Support/
 ;      CONFIGURATION_FILE = A configuration file for FAT. This file
 ;      should contain the locations of the galaxies to be fitted. See
 ;      readme for more detailed info.
+;  
+; OPTIONAL INPUT KEYWORDS
+;     /INSTALLATION_CHECK = Flag to run the Installation check.
+; --------------------------------------------------------------------------------- 
+;     The following input keywords are only meant to be used by
+;     developers. Except for the /debug flag they will not work for
+;     the common user. If you want to know about these please contact Peter
+;     Kamphuis. 
+; ---------------------------------------------------------------------------------
+;     /DEBUG = Flag to print debugging information in several routines   
+;     /LVHIS_TEST = Flag to run the LVHIS Test.
+;     /PAPER_TEST = Flag to run the paper artificial galaxies.
+;     /RESOLUTION_TEST = Flag to run the additional resolution tests   
 ; OPTIONAL KEYWORD OUTPUT:
 ;      -
 ;
@@ -40,6 +53,15 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      17-11-2017 P.Kamphuis; Fixed a bug where FAT could go into an
+;                             infinite loop by doing PA boundary adjustments.  
+;      15-11-2017 P.Kamphuis; Added flag for easy running of the tests   
+;      29-06-2017 P.Kamphuis; Added a condition that the centre in the
+;                             second fit cannot vary by more than 10%
+;                             from the maximum radius. Also made the
+;                             outputcatalogue messages more uniform by
+;                             always including the fit results.
+;  
 ;      16-06-2017 P.Kamphuis; Upgraded to v5.0.2, added hanning
 ;                             smoothing of the SBR profile.
 ;  
@@ -218,6 +240,12 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 
                           
   COMPILE_OPT IDL2
+                                ;If you have to run a specific config
+                                ;file needs to be run over and over
+                                ;again you could create a abbreviated
+                                ;name here. In this case the test file
+                                ;directories are listed
+  
   DEFSYSV, '!GDL', EXISTS = gdlidl ;is 1 when running GDL
   spawn,'pwd',originaldir
 ;  goto,skipcatch
@@ -258,7 +286,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
      stop
   ENDIF
   skipcatch:
-  version='v5.0.2'
+  version='v5.0.3'
                                 ;First thing we do is to check whether we run IDL or GDL
   DEFSYSV, '!GDL', EXISTS = gdlidl ;is 1 when running GDL
   if n_elements(supportdir) EQ 0 then supportdir='Support'
@@ -280,10 +308,25 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   supportdirchecked=STRJOIN(spacecheck,'\ ')
                                 ;Location of the input configuration file
   if keyword_set(installation_check) then $
-     configfile='Installation_Check/FAT_INPUT.config'
+     configfile='Installation_Check/FAT_INPUT.config'  
+  if keyword_set(lvhistest) then begin
+     spawn,'printenv FAT_TEST_DIR',fatmaintest
+     configfile=fatmaintest+'/LVHIS-26_3/Input.config'
+  endif
+  if keyword_set(papertest) then begin
+     spawn,'printenv FAT_TEST_DIR',fatmaintest
+     configfile=fatmaintest+'/SmallCat_Warps/Input_1.config'
+  endif
+  if keyword_set(restest) then begin
+     spawn,'printenv FAT_TEST_DIR',fatmaintest
+     configfile=fatmaintest+'Test_Res_v5.0/FAT_INPUT.config'
+  endif
   IF n_elements(configfile) EQ 0 then begin
      configfile='FAT_INPUT.config'
   endif
+
+
+  
                                 ;dumb resolve routine doesn't accept paths so cd to support dir
   CD,supportdir,current=old_dir
   RESOLVE_ROUTINE, 'beam_plot'
@@ -528,9 +571,10 @@ noconfig:
                                 ;Create a file to write the results to
   If not FILE_TEST(outputcatalogue) OR strupcase(newresult) EQ 'Y' then begin
      openw,1,outputcatalogue
-     printf,1,format='(A60,2A12)','Name','AC1','AC2'
+     printf,1,format='(A60,2A12,A120)','Name','AC1','AC2','Comments on Fit Result'
      close,1
   endif
+ 
                                 ;read the input catalogue
   openr,1,catalogue
   filelength=FILE_LINES(catalogue)-1
@@ -763,7 +807,7 @@ noconfig:
      ENDIF
      if fitsexists EQ 0 then begin
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A100)',catDirname[i],' This galaxy has no fits cube to work with, it is skipped.'
+        printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,' This galaxy has no fits cube to work with, it is skipped.'
         close,1   
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
@@ -984,7 +1028,7 @@ noconfig:
            close,66
         ENDIF
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A90)', catDirname[i],errormessage[1]
+        printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,errormessage[1]
         close,1 
         bookkeeping=5
         goto,finishthisgalaxy
@@ -1106,7 +1150,7 @@ noconfig:
         tmpmask[WHERE(mask GT 0.)]=dummy[WHERE(mask GT 0.)]
         headervel=header
                                 ;Same as in gipsy
-        momentsv2,tmpmask,moment1map,headervel,1.
+        momentsv2,tmpmask,moment1map,headervel,1.,gdlidl=gdlidl
         writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_mom1.fits',float(moment1map),headervel
                                 ;reset the mom 1 map to the one just created
         catMom1name[i]=currentfitcube+'_mom1'
@@ -1301,7 +1345,7 @@ noconfig:
      maxSN=maxbright/catnoise[i]
      IF maxSN LT 4. then begin
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A90)', catDirname[i],' The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit.'
+        printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,' The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit.'
         close,1    
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
@@ -1351,7 +1395,7 @@ noconfig:
     
      IF norings LT 1.5 OR maxrings LE 4 then begin
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A80)', catDirname[i],"This Cube is too small"
+        printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,"This Cube is too small"
         close,1
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
@@ -1766,7 +1810,7 @@ noconfig:
            close,66
         ENDIF
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A80)', catDirname[i],'We found an initial negative total flux.'
+        printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,'We found an initial negative total flux.'
         close,1 
         bookkeeping=5
         goto,finishthisgalaxy
@@ -1786,7 +1830,7 @@ noconfig:
      IF finishafter EQ 0. then begin
         if setfinishafter NE 1 then begin 
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,A80)', catDirname[i],'You have chosen to skip the fitting process after all preparations for the fit'
+           printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,'You have chosen to skip the fitting process after all preparations for the fit'
            close,1
         ENDIF
         if optimized then begin
@@ -2731,7 +2775,7 @@ noconfig:
            close,66
         ENDIF
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A80)', catDirname[i],'We could not find a proper center.'
+        printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,'We could not find a proper center.'
         close,1 
         bookkeeping=5
         goto,finishthisgalaxy
@@ -3384,7 +3428,7 @@ noconfig:
               print,linenumber()+"The fit diverged out of the boundaries set by the parameterization. That can't be good."
            ENDELSE  
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,A80)',catDirname[i],'This galaxy diverged out of the set boundaries.'
+           printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,'This galaxy diverged out of the set boundaries.'
            close,1   
            bookkeeping=5
            goto,finishthisgalaxy
@@ -3512,7 +3556,7 @@ noconfig:
      tmpix=WHERE(tmpcube GT catnoise[i])
      IF tmpix[0] EQ -1 then begin
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A12,A80)', catDirname[i],AC1,'The first fit does not have flux above the noise level, this means a mis fit.'
+        printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,'The first fit does not have flux above the noise level, this means a mis fit.'
         close,1
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
@@ -3534,7 +3578,7 @@ noconfig:
      momentsv2,tmpmask,tmpmap,hedtmp1st,0.
      writefits,maindir+'/'+catdirname[i]+'/1stfit_mom0.fits',float(tmpmap),hedtmp1st
      hedtmp1stv=hedtmp1stcube
-     momentsv2,tmpmask,tmpmapv,hedtmp1stv,1.
+     momentsv2,tmpmask,tmpmapv,hedtmp1stv,1.,gdlidl=gdlidl
      writefits,maindir+'/'+catdirname[i]+'/1stfit_mom1.fits',float(tmpmapv),hedtmp1stv
      getDHI,tmpmap,hedtmp1st,Basicinfovalues[0,3],[RAhr,DEChr,Basicinfovalues[0,4]],DHI
      totflux=[TOTAL(tmpcube[tmpix])/pixperbeam,(TOTAL(2.*cutoff[0:norings[0]-1]))/(n_elements(tmpix)/pixperbeam)]
@@ -3561,7 +3605,7 @@ noconfig:
                        
      IF finishafter EQ 1 then begin
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,A12,A80)', catDirname[i],AC1,'You have chosen to skip the fitting process after the first fit'
+        printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,'You have chosen to skip the fitting process after the first fit'
         close,1
         bookkeeping=bookkeeping+0.5
         goto,finishthisgalaxy
@@ -3968,6 +4012,7 @@ noconfig:
      newYPOS=secondfitvalues[0,tmppos]
      tmppos=where('RADI' EQ secondfitvaluesnames)
      RADarr=secondfitvalues[*,tmppos]
+     maxrad=MAX(RADarr)
      tmppos=where('VROT' EQ secondfitvaluesnames)
      VROTarr=secondfitvalues[*,tmppos]
                                 ;We check that it is not out off bound
@@ -4014,28 +4059,63 @@ noconfig:
            Close,66
         ENDIF        
      ENDIF
-                                ;First we check that the center has not jumped. If it has we reset the central position. And make sure that SBR is at least 2 the cutoff and refit
+                                ;First we check that the center has
+                                ;not jumped. If it has we reset the
+                                ;central position. And make sure that
+                                ;SBR is at least 2 the cutoff and
+                                ;refit
+
+                                ; We do not want the center to deviate
+                                ; more than 2 beams from the previous
+                                ; fit, 4 beams of the 1st fit or more
+                                ; than a 20th of the diameter of the galaxy
+     
      IF ABS(newXPOS-prevXPOS) GT catmajbeam[i]/1800. OR  ABS(newYPOS-prevYPOS) GT catmajbeam[i]/1800. OR $
-        ABS(newXPOS-Final1stXPOS) GT catmajbeam[i]/900. OR ABS(newYPOS-Final1stYPOS) GT catmajbeam[i]/900. then begin       
-        IF size(log,/TYPE) EQ 7 then begin
-           openu,66,log,/APPEND
-           printf,66,linenumber()+"The center shifted more than 2 major beams. Not applying this shift and refitting."
-           printf,66,linenumber()+"The center is bad at "+strtrim(string(newXPOS),2)+', '+strtrim(string(newYPOS),2)
-           printf,66,linenumber()+"It was at "+strtrim(string(prevXPOS),2)+', '+strtrim(string(prevYPOS),2)    
-           close,66
-        ENDIF ELSE BEGIN
-           print,linenumber()+"The center shifted than 2 major beams. Not applying this shift and refitting."
-        ENDELSE
-                                ;If we have jumped from the centre too often then abort
-        IF  (ABS(newXPOS-prevXPOS) LT pixelsizeRA OR ABS(newYPOS-prevYPOS) LT pixelsizeDEC) AND centrejump GT 4 then begin
+        ABS(newXPOS-Final1stXPOS) GT catmajbeam[i]/900. OR ABS(newYPOS-Final1stYPOS) GT catmajbeam[i]/900. OR $
+        ABS(newXPOS-prevXPOS) GT maxrad/36000. OR ABS(newYPOS-prevYPOS) GT  maxrad/36000. then begin
+        IF ABS(newXPOS-prevXPOS) GT catmajbeam[i]/1800. OR  ABS(newYPOS-prevYPOS) GT catmajbeam[i]/1800. then begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"The center shifted more than 4 major beams from the first fit."
+              printf,66,linenumber()+"The center shifted more than 2 major beams. Not applying this shift and refitting."
+              printf,66,linenumber()+"The center is bad at "+strtrim(string(newXPOS),2)+', '+strtrim(string(newYPOS),2)
+              printf,66,linenumber()+"It was at "+strtrim(string(prevXPOS),2)+', '+strtrim(string(prevYPOS),2)    
+              close,66
+           ENDIF ELSE BEGIN
+              print,linenumber()+"The center shifted than 2 major beams. Not applying this shift and refitting."
+           ENDELSE
+        ENDIF
+        IF ABS(newXPOS-Final1stXPOS) GT catmajbeam[i]/900. OR ABS(newYPOS-Final1stYPOS) GT catmajbeam[i]/900.  then begin
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"The center shifted more than 4 major beams from the original fit. Not applying this shift and refitting."
+              printf,66,linenumber()+"The center is bad at "+strtrim(string(newXPOS),2)+', '+strtrim(string(newYPOS),2)
+              printf,66,linenumber()+"It was at "+strtrim(string(prevXPOS),2)+', '+strtrim(string(prevYPOS),2)    
+              close,66
+           ENDIF ELSE BEGIN
+              print,linenumber()+"The center shifted than 4 major beams from the original fit. Not applying this shift and refitting."
+           ENDELSE
+        ENDIF
+        IF ABS(newXPOS-prevXPOS) GT maxrad/36000. OR ABS(newYPOS-prevYPOS) GT  maxrad/36000. then begin
+        IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"The center shifted more 10% of the galaxy maximum radius from the original fit. Not applying this shift and refitting."
+              printf,66,linenumber()+"The center is bad at "+strtrim(string(newXPOS),2)+', '+strtrim(string(newYPOS),2)
+              printf,66,linenumber()+"It was at "+strtrim(string(prevXPOS),2)+', '+strtrim(string(prevYPOS),2)    
+              close,66
+           ENDIF ELSE BEGIN
+              print,linenumber()+"The center  shifted more 10% of the galaxy maximum radius from the original fit. Not applying this shift and refitting."
+           ENDELSE
+        ENDIF
+;If we have jumped from the centre too often then abort
+        IF centrejump GT 10 then begin
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"The center shifted too often out of the set boundaries."
               printf,66,linenumber()+"Finished "+catDirname[i]+" which is galaxy #  "+strtrim(string(fix(i)),2)+" at "+systime()
               close,66
            ENDIF   
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,A80)', catDirname[i],'The first fit centre kept jumping away.'
+           printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,'The first fit centre kept jumping away.'
            close,1 
            bookkeeping=5
            goto,finishthisgalaxy
@@ -4258,9 +4338,9 @@ noconfig:
         tmp2=WHERE(PAang2 GE (double(PAinput2[1])-double(PAinput2[3])))
         IF n_elements(tmp) GE 2 OR n_elements(tmp2) GE 2 then begin
            boundaryadjustment=1
-           PAinput1[1]=strtrim(strcompress(string(double(PAinput1[1]+10.))),2)
-           PAinput2[1]=strtrim(strcompress(string(double(PAinput2[1]+10.))),2)
-           PAinput3[1]=strtrim(strcompress(string(double(PAinput3[1]+10.))),2)
+           IF PAinput1[1] LT 400 then PAinput1[1]=strtrim(strcompress(string(double(PAinput1[1]+10.))),2) else  boundaryadjustment=0
+           IF PAinput2[1] LT 400 then PAinput2[1]=strtrim(strcompress(string(double(PAinput2[1]+10.))),2) else  boundaryadjustment=0
+           IF PAinput3[1] LT 400 then PAinput3[1]=strtrim(strcompress(string(double(PAinput3[1]+10.))),2) else  boundaryadjustment=0
            PArings++
         ENDIF
         IF norings[0] LE 4 or finishafter EQ 1.1 then begin
@@ -4272,9 +4352,9 @@ noconfig:
         ENDELSE
         IF n_elements(tmp) GE 2 OR n_elements(tmp2) GE 2 then begin
            boundaryadjustment=1
-           PAinput1[2]=strtrim(strcompress(string(double(PAinput1[2]-10.))),2)
-           PAinput2[2]=strtrim(strcompress(string(double(PAinput2[2]-10.))),2)
-           PAinput3[2]=strtrim(strcompress(string(double(PAinput3[2]-10.))),2)
+           IF PAinput1[2] GT -40 then PAinput1[2]=strtrim(strcompress(string(double(PAinput1[2]-10.))),2) else  boundaryadjustment=0
+           IF PAinput2[1] GT -40 then PAinput2[2]=strtrim(strcompress(string(double(PAinput2[2]-10.))),2) else  boundaryadjustment=0
+           IF PAinput3[1] GT -40 then PAinput3[2]=strtrim(strcompress(string(double(PAinput3[2]-10.))),2) else  boundaryadjustment=0
            IF tmp[0] EQ -1 then tmp[0]=n_elements(INCLang)
            IF tmp2[0] EQ -1 then tmp2[0]=n_elements(INCLang)
            tmp=MAX([tmp,tmp2,lastreliablerings],min=lastreliablerings)
@@ -5546,7 +5626,7 @@ noconfig:
      momentsv2,tmpmask,tmpmap,hedtmp1st,0.
      writefits,maindir+'/'+catdirname[i]+'/2ndfit_mom0.fits',float(tmpmap),hedtmp1st
      hedtmp1stv=hedtmp1stcube
-     momentsv2,tmpmask,tmpmapv,hedtmp1stv,1.
+     momentsv2,tmpmask,tmpmapv,hedtmp1stv,1.,gdlidl=gdlidl
      writefits,maindir+'/'+catdirname[i]+'/2ndfit_mom1.fits',float(tmpmapv),hedtmp1stv
      getDHI,tmpmap,hedtmp1st,Basicinfovalues[0,3],[RAhr,DEChr,Basicinfovalues[0,4]],DHI
      VSYSdiff=maxchangevel
