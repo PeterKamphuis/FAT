@@ -1,4 +1,4 @@
-Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishafter=finishafter
+Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishafter=finishafter,debug=debug
   
 ;+
 ; NAME:
@@ -11,28 +11,36 @@ Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishaft
 ;       Support
 ; 
 ; CALLING SEQUENCE:
-;       BOOK_KEEPING,filenames,version,log=log
+;       BOOK_KEEPING,filenames,version,distance,gdlidl,log=log,noise=noise,finishafter=finishafter,debug=debug
+  
 ;
 ;
 ; INPUTS:
 ;      filenames = the names of the files that are variable the order
-;      is [Cube,moment0,moment1,mask,noisemap,sofia_catalog,basicinfofilename]   
-;      version = the requested amount of files. 0 just organize the
-;      output and keep all (This will also happen when a fit is
-;      unsuccesful); 1 remove optimized files, log files and input
-;      files; 2  remove optimized files, log files, input
-;      files, ps files and unsmoothed files; 3 (Default) remove optimized files, log files, input
-;      files, ps files, unsmoothed files and all model fits files
-;      except the final model; 4 keep only the def files and remove
-;      all other output. 5 indicates a failed fit clean up. >6 is the same as 0. Residuals are created for
-;      all cases where the fits files are maintained. If 0.5 is added
-;      the final fit was the first fit.
-;
+;                  is [Cube,moment0,moment1,mask,noisemap,sofia_catalog,basicinfofilename].   
+;        version = the requested amount of files. 0 just organize the
+;                  output and keep all (This will also happen when a
+;                  fit is unsuccesful); 1 remove optimized files, log
+;                  files and input files; 2  remove optimized files,
+;                  log files, input files, ps files and unsmoothed
+;                  files; 3 (Default) remove optimized files, log
+;                  files, input files, ps files, unsmoothed files and
+;                  all model fits files except the final model; 4 keep
+;                  only the def files and remove all other output. 5
+;                  indicates a failed fit clean up. >6 is the same as
+;                  0. Residuals are created for all cases where the
+;                  fits files are maintained. If 0.5 is added the
+;                  final fit was the first fit.
+;       distance = The distance to the galaxy for overview_plot.pro.
+;         gdlidl = Identifier whether running idl or gdl.
+;  
 ; OPTIONAL INPUTS:
-;       LOG = name of the tracing log 
-;finishafter = key for what kind of fitting was done.
+;            LOG = name of the tracing log.
+;          noise = The noise used for the fitting.
+;    finishafter = key for what kind of fitting was done.
+;
 ; KEYWORD PARAMETERS:
-;       -
+;         /DEBUG = Option for making the routine verbose.
 ;
 ; OUTPUTS:
 ;
@@ -40,15 +48,20 @@ Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishaft
 ;       -
 ; 
 ; PROCEDURES CALLED:
-;       CREATE_RESIDUALS,ORGANIZE_OUTPUT
+;       CREATE_RESIDUALS,ORGANIZE_OUTPUT, OVERVIEW_PLOT
 ;
 ; EXAMPLE:
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       03-12-2017 P.Kamphuis; Added a debug option for printing
+;                              output.
+;       17-11-2017 P.Kamphuis; Split out the 4 and 4.5 condition to
+;                              ensure they always work correctly.  
 ;       27-02-2016 P.Kamphuis; Modified to accomodate the creation of
-;       an overview plot. This does mean creating the full output
-;       first and deleting subsequently. 
+;                              an overview plot. This does mean
+;                              creating the full output first and
+;                              deleting subsequently. 
 ;       Written 24-07-2015 P.Kamphuis v1.0
 ;
 ; NOTE:
@@ -56,6 +69,10 @@ Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishaft
 ;-
   COMPILE_OPT IDL2
   spawn,'pwd',currentdir
+  if keyword_set(debug) then begin
+     print,"The input names are"
+     print,filenames
+  endif
   IF version NE 5 AND finishafter NE 0 then create_residuals,filenames,version
    organize_output,filenames,version, ['Optimized','Intermediate','Finalmodel','No_Warp','Moments','PV-Diagrams','Sofia_Output']
   IF version NE 5 AND finishafter NE 0 then overview_plot,distance,gdlidl,noise=noise,finishafter=finishafter,filenames=filenames,version=version

@@ -53,6 +53,9 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      03-12-2017 P.Kamphuis; Made sure that in the end _opt is
+;                             stripped from the current fit cube. Else
+;                             the PV-Diagrams are not found.  
 ;      17-11-2017 P.Kamphuis; Fixed a bug where FAT could go into an
 ;                             infinite loop by doing PA boundary adjustments.  
 ;      15-11-2017 P.Kamphuis; Added flag for easy running of the tests   
@@ -5747,7 +5750,11 @@ noconfig:
      finishthisgalaxy:
      
      IF optimized then begin
-        catcubename[i]= noptname[0]       
+        catcubename[i]= noptname[0]
+        tmp=str_sep(strtrim(strcompress(currentfitcube),2),'_opt')
+        IF n_elements(tmp) EQ 2 then begin
+           currentfitcube=tmp[0]
+        ENDIF
      ENDIF
      
   
@@ -5778,7 +5785,7 @@ noconfig:
         IF warpoutput and finishafter EQ 1 then begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"As you have chosen not to fit a warp, the directory Warp_Info will not be created."
+              printf,66,linenumber()+"As you have chosen not to fit a warp, the directories Warp_Info and No_Warp will not be created."
               close,66
            ENDIF
         ENDIF
