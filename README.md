@@ -69,6 +69,8 @@ The plots should look like this:
 
 ![Overview plot of IDL run of Flat Disk](Installation_Check/Overview_IDL.png)
 
+Sometimes, due to updates in SoFiA or TiRiFiC, the check might show small difference beyond the tolerance limits. If these are small and you have checked the individual installations of SoFiA, GDL/IDL, TiRiFiC and the Installation Check files are older than the latest SoFiA or TiRiFiC update, then the installation is probably correct and you can continue. Please do post an issue about the outdated installation check.
+
 
 Running FAT
 -----------
