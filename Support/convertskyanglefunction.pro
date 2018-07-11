@@ -61,11 +61,11 @@ function convertskyanglefunction,angle,distance,UNIT=unit,DISTANCE_UNIT=unitdist
      goto,ending
   endif
 
-  if not keyword_set(unit) then begin
+  if n_elements(unit) EQ 0 then begin
      if not keyword_set(inv) then unit='arcsec' else unit='kpc'
   endif
 
-  if not keyword_set(unitdistance) then unitdistance='Mpc'
+  if n_elements(unitdistance) EQ 0 then unitdistance='Mpc'
   case unitdistance of
      'Mpc': begin
         Dkpc=distance*10E2

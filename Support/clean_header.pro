@@ -40,6 +40,12 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       11-07-2018 P. Kamphuis; Replace the bitwise not with the
+;                               logical negation ~ to avoid problems
+;                               with even integers. Additionally added
+;                               a check that there are more than 2
+;                               pixels per beam and that the beam is
+;                               smaller than the cube.       
 ;       12-06-2016 P. Kamphuis; Fixed the condition for detecting a
 ;       frequency axis to exit cleanly and check both unit and type.  
 ;       Written 04-01-2016 P.Kamphuis v1.0
@@ -175,7 +181,8 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
                                 ;it from the file; This is important if you do it incorrectly the
                                 ;pipeline will use a incorrect pixel size.
                                 ;   writecube=0
-  IF NOT sxpar(header,'BMAJ') then begin
+
+  IF ~(sxpar(header,'BMAJ')) then begin
      IF sxpar(header,'BMMAJ') then begin
         sxaddpar,header,'BMAJ',sxpar(header,'BMMAJ')/3600.
          writecube=1
@@ -202,7 +209,7 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
                IF found then break
             endfor
          ENDIF
-         IF NOT found then begin
+         IF ~(found) then begin
             IF beam[0] NE 1 then begin
                sxaddpar,header,'BMAJ',double(beam[0]/3600.)
                If beam[1] NE 1 then  sxaddpar,header,'BMIN',double(beam[1]/3600.) else  sxaddpar,header,'BMIN',double(beam[0]/3600.)
@@ -225,7 +232,7 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
      ENDELSE
     
   ENDIF 
-  IF NOT sxpar(header,'BMIN') then begin
+  IF ~(sxpar(header,'BMIN')) then begin
      IF sxpar(header,'BMMIN') then begin
         sxaddpar,header,'BMIN',sxpar(header,'BMMIN')/3600.
         writecube=1
@@ -264,6 +271,32 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
         print,linenumber()+'CLEAN_HEADER:  Your cube has a significant history attached we are removing it for easier interpretation.'    
      ENDELSE
   ENDIF
+  IF ABS(sxpar(header,'BMAJ')/sxpar(header,'CDELT1')) LT 2. then begin
+     IF size(log,/TYPE) EQ 7 then begin
+        openu,66,log,/APPEND
+        printf,66,linenumber()+'CLEAN_HEADER: !!!!!!!!!!Your cube has less than two pixels per beam major axis.!!!!!!!!!!!!!!!!!'
+        printf,66,linenumber()+'CLEAN_HEADER: !!!!!!!!!!           This will lead to bad results.              !!!!!!!!!!!!!!!!'     
+        close,66
+     ENDIF
+     print,linenumber()+'CLEAN_HEADER: !!!!!!!!!!Your cube has less than two pixels per beam major axis.!!!!!!!!!!!!!!!!!'
+     print,linenumber()+'CLEAN_HEADER: !!!!!!!!!!           This will lead to bad results.              !!!!!!!!!!!!!!!!'     
+  ENDIF
+  IF ABS(sxpar(header,'BMAJ')/sxpar(header,'CDELT1')) GT (sxpar(header,'NAXIS1')+sxpar(header,'NAXIS1'))/2. then begin
+     IF size(log,/TYPE) EQ 7 then begin
+        openu,66,log,/APPEND
+        printf,66,linenumber()+'CLEAN_HEADER: !!!!!!!!!!Your cube is smaller than the beam major axis. !!!!!!!!!!!!!!!!!'
+        printf,66,linenumber()+'CLEAN_HEADER: !!!!!!!!!!         This will not work.          !!!!!!!!!!!!!!!!'     
+        close,66
+     ENDIF
+     print,linenumber()+'CLEAN_HEADER: !!!!!!!!!!Your cube is smaller than the beam major axis. !!!!!!!!!!!!!!!!!'
+     print,linenumber()+'CLEAN_HEADER: !!!!!!!!!!         This will not work.          !!!!!!!!!!!!!!!!'
+     openu,1,outputcatalogue,/APPEND
+     printf,1,format='(A60,2A12,A120)',Dir,0.,0.,'The Cube is not arranged properly'
+     close,1
+     writecube=2
+     goto,finishup
+  ENDIF   
+
   
   beam=[sxpar(header,'BMAJ')*3600,sxpar(header,'BMIN')*3600.]
   finishup:

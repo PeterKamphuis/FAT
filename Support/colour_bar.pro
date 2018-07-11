@@ -61,6 +61,7 @@ PRO colour_bar, x, y, minval, maxval, TITLE=title, VERTICAL=dummy1,$
 ;      
 ;
 ; MODIFICATION HISTORY:
+;      11-07-2018 P.Kamphuis; Improved use of negation operators.  
 ;      15-11-2016 P.Kamphuis; Added the hex_color keyword for color
 ;                             plotting in GDL PS  
 ;       8-10-2009 P.Kamphuis; Minimum and maximum value have to be
@@ -206,14 +207,14 @@ PRO colour_bar, x, y, minval, maxval, TITLE=title, VERTICAL=dummy1,$
         endif else begin
            plot,a,b,position=pos,color=legcolor, _EXTRA=ex,/NODATA,/NOERASE,ytickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],yticks=1.,xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xticks=1
            if not keyword_set(supress) then begin
-              if not n_elements(xtf) then begin
-                 IF not n_elements(xtn) then begin
+              if ~(n_elements(xtf)) then begin
+                 IF ~(n_elements(xtn)) then begin
                     Axis,XAXIS=1,_EXTRA=ex
                  endif else begin
                     AXIS,XAXIS=1,_EXTRA=ex,xtickv=double(xtn),xticks=n_elements(xtn)-1
                  endelse
               endif else begin
-                 IF not n_elements(xtn) then begin
+                 IF ~(n_elements(xtn)) then begin
                     Axis,XAXIS=1,_EXTRA=ex,xtickformat=xtf
                  endif else begin
                     AXIS,XAXIS=1,_EXTRA=ex,xtickv=double(xtn),xticks=n_elements(xtn)-1,xtickformat=xtf
@@ -227,14 +228,14 @@ PRO colour_bar, x, y, minval, maxval, TITLE=title, VERTICAL=dummy1,$
         endif else begin
            plot,b,a,position=pos,color=legcolor, _EXTRA=ex,/NODATA,/NOERASE,yrange=[double(minval),double(maxval)],ystyle=1,xticks=1,yticks=1,ytickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ']
            if not keyword_set(supress) then begin
-              if not n_elements(ytf) then begin
-                 IF not n_elements(ytn) then begin
+              if ~(n_elements(ytf)) then begin
+                 IF ~(n_elements(ytn)) then begin
                     AXIS,YAXIS=1,_EXTRA=ex,COLOR=legcolor,ystyle=1
                  endif else begin
                     AXIS,YAXIS=1,_EXTRA=ex,ytickv=double(ytn),yticks=n_elements(ytn)-1,COLOR=legcolor
                  endelse
               endif else begin
-                 IF not n_elements(ytn) then begin
+                 IF ~(n_elements(ytn)) then begin
                     AXIS,YAXIS=1,_EXTRA=ex,ytickformat=ytf,COLOR=legcolor,ystyle=1
                  endif else begin
                     AXIS,YAXIS=1,_EXTRA=ex,ytickname=ytn,ytickv=double(ytn),yticks=n_elements(ytn)-1,COLOR=legcolor,ytickformat=ytf
