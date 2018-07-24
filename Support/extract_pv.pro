@@ -45,6 +45,8 @@ Pro extract_pv,Cube,header,pa,xv,CENTER=center,XVHEADER=new_header
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       11-07-2018 P.Kamphuis; Replaced bitwise operator not with
+;                              logical operator ~
 ;       07-01-2016 P.Kamphuis; Replaced SUM commands with the proper
 ;       TOTAL commands reducing the need for outside routines.  
 ;       05-01-2016 P.Kamphuis; Updated NAXIS1 in new header  
@@ -57,7 +59,7 @@ Pro extract_pv,Cube,header,pa,xv,CENTER=center,XVHEADER=new_header
   inheader=header
   if n_elements(center) EQ 0 then center=[sxpar(inheader,'CRVAL1'), sxpar(inheader,'CRVAL2')]
   if n_elements(width) EQ 0 then begin
-     IF NOT sxpar(inheader,'BMAJ') then begin
+     IF ~(sxpar(inheader,'BMAJ')) then begin
         width=0.
      ENDIF else width=sxpar(inheader,'BMAJ')
   endif    

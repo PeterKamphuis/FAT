@@ -1645,7 +1645,7 @@ noconfig:
            print,linenumber()+"Fitting with half the beam major axis FWHM as ringsize."
         Endelse  
      ENDIF ELSE BEGIN
-        IF maxrings GT 25 then begin
+        IF maxrings GT 25 AND norings[0] GT 20 then begin
            doubled=1
            tmpring=norings[0]-10.
            IF newinclination[0] LT 40 then tmpring=tmpring+2

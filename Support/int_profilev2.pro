@@ -56,6 +56,10 @@ Pro int_profilev2,inputor,profile,PA=paor,MINOR=minor,HEADER=header,XCENTER=xcen
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       11-07-2018 P. Kamphuis; Added some check condintion to make
+;                               sure the arrays can be created and the
+;                               routine does not crash when range is
+;                               smaller than a pixel.   
 ;       Written by P.Kamphuis 01-01-2015 
 ;
 ; NOTE:
@@ -93,7 +97,7 @@ Pro int_profilev2,inputor,profile,PA=paor,MINOR=minor,HEADER=header,XCENTER=xcen
      xcenterdeg=(xcenter-sxpar(header,'CRPIX1'))*sxpar(header,'CDELT1')+sxpar(header,'CRVAL1')
      ycenterdeg=(ycenter-sxpar(header,'CRPIX2'))*sxpar(header,'CDELT2')+sxpar(header,'CRVAL2')
   ENDIF
-
+  
   IF pa NE 90 then begin
      result=ROT(input, pa-90,1.0,xcenter,ycenter,CUBIC=-0.5,/PIVOT)
      input=result
@@ -203,7 +207,8 @@ Pro int_profilev2,inputor,profile,PA=paor,MINOR=minor,HEADER=header,XCENTER=xcen
   ENDELSE
   IF pixpos[0,0] GT pixpos[1,0] then pixpos[*,0]=reverse(pixpos[*,0])
   IF pixpos[0,1] GT pixpos[1,1] then pixpos[*,1]=reverse(pixpos[*,1])
-
+  IF fix(pixpos[1,1]-pixpos[0,1]) EQ 0 then pixpos[0,1]=pixpos[0,1]-1
+  IF fix(pixpos[1,0]+1-pixpos[0,0]) EQ 0 then pixpos[0,0]=pixpos[0,0]-1
 
   profile=dblarr(pixpos[1,0]+1-pixpos[0,0])
   clear=dblarr(n_elements(input[*,0]),n_elements(input[0,*]))
