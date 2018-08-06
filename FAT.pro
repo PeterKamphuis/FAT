@@ -53,6 +53,8 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      06-08-2018 P.Kamphuis; Added line to ensure that integer cubes
+;                             are scaled.    
 ;      03-12-2017 P.Kamphuis; Made sure that in the end _opt is
 ;                             stripped from the current fit cube. Else
 ;                             the PV-Diagrams are not found.  
@@ -840,6 +842,12 @@ noconfig:
                                 ;read in the cube and check
                                 ;it's header
         dummy=readfits(maindir+'/'+catdirname[i]+'/'+currentfitcube+cubeext,header,/NOSCALE,/SILENT)
+                                ;if the cube is in integer format we
+                                ;should scale the values in order to
+                                ;not mess thing up
+        IF sxpar(header,'BITPIX') EQ 16 then dummy=readfits(maindir+'/'+catdirname[i]+'/'+currentfitcube+cubeext,header,/SILENT)
+           
+
         IF n_elements(catmajbeam) GT 0 then begin
            beam=[catmajbeam[i],catminbeam[i]]
         ENDIF ELSE beam=[1,1]
