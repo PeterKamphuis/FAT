@@ -459,6 +459,7 @@ tryconfigagain:
                                 ;Do we want warp info
            'warp_output':warpoutput=double(tmp[1])
            else:begin
+              print,'this should be empty'
            end
         endcase
      endif
@@ -2337,6 +2338,7 @@ noconfig:
               catmaxrot[i]=firstfitvalues[1,4]
            ENDELSE
            notfornow:
+           print,'I"m not sure'
         ENDIF
         testing1INCL:
         INCLinput1=['INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
@@ -2535,6 +2537,7 @@ noconfig:
         tirificfirst[tmppos]='VROT= 0. '+string(catmaxrot[i])
         tmppos=where('VROT_2' EQ tirificfirstvars)
         tirificfirst[tmppos]='VROT_2= 0. '+string(catmaxrot[i])
+        print,'Peculiar'
      ENDIF
                                 ;Since our first SBR estimate is very
                                 ;crude we want to adapt that by itself first
@@ -3872,8 +3875,9 @@ noconfig:
         PAinput1[0]='PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                     ' PA_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
         IF doubled then begin
-           
+           print,'These are peculiar conversion errors'
         ENDIF else SBRinput1[2]=strtrim(strcompress(string(cutoff[n_elements(cutoff)-1]/4.,format='(E12.5)')),1)
+        print,'These are peculiar conversion errors'
      endelse  
                        
                                 ;If the first fit is accepted we only change the central position minimally
@@ -5812,7 +5816,8 @@ noconfig:
         close,66
      ENDIF
      IF bookkeeping EQ 5 then print,linenumber()+'FAT did not run the full fitting routines. Please check your output log or screen messages carefully.'
-     CD,old_dir 
+     CD,old_dir
+     print,'These are peculiar conversion errors'
   endfor
   CD,originaldir
   close,3
@@ -5867,7 +5872,9 @@ noconfig:
            print,'!!!!---------------------------------------------!!!!!'
         end
      endcase
-                                ;We always will want to clean up the directory
+                                ;We always will want to clean up the
+                                ;directory
+     print,'These are peculiar conversion errors'
   endif
 end
 
