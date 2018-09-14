@@ -53,6 +53,8 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      14-09-2018 P.Kamphuis; Allowing 8% fractional change change of center when
+;                             rings > 25  
 ;      13-09-2018 P.Kamphuis; Increased the VROT slope range for large
 ;                             galaxies (> 25 rings).   
 ;      06-08-2018 P.Kamphuis; Added line to ensure that integer cubes
@@ -3150,14 +3152,18 @@ noconfig:
            goto,shiftcenter
         ENDIF ELSE BEGIN
                                 ;if the shift is more than two beams
-                                ;from the initial guess something went wrong
-           IF    ABS(RADeg-newxpos) GT catmajbeam[i]/1800. OR ABS(DECDeg-newypos) GT catmajbeam[i]/1800. then begin
+                                ;from the initial guess something went
+                                ;wrong
+           IF norings LE 25 then resetlimit=catmajbeam[i]/1800. else begin
+              resetlimit=catmajbeam[i]/3600.*norings[0]*0.08
+           ENDELSE
+           IF    ABS(RADeg-newxpos) GT resetlimit OR ABS(DECDeg-newypos) GT resetlimit then begin
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"The center shifted more than 2 major beams. Not applying this shift."
+                 printf,66,linenumber()+"The center shifted more than "+string(resetlimit*3600/catmajbeam[i])+" major beams. Not applying this shift."
                  close,66
               ENDIF ELSE BEGIN
-                 print,linenumber()+"The center shifted than 2 major beams. Not applying this shift."
+                 print,linenumber()+"The center shifted more than "+string(resetlimit*3600/catmajbeam[i])+" major beams. Not applying this shift."
               ENDELSE
               IF paraised then begin
                  tmppos=where('PA' EQ tirificfirstvars)
