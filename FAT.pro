@@ -53,6 +53,8 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      13-09-2018 P.Kamphuis; Increased the VROT slope range for large
+;                             galaxies (> 25 rings).   
 ;      06-08-2018 P.Kamphuis; Added line to ensure that integer cubes
 ;                             are scaled.    
 ;      03-12-2017 P.Kamphuis; Made sure that in the end _opt is
@@ -4625,7 +4627,11 @@ noconfig:
      get_newringsv9,SBRav,SBRav,2.*cutoff,velconstused
      velconstused--
      IF double(norings[0]) GT 15. then begin
-        IF velconstused GT norings[0]-ceil(norings[0]/10.) then velconstused=norings[0]-ceil(norings[0]/10.)
+        IF double(norings[0]) LT 25. then fact = 10 else fact= 20-(norings[0]/2.5)
+        if fact LT 6 then fact=6
+        
+        IF velconstused GT norings[0]-ceil(norings[0]/fact) then velconstused=norings[0]-ceil(norings[0]/fact)
+        
      ENDIF
      prefunc=0. 
      IF norings[0]-velconstused LT 2 then velconstused=norings[0]-1

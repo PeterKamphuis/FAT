@@ -70,6 +70,10 @@ Pro revised_regularisation_com,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       13-09-2018 P.Kamphuis; Added increased errors for outer rings
+;                              when galaxies >25 rings. This increase
+;                              is based on their deviation from the
+;                              mean value.
 ;       08-03-2017 P.Kamphuis; Added the condition that when the
 ;                              initial order is 0 when refitting do
 ;                              not take the lowest order. Aditionally
@@ -127,7 +131,7 @@ Pro revised_regularisation_com,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
   IF n_elements(accuracy) EQ 0 then accuracy=[1.,1.]
   IF n_elements(order) EQ 0 then order=dblarr(1)
   IF n_elements(slopedrings) EQ 0 then slopedrings=0.
-  IF slopedrings EQ n_elements(PAin) then slopedrings=0.
+  IF slopedrings EQ n_elements(PAin[*,0]) then slopedrings=0.
   IF slopedrings NE 0. then slopedrings=slopedrings+1
   for i=0,n_elements(accuracy)-1 do $
      IF accuracy[i] LT 0.1 then accuracy[i]=0.1                          
@@ -358,7 +362,7 @@ restartall:
                                 ;if the profile is larger than fifteen
                                 ;rings we will modify the errors based
                                 ;on their distance from the smoothed profile 
-     IF n_elements(PA) GT 15 then begin
+     IF n_elements(PA[*,0]) GT 15 then begin
         for i=0,n_elements(PA[0,*])-1 do begin
            rms=ROBUST_SIGMA(PA[*,i]-PAsmooth[*,i])
            tmperrors=ABS(SQRT(ABS(PA[*,i]-PAsmooth[*,i])))
@@ -366,6 +370,12 @@ restartall:
               print,'These are the errors based on the smoothed profile',rms
               print,tmperrors
            ENDIF
+           if n_elements(PA[*,0]) GT 25 then begin
+              for i=0,n_elements(PA[0,*])-1 do begin
+                 mean=MEAN(PA[*,i])
+                 tmperrors[fix(n_elements(PA[*,0])/2.):n_elements(PA[*,0])-1,i]=tmperrors[fix(n_elements(PA[*,0])/2.):n_elements(PA[*,0])-1,i]+SQRT(ABS(PA[fix(n_elements(PA[*,0])/2.):n_elements(PA[*,0])-1,i]-mean))
+              endfor
+           endif
            errors[*,i]=(errors[*,i]+tmperrors[*])/2.
            tmp=WHERE(FINITE(errors[*,i]) EQ 0)
            IF tmp[0] NE -1 then errors[tmp,i]=ddiv[i]

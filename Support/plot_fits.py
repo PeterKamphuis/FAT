@@ -114,6 +114,10 @@ def plot_fits(filetoplot,figure,contours=None, figure_coordinates=[0.1,0.1,0.8,0
             sig3=np.std(hdu.data[-10:-1,-10:-1])
             sig4=np.std(hdu.data[-10:-1,0:10])
             sig = np.mean([sig1,sig2,sig3,sig4])
+            if np.isnan(sig):
+                sig=abs(mini)/3.
+            while sig > maxi:
+                sig =sig/2.
             levels=np.array([-2,-1,1,2,4,8,16,32,64,128])*1.5*sig
             print(levels)
 #            levels=[-sig*3,-sig*1.5,sig*1.5,3*sig,9*sig]
