@@ -49,6 +49,8 @@ Pro set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwi
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       14-09-2018 P.Kamphuis; When sloping the outer ring were done
+;                              later not as the first ones. Swapped these  
 ;       10-03-2016 P.Kamphuis; Added an option to not fit a slope but
 ;                              fit a flat extension of the last reliable ring.  
 ;       Written 01-01-2015 P.Kamphuis v1.0
@@ -107,11 +109,17 @@ Pro set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwi
            else:begin
            end
         endcase
-        string1='!VROT '+strtrim(strcompress(string(norings[0]-3,format='(I3)')),1)+':'+strtrim(strcompress(string(start,format='(I3)')),1)+' VROT_2 '+strtrim(strcompress(string(norings[0]-3,format='(I3)')),1)+$
-                ':'+strtrim(strcompress(string(start,format='(I3)')),1)+',!VROT '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+':'+strtrim(strcompress(string(norings[0]-2,format='(I3)')),1)+' VROT_2 '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+':'+strtrim(strcompress(string(norings[0]-2,format='(I3)')),1)
+        string1='!VROT '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+':'+$
+                strtrim(strcompress(string(norings[0]-2,format='(I3)')),1)+$
+                ' VROT_2 '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+':'+$
+                strtrim(strcompress(string(norings[0]-2,format='(I3)')),1)+$
+                ',!VROT '+strtrim(strcompress(string(norings[0]-3,format='(I3)')),1)+':'$
+                +strtrim(strcompress(string(start,format='(I3)')),1)+' VROT_2 '+$
+                strtrim(strcompress(string(norings[0]-3,format='(I3)')),1)+$
+                ':'+strtrim(strcompress(string(start,format='(I3)')),1)
         string2=string(VROTmax)+' '+string(VROTmax)
-        string3=string(VROTmin)+' '+string(avinner)
-        string4=string(channelwidth)+' '+string(0.5*channelwidth)
+        string3=string(avinner)+' '+string(VROTmin)
+        string4=string(0.5*channelwidth)+' '+string(channelwidth)
         string5=string(0.01*channelwidth)+' '+string(0.01*channelwidth)
         string6=string(0.5*channelwidth)+' '+string(0.5*channelwidth)
         string7=string(0.01*channelwidth)+' '+string(0.01*channelwidth)
@@ -154,8 +162,14 @@ Pro set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwi
            else:begin
            end
         endcase
-        string1='!VROT '+strtrim(strcompress(string(velconstused-1,format='(I3)')),1)+':'+strtrim(strcompress(string(start,format='(I3)')),1)+' VROT_2 '+strtrim(strcompress(string(velconstused-1,format='(I3)')),1)+$
-                ':'+strtrim(strcompress(string(start,format='(I3)')),1)+',!VROT '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+':'+strtrim(strcompress(string(velconstused,format='(I3)')),1)+' VROT_2 '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+':'+strtrim(strcompress(string(velconstused,format='(I3)')),1)
+        string1='!VROT '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+':'+$
+                strtrim(strcompress(string(velconstused,format='(I3)')),1)+' VROT_2 '+$
+                strtrim(strcompress(string(norings[0],format='(I3)')),1)+':'$
+                +strtrim(strcompress(string(velconstused,format='(I3)')),1)+', !VROT '$
+                +strtrim(strcompress(string(velconstused-1,format='(I3)')),1)+':'$
+                +strtrim(strcompress(string(start,format='(I3)')),1)+' VROT_2 '+$
+                strtrim(strcompress(string(velconstused-1,format='(I3)')),1)+$
+                ':'+strtrim(strcompress(string(start,format='(I3)')),1)
         string2=string(VROTmax)+' '+string(VROTmax)
         string3=string(VROTmin)+' '+string(avinner)
         string4=string(channelwidth)+' '+string(0.1*channelwidth)

@@ -72,8 +72,8 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   
   arrays=1.
   IF gdlidl then SET_PLOT,'PS' else SET_PLOT, 'Z'
-  plotpara=['RADI','SBR','SBR_2','VROT','VROT_ERR','PA','PA_ERR','PA_2','PA_2_ERR','INCL','INCL_ERR','INCL_2','INCL_2_ERR','BMAJ','SDIS','XPOS','YPOS','VSYS']
-  plotstart=[[1,3,5,9],[2,3,7,11],[0,1,1,1]]
+  plotpara=['RADI','SBR','SBR_2','VROT','VROT_ERR','PA','PA_ERR','PA_2','PA_2_ERR','INCL','INCL_ERR','INCL_2','INCL_2_ERR','BMAJ','SDIS','XPOS','YPOS','VSYS','SDIS_ERR']
+  plotstart=[[1,3,14,5,9],[2,3,14,7,11],[0,1,4,1,1]]
   Template=1.
   WriteNewToTemplate,Template,'Finalmodel/Finalmodel.def',ARRAYS=Arrays,VARIABLECHANGE=plotpara,/EXTRACT
   IF FILE_TEST('ModelInput.def') then begin
@@ -92,12 +92,12 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         else:Varunits[i]=''
      endcase
   endfor
-  maxvar=dblarr(4)
-  minvar=dblarr(4)
-  buffer=dblarr(4)
+  maxvar=dblarr(5)
+  minvar=dblarr(5)
+  buffer=dblarr(5)
   minvar[*]=100000
   maxvar[*]=-10000
-  for i=0,3 do begin
+  for i=0,4 do begin
      tmpvals=[Arrays[*,plotstart[i,0]],Arrays[*,plotstart[i,1]]]
      tmplocs=WHERE(tmpvals NE 0.)
      tmpmax=MAX(tmpvals[tmplocs],MIN=tmpmin)
@@ -152,12 +152,12 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   
   maxradii=MAX([plotradii[tmp],plotradii[tmp2]])+(plotradii[n_elements(plotradii)-1]-plotradii[n_elements(plotradii)-2])/2.
   
-  for i=0,3 do begin    
+  for i=0,4 do begin    
      IF i EQ 0 then begin
         
         plotvariable=Arrays[tmp,1]
         loadct,0,/silent
-        plot,plotradii,plotVariable,position=[0.15,0.9-4*ysize,0.55,0.9-3*ysize],xtitle='Radius (arcmin)',$
+        plot,plotradii,plotVariable,position=[0.15,0.9-5*ysize,0.55,0.9-4*ysize],xtitle='Radius (arcmin)',$
              xrange=[0.,maxradii],yrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]],ytickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xticklayout=1,background='ffffff'x,color='ffffff'x,/nodata
         if keyword_set(splined) then begin
            newrad=dblarr((n_elements(plotradii)-1)*10.+1)
@@ -228,7 +228,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         loadct,0,/silent
         IF TOTAL(plotVariableErr) NE 0. then begin
            xerr=dblarr(n_elements(plotVariableErr))
-           fat_ploterror,plotradii,plotVariable,xerr,plotVariableErr,position=[0.15,0.9-(4-i)*ysize,0.55,0.9-(3-i)*ysize],$
+           fat_ploterror,plotradii,plotVariable,xerr,plotVariableErr,position=[0.15,0.9-(5-i)*ysize,0.55,0.9-(4-i)*ysize],$
                      xrange=[0.,maxradii],yrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]],xthick=xthick,ythick=ythick,xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xticklayout=1,charthick=charthick,thick=thick,charsize=charsize,linestyle=0,$
                      /noerase,color='000000'x,ERRCOLOR = '000000'x, ERRTHICK=!p.thick*0.4,psym=8,symsize=ssize
         ENDIF ELSE BEGIN
@@ -241,7 +241,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
            oplot,newrad,newvar,color='000000'x,linestyle=0,symsize=ssize
         ENDIF ELSE oplot,plotradii,plotVariable,thick=lthick,color='000000'x,linestyle=0
       
-        IF i EQ 3 then begin
+        IF i EQ 4 then begin
            AXIS,XAXIS=1,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,XRANGE = convertskyanglefunction(!X.CRANGE,distance),XTITLE='Radius (kpc)',color='000000'x 
         endif else begin
            AXIS,XAXIS=1,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,XRANGE = convertskyanglefunction(!X.CRANGE,distance),xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],color='000000'x 

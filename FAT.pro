@@ -53,6 +53,8 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      14-09-2018 P.Kamphuis; Intoducing ring by ring SDIS
+;                             fitting. Migrated to v6.0
 ;      06-08-2018 P.Kamphuis; Added line to ensure that integer cubes
 ;                             are scaled.    
 ;      03-12-2017 P.Kamphuis; Made sure that in the end _opt is
@@ -253,7 +255,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   
   DEFSYSV, '!GDL', EXISTS = gdlidl ;is 1 when running GDL
   spawn,'pwd',originaldir
-;  goto,skipcatch
+  goto,skipcatch
   CATCH,Error_status  
   IF  Error_status NE 0. THEN BEGIN
     
@@ -291,7 +293,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
      stop
   ENDIF
   skipcatch:
-  version='v5.0.3'
+  version='v6.0'
                                 ;First thing we do is to check whether we run IDL or GDL
   DEFSYSV, '!GDL', EXISTS = gdlidl ;is 1 when running GDL
   if n_elements(supportdir) EQ 0 then supportdir='Support'
@@ -350,6 +352,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   RESOLVE_ROUTINE, 'create_residuals'
   RESOLVE_ROUTINE, 'dec_names'
   RESOLVE_ROUTINE, 'extract_pv'
+  RESOLVE_ROUTINE, 'fat_arctan',/IS_FUNCTION,/COMPILE_FULL_FILE
   RESOLVE_ROUTINE, 'fat_fit',/IS_FUNCTION
   IF gdlidl then RESOLVE_ROUTINE,'fat_gdlgauss',/IS_FUNCTION,/COMPILE_FULL_FILE
   RESOLVE_ROUTINE, 'fat_hanning',/IS_FUNCTION
@@ -376,6 +379,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   RESOLVE_ROUTINE, 'preprocessing'
   RESOLVE_ROUTINE, 'ra_names' 
   RESOLVE_ROUTINE, 'read_template'
+  RESOLVE_ROUTINE, 'regularisation_sdis'
   RESOLVE_ROUTINE, 'rename'
   RESOLVE_ROUTINE, 'revised_regularisation_com'
   RESOLVE_ROUTINE, 'revised_regularisation_rot'
@@ -383,6 +387,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   RESOLVE_ROUTINE, 'run_sofia'
   RESOLVE_ROUTINE, 'sbr_check'
   RESOLVE_ROUTINE, 'set_sbr'
+  RESOLVE_ROUTINE, 'set_sdis'
   RESOLVE_ROUTINE, 'set_vrotv6'
   RESOLVE_ROUTINE, 'set_warp_slopev3'
   RESOLVE_ROUTINE, 'showpixelsmap'
@@ -3648,7 +3653,9 @@ noconfig:
      Vfrom1=firstfitvalues[*,tmppos]
      half=fix(n_elements(firstfitvalues[*,tmppos])/2.)
      VROTarr[*]=firstfitvalues[*,tmppos]
-     tmppos=where('SBR' EQ firstfitvaluesnames)
+     tmppos=where('SDIS' EQ firstfitvaluesnames)
+     SDISarr=dblarr(n_elements(firstfitvalues[*,tmppos]))
+     tmppos=where('SDIS_2' EQ firstfitvaluesnames)
      SBRarr=firstfitvalues[*,tmppos]
      tmppos=where('INCL' EQ firstfitvaluesnames)
      INCLang=firstfitvalues[*,tmppos]
@@ -3795,17 +3802,36 @@ noconfig:
                                 ; more uncartain at lower inclination
      IF VROTmax LT 60. then VROTmax=60.
      IF vrotmax GT 600. then VROTmax=600.
+                                ;SDIS
+     SDISmax=MAX(SDISarr,Min=SDISmin)
+     SDISmax=SDISmax*1.5     
+     SDISmin=SDISmin/4.
+                                ;the minimum can never be less than
+                                ;the channelwidth
+     IF SDISmin LT channelwidth then SDISmin=channelwidth
+                                ; The maximum should not be less than
+                                ; 80 /sin(inclination) as it becomes
+                                ; more uncartain at lower inclination
+     IF SDISmax LT 15. then SDISmax=15.
+     IF sdismax GT 40. then SDISmax=40.
                                 ; See how much of the rotation curve we want to fit as a slope
      get_newringsv9,SBRarr,SBRarr2,2.*cutoff,velconstused
      velconstused--
      IF norings[0] GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
      set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter
+     set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,avinner=avinner,finish_after=finishafter
                                 ;set the surface brightness values
      set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,/initial,doubled=doubled
-                                ;SDIS
-     SDISinput1=['SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-                 ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
-                 '25','5','1','0.1','0.5','0.05','3','70','70']    
+                                ;SDIS 14-09-2018 let's make an
+                                ;attempt at fitting the dispersion in
+                                ;a similar fashion to the pa
+ ;    SDISinput1=['SDIS 1:'+strtrim(strcompress(string(innerfix,format='(F7.4)')),1)+$
+ ;                ' SDIS_2 1:'+strtrim(strcompress(string(innerfix,format='(F7.4)')),1),$
+ ;                string(30.),string(5.),string(1.),string(0.1),string(0.5),string(0.1),'3','70','70']
+        
+  ;   SDISinput1=['SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+  ;               ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
+  ;               '25','5','1','0.1','0.5','0.05','3','70','70']    
                                 ;Z0
      Z0input1=['Z0 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                ' Z0_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
@@ -3849,6 +3875,7 @@ noconfig:
                                 ;PA
      PAinput2=[PAinput1,' ']
      PAinput3=[PAinput1,' ']
+                                
                                 ;IF we have a decent amount of rings
                                 ;and we are not fitting a flat disk
                                 ;with half beams than we let the rings
@@ -3863,6 +3890,7 @@ noconfig:
         PAinput2[3]='0.5'
         PAinput3[5]='2.0'
         PAinput3[3]='0.5'
+   
                                                           ;update INCL and PA
         set_warp_slopev3,SBRarr,SBRarr2,cutoff,INCLinput2,PAinput2,INCLinput3,PAinput3,norings,log=log,innerfix=innerfix
      endif else begin
@@ -3894,8 +3922,9 @@ noconfig:
            Writefittingvariables,tirificsecond,inclinput1,painput1,vrotinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
                                  xposinput1,yposinput1,vsysinput1,sdisinput1
         ENDIF ELSE BEGIN
-           Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
-                                 xposinput1,yposinput1,vsysinput1,sdisinput1
+           Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                 vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                 xposinput1,yposinput1,vsysinput1
         ENDELSE
      endif else begin
                                 ;Else we allow more variation in the
@@ -3914,8 +3943,9 @@ noconfig:
            Writefittingvariables,tirificsecond,xposinput1,yposinput1,vsysinput1,inclinput1,painput1,vrotinput1,$
                                  sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,sdisinput1
         ENDIF ELSE BEGIN
-           Writefittingvariables,tirificsecond,xposinput1,yposinput1,vsysinput1,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,$
-                                 sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,sdisinput1
+           Writefittingvariables,tirificsecond,xposinput1,yposinput1,vsysinput1,$
+                                 inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,$
+                                 sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1
         ENDELSE
      endelse
                                 ;Setting a bunch of fit tracking variables
@@ -4031,6 +4061,13 @@ noconfig:
      IF tmp[0] ne -1 then VROTarr[tmp]=VROTmax*0.8
      tmp=WHERE(VROTarr LT VROTmin)
      IF tmp[0] ne -1 then VROTarr[tmp]=VROTmin*2.
+     tmppos=where('SDIS' EQ secondfitvaluesnames)
+     SDISarr=secondfitvalues[*,tmppos]
+                                ;We check that it is not out off bound
+     tmp=WHERE(SDISarr GT SDISmax)
+     IF tmp[0] ne -1 then SDISarr[tmp]=SDISmax*0.8
+     tmp=WHERE(SDISarr LT SDISmin)
+     IF tmp[0] ne -1 then SDISarr[tmp]=SDISmin*1.5
      
      tmppos=where('SBR' EQ secondfitvaluesnames)
      SBRarr=secondfitvalues[*,tmppos]
@@ -4050,6 +4087,13 @@ noconfig:
      IF tmp[0] ne -1 then VROTarr2[tmp]=VROTmax*0.8
      tmp=WHERE(VROTarr2 LT VROTmin)
      IF tmp[0] ne -1 then VROTarr2[tmp]=VROTmin*2.
+     tmppos=where('SDIS_2' EQ secondfitvaluesnames)
+     SDISarr2=secondfitvalues[*,tmppos]
+                                ;We check that it is not out off bound
+     tmp=WHERE(SDISarr2 GT SDISmax)
+     IF tmp[0] ne -1 then SDISarr2[tmp]=SDISmax*0.8
+     tmp=WHERE(SDISarr2 LT SDISmin)
+     IF tmp[0] ne -1 then SDISarr2[tmp]=SDISmin*1.5
      
  
      tmppos=where('SBR_2' EQ secondfitvaluesnames)
@@ -4280,6 +4324,7 @@ noconfig:
         IF velfixrings GT 1 then VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1]=TOTAL(VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1])/n_elements(VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1])
      ENDIF
      set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,finish_after=finishafter,slope=slope
+     set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,finish_after=finishafter,slope=slope
                                 ;Then set the surface brighness profile parameters
      set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,doubled=doubled
                                 ;Update the rings to be fitted in the other parameters
@@ -4388,7 +4433,13 @@ noconfig:
            SBRarr[lastreliablerings:n_elements(SBRarr)-1]=cutoff[lastreliablerings:n_elements(SBRarr)-1]*6.
            INCLang[lastreliablerings:n_elements(SBRarr)-1]=INCLang[lastreliablerings-1+INCLrings]
            PAang[lastreliablerings:n_elements(SBRarr)-1]=PAang[lastreliablerings-1+PArings]
-           IF lastreliablerings EQ 1 then VROTarr[lastreliablerings:n_elements(SBRarr)-1]=MEAN(VROTarr[1:n_elements(VROTarr)-1]) else VROTarr[lastreliablerings:n_elements(SBRarr)-1]=VROTarr[lastreliablerings-1]
+           IF lastreliablerings EQ 1 then begin
+              VROTarr[lastreliablerings:n_elements(SBRarr)-1]=MEAN(VROTarr[1:n_elements(VROTarr)-1])
+              SDISarr[lastreliablerings:n_elements(SBRarr)-1]=MEAN(SDISarr[1:n_elements(SDISarr)-1])
+           ENDIF else BEGIN
+              VROTarr[lastreliablerings:n_elements(SBRarr)-1]=VROTarr[lastreliablerings-1]
+              SDISarr[lastreliablerings:n_elements(SDISarr)-1]=SDISarr[lastreliablerings-1]
+           ENDELSE
            comin=[[PAang],[INCLang]]
            errors=[[0.],[0.]]
            
@@ -4415,7 +4466,13 @@ noconfig:
            SBRarr2[lastreliablerings:n_elements(SBRarr2)-1]=cutoff[lastreliablerings:n_elements(SBRarr2)-1]*6.
            INCLang2[lastreliablerings:n_elements(SBRarr2)-1]=INCLang2[lastreliablerings-1+INCLrings]
            PAang2[lastreliablerings:n_elements(SBRarr2)-1]=PAang2[lastreliablerings-1+PArings]
-           IF lastreliablerings EQ 1 then VROTarr2[lastreliablerings:n_elements(SBRarr)-1]=MEAN(VROTarr2[1:n_elements(VROTarr2)-1]) else VROTarr2[lastreliablerings:n_elements(SBRarr2)-1]=VROTarr2[lastreliablerings-1]
+           IF lastreliablerings EQ 1 then BEGIN
+              VROTarr2[lastreliablerings:n_elements(SBRarr)-1]=MEAN(VROTarr2[1:n_elements(VROTarr2)-1])
+              SDISarr2[lastreliablerings:n_elements(SBRarr)-1]=MEAN(SDISarr2[1:n_elements(SDISarr2)-1])
+           ENDIF else BEGIN
+              VROTarr2[lastreliablerings:n_elements(SBRarr2)-1]=VROTarr2[lastreliablerings-1]
+              SDISarr2[lastreliablerings:n_elements(SBRarr2)-1]=SDISarr2[lastreliablerings-1]
+           ENDELSE
             comin=[[PAang2],[INCLang2]]
            errors=[[0.],[0.]]
            revised_regularisation_com,comin,SBRarr2or,RADarr,fixedrings=3,difference=[1.,4.*exp(-catinc[i]^2.5/10^3.5)+1.5],cutoff=cutoff,arctan=1,order=polorder,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[1./4.,1.],error=errors ,gdlidl=gdlidl,log=log 
@@ -4447,6 +4504,16 @@ noconfig:
         tirificsecond[tmppos]=stringVROT
                                 ;If we do this we also need to check the vrot min
         if VROTarr[lastreliablerings-1] LT avinner then vrotinput1[2]=string(VROTmin)+' '+string(VROTarr[lastreliablerings-1]*0.6)
+                                ;SDIS
+        SDISarr=(SDISarr+SDISarr2)/2.
+        regularisation_sdis,SDISarr,tmpSBR,RADarr,log=log,max_par=SDISmax,min_par=SDISmin,arctan=0,fixedrings=velfixrings,difference=channelwidth/4.,cutoff=cutoff,gdlidl=gdlidl ,error= sigmasdis  
+        stringSDIS='SDIS= '+STRJOIN(string(SDISarr[0:n_elements(SDISarr)-1]),' ') 
+        tmppos=where('SDIS' EQ tirificsecondvars)
+        tirificsecond[tmppos]=stringSDIS
+        stringSDIS='SDIS_2= '+STRJOIN(string(SDISarr[0:n_elements(SDISarr)-1]),' ') 
+        tmppos=where('SDIS_2' EQ tirificsecondvars)
+        tirificsecond[tmppos]=stringSDIS
+         
         stringSBR='SBR= '+STRJOIN(string(SBRarr),' ') 
         tmppos=where('SBR' EQ tirificsecondvars)
         tirificsecond[tmppos]=stringSBR
@@ -4459,7 +4526,7 @@ noconfig:
                                  sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,sdisinput1
         ENDIF ELSE BEGIN
            Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,$
-                                 sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,sdisinput1
+                                 sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1
         ENDELSE
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
@@ -4815,7 +4882,12 @@ noconfig:
            printf,66,linenumber()+"And fixed "+string(velfixrings)+" rings."
            Close,66
         ENDIF
+         ;SDIS
+        SDISarr=(SDISarr+SDISarr2)/2.
+        regularisation_sdis,SDISarr,tmpSBR,RADarr,log=log,max_par=SDISmax,min_par=SDISmin,arctan=0,fixedrings=velfixrings,difference=channelwidth/4.,cutoff=cutoff,gdlidl=gdlidl,error= sigmasdis  
+        
      ENDIF
+     
                                 ;As the SBR used is the average and
                                 ;the rotation curve is the same for
                                 ;both side we only need to fit one
@@ -4881,7 +4953,12 @@ noconfig:
      tmppos=where('VROT_2' EQ tirificsecondvars)
      tirificsecond[tmppos]=stringVROT
   
-
+     stringSDIS='SDIS= '+STRJOIN(string(SDISarr[0:n_elements(SDISarr)-1]),' ') 
+     tmppos=where('SDIS' EQ tirificsecondvars)
+     tirificsecond[tmppos]=stringSDIS
+     stringSDIS='SDIS_2= '+STRJOIN(string(SDISarr[0:n_elements(SDISarr)-1]),' ') 
+     tmppos=where('SDIS_2' EQ tirificsecondvars)
+     tirificsecond[tmppos]=stringSDIS
 
      
                                 ;IF we have not done too many
@@ -5016,7 +5093,9 @@ noconfig:
            changeradii,tirificsecond,norings[0]  
            lastcutrings=norings[0] 
                                 ;Set the fitting parameters       
-           set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter    
+           set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter
+           set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,finish_after=finishafter,slope=slope
+  
                                 ;Adapt the other fitting parameters
                                 ;first the SBRarr
            set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,log=log,doubled=doubled
@@ -5033,11 +5112,11 @@ noconfig:
                             ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
               vsysinput1[0]=' VSYS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                             ' VSYS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
-              sdisinput1[0]=' SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-                            ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
+             ; sdisinput1[0]=' SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+                ;            ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
               Writefittingvariables,tirificsecond,inclinput1,painput1,$
-                                    vrotinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
-                                    xposinput1,yposinput1,vsysinput1,sdisinput1              
+                                    vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                    xposinput1,yposinput1,vsysinput1              
            ENDIF ELSE BEGIN
                                 ;Need to update the arrays otherwise might use
                                 ;them later with wrong ring numbers
@@ -5054,16 +5133,16 @@ noconfig:
                             ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
               vsysinput1[0]=' VSYS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                             ' VSYS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
-              sdisinput1[0]=' SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-                            ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
+             ; sdisinput1[0]=' SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+              ;              ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
               IF norings[0] LE 6 then begin
                  Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
-                                       vrotinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
-                                       xposinput1,yposinput1,vsysinput1,sdisinput1
+                                       vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                       xposinput1,yposinput1,vsysinput1
               ENDIF ELSE BEGIN
                  Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
-                                       vrotinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1,$
-                                       xposinput1,yposinput1,vsysinput1,sdisinput1
+                                       vrotinput1,sdisinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                       xposinput1,yposinput1,vsysinput1
               ENDELSE              
            ENDELSE
                                 ;Update counters and go to a new
@@ -5230,21 +5309,23 @@ noconfig:
                          ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
            vsysinput1[0]=' VSYS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                          ' VSYS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
-           sdisinput1[0]=' SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-                         ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
+          ; sdisinput1[0]=' SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+           ;              ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
                                 ;Rotation settings
            set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter
+           set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,finish_after=finishafter,slope=slope
+  
                                 ;Write the parameters to the tirific array
            IF norings[0] LE 4 or finishafter EQ 1.1 then begin
-              Writefittingvariables,tirificsecond,inclinput1,painput1,vrotinput1,$
-                                    sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,xposinput1,yposinput1,vsysinput1 ,sdisinput1 
+              Writefittingvariables,tirificsecond,inclinput1,painput1,vrotinput1,sdisinput1, $
+                                    sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,xposinput1,yposinput1,vsysinput1 
            ENDIF ELSE BEGIN
               IF norings[0] LE 6 then begin
-                 Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,$
-                                       sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,xposinput1,yposinput1,vsysinput1 ,sdisinput1 
+                 Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1, sdisinput1,$
+                                       sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,xposinput1,yposinput1,vsysinput1 
               ENDIF else begin
-                 Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,$
-                                       sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1,xposinput1,yposinput1,vsysinput1 ,sdisinput1 
+                 Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1, sdisinput1,$
+                                       sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1,xposinput1,yposinput1,vsysinput1 
               ENDELSE
            ENDELSE
                                 ;Update counters and go back to the fitting proces
@@ -5290,23 +5371,25 @@ noconfig:
                       ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
         vsysinput1[0]=' VSYS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                       ' VSYS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
-        sdisinput1[0]=' SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-                      ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
-        set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter 
+       ; sdisinput1[0]=' SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+        ;              ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
+        set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter
+        set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,finish_after=finishafter,slope=slope
+  
                                 ;But we need to reset all the fitting parameters
         IF trytwo LT 2. then begin
            IF AC1 NE 1 then begin
               ;If the first estimate is not accepted either 
               IF norings[0] LE 4 OR finishafter EQ 1.1  then begin
                  Writefittingvariables,tirificsecond,inclinput1,painput1,z0input1,xposinput1,yposinput1,$
-                                       vsysinput1,vrotinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,sdisinput1  
+                                       vsysinput1,vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3 
               ENDIF ELSE BEGIN
                  IF norings[0] LE 6 then begin
                     Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,z0input1,xposinput1,yposinput1,$
-                                          vsysinput1,vrotinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,sdisinput1  
+                                          vsysinput1,vrotinput1, sdisinput1 ,sbrinput1,sbrinput2,sbrinput4,sbrinput3 
                  ENDIF else begin
                     Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,z0input1,xposinput1,yposinput1,$
-                                          vsysinput1,vrotinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,sdisinput1 
+                                          vsysinput1,vrotinput1, sdisinput1 ,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3
                  ENDELSE
               ENDELSE
               IF size(log,/TYPE) EQ 7 then begin
@@ -5318,12 +5401,12 @@ noconfig:
                                 ;IF only the second model is not
                                 ;accepted try without fitting the center
               IF norings[0] LE 4  OR finishafter EQ 1.1  then begin
-                 Writefittingvariables,tirificsecond,inclinput1,painput1,vrotinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3 ,sdisinput1 
+                 Writefittingvariables,tirificsecond,inclinput1,painput1,vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3 
               ENDIF ELSE BEGIN
                  IF norings[0] LE 6 then begin
-                    Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,sdisinput1
+                    Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,sdisinput1 ,sbrinput1,sbrinput2,sbrinput4,sbrinput3
                  ENDIF ELSE begin
-                    Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,sdisinput1
+                    Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,sdisinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3
                  ENDELSE
               ENDELSE
               IF size(log,/TYPE) EQ 7 then begin
@@ -5434,7 +5517,7 @@ noconfig:
                     ,'500',string(channelwidth),string(channelwidth*0.1),string(0.05*channelwidth),string(0.5*channelwidth),string(0.1*channelwidth),'3','70','70',' ']
      ENDELSE
                                 ;write the parameters to the tirific array
-     Writefittingvariables,tirificsecond,PAinput1,INCLinput1,VROTinput1,SBRinput1,SBRinput2,SDISinput1,Z0input1 
+     Writefittingvariables,tirificsecond,PAinput1,INCLinput1,VROTinput1,SDISinput1,SBRinput1,SBRinput2,Z0input1 
      IF testing GE 2 OR finalsmooth EQ 2. then goto,testing2check
                                 ;Write to file
      openw,1,maindir+'/'+catdirname[i]+'/tirific.def'
@@ -5534,8 +5617,8 @@ noconfig:
         ENDELSE
         tmppos=where('LOOPS' EQ tirificsecondvars)
         tirificsecond[tmppos]='LOOPS=  0'
-        errorsadd=['VROT','VROT_2','PA','PA_2','INCL','INCL_2']
-        tmpfile=strarr(n_elements(tirificsecond)+6)
+        errorsadd=['VROT','VROT_2','PA','PA_2','INCL','INCL_2','SDIS','SDIS_2']
+        tmpfile=strarr(n_elements(tirificsecond)+8)
         added=0
                                 ;Add the errors to the final tirific
                                 ;file
@@ -5586,6 +5669,14 @@ noconfig:
                      IF n_elements(sigmaincl2) LT newrings then   sigmaincl2=replicate(4,newrings)
                     tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(sigmaincl2[0:newrings-1]))),' ')
                  end
+                 6: begin
+                     IF n_elements(sigmasdis) LT newrings then   sigmasdis=replicate(channelwidth/2.,newrings) 
+                    tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(sigmasdis[0:newrings-1]))),' ')
+                 end
+                 7: begin
+                     IF n_elements(sigmasdis) LT newrings then   sigmasdis=replicate(channelwidth/2.,newrings) 
+                    tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(sigmasdis[0:newrings-1]))),' ')
+                 end
                  else:print,'odd'
               endcase
            endif else tmpfile[j+added]=tirificsecond[j]
@@ -5611,7 +5702,7 @@ noconfig:
         close,66
      ENDIF
                                 ;Write the final info and pv-diagrams
-     Basicinfovars=['XPOS','YPOS','VSYS','PA','INCL','VROT']
+     Basicinfovars=['XPOS','YPOS','VSYS','PA','INCL','VROT','SDIS']
      writenewtotemplate,tirificsecond,maindir+'/'+catdirname[i]+'/2ndfit.def',Arrays=Basicinfovalues,VariableChange=Basicinfovars,Variables=tirificsecondvars,/EXTRACT
      RAhr=Basicinfovalues[0,0]
      RAdiff=maxchangeRA*3600./15.
