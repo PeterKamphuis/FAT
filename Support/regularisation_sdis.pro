@@ -205,7 +205,10 @@ Pro regularisation_sdis,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixedringsin
                                 ;IF we want to exclude the central
                                 ;value we strip the PA Not for PA and INCL
 ;  calculate the smoothed profiles
-  IF PA[0] LT MEDIAN(PA) then PA[0:1] = MEAN(PA[2:3])
+  IF n_elements(PA) GT 5 then begin
+     IF PA[0] LT MEDIAN(PA) then PA[0:2] = MEAN(PA[0:2])
+     PA[n_elements(PA)-3:n_elements(PA)-1] = MEAN(PA[n_elements(PA)-3:n_elements(PA)-1])
+  ENDIF
   PAsmooth=dblarr(n_elements(PA[*]))
   PAsmooth[0]=PA[0]                               
   for j=1,n_elements(PA[*])-2 do begin         
@@ -527,7 +530,7 @@ refit:
      print,para
   endif
   if para[0] LT RADII[2] OR  para[0] GT RADII[n_elements(RADII)-2] OR $
-     para[2] LT PAmin OR  para[2] GT PAmax OR para[1] GT 15. then begin
+     para[3] LT PAmin OR  para[3] GT PAmax OR para[2] GT 20. then begin
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         printf,66,linenumber()+'REGULARISATION_SDIS: The arctan fit has failed because one of the following was true:'
@@ -568,6 +571,7 @@ refit:
         endcase
         goto,tryagain             
      endif
+     fitPA[n_elements(fitPA)-3:n_elements(fitPA)-1]=MEAN(fitPA[n_elements(fitPA)-3:n_elements(fitPA)-1])
      newPA=PAsmooth
      IF newPA[0] LT maxpa*0.8 then newpa[0:1]=maxpa*0.8
      arctan=1 
@@ -576,9 +580,14 @@ refit:
   ENDELSE
 
 
+  newPA[0:2]=MEAN(newPA[0:2])
+  if n_elements(PA) GT 6 then begin
+     for i=n_elements(fitPA)-3,n_elements(fitPA)-1 do newPA[i]=(fitPA[i]+MEAN(fitPA[n_elements(fitPA)-3:n_elements(fitPA)-1]))/2.
+  endif else newPA[n_elements(fitPA)-2:n_elements(fitPA)-1]=MEAN(newPA[n_elements(fitPA)-2:n_elements(fitPA)-1])
 
   
   cleanup:
+   
   IF fixedrings GT n_elements(newPA)-1 then fixedrings=n_elements(newPA)-1
 
   for j=0,n_elements(PA[*])-1 do errors[j]=MAX([errors[j],ABS(PA[j]-newPA[j]),ddiv])

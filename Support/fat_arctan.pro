@@ -45,18 +45,21 @@ FUNCTION FAT_ARCTAN, axis, profile,error=error,gdlidl=gdlidl
 ;-
   
 if n_elements(error) EQ 0. then error=REPLICATE(0.5,n_elements(axis))
-start=[MAX(profile),MEAN(axis),MAX(axis)/2.]
+start=[MEAN(axis)/3.,0.,4.,MEAN(Profile)]
 if gdlidl EQ 1 then begin
    coeff = MPFITFUN('FATARCTAN', axis, profile, error, start,/QUIET)
 endif else begin
    coeff = CURVEFIT(axis, profile, error, start,FUNCTION_NAME='FATARCTAN')
 ENDELSE
+if coeff[1] LT 0. then coeff[1]=abs(coeff[1])
+C=abs(axis[fix(n_elements(axis)/4.*3)]-axis[fix(n_elements(axis)/4.)])
 
-profile=-1.*ATAN((axis-coeff[0])/(axis[n_elements(axis)-1]/10.))/!pi*coeff[1]+coeff[2]
+profile=-1.*ATAN((axis-coeff[0])/(C+coeff[1]))/!pi*coeff[2]+coeff[3]
 
 return,coeff
 end
 
 FUNCTION FATARCTAN, X, P
-  RETURN, -1.*ATAN((X-P[0])/(X[n_elements(X)-1]/10.))/!pi*P[1]+P[2] 
+  C=abs(X[fix(n_elements(x)/4.*3)]-X[fix(n_elements(x)/4)])
+  RETURN, -1.*ATAN((X-P[0])/(C+abs(P[1])))/!pi*P[2]+P[3] 
 END

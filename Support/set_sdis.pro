@@ -73,7 +73,7 @@ Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidt
      Endelse
   ENDIF
   if n_elements(start) EQ 0 then start=3
-  IF start LT 3 then start=3
+  IF start LT 4 then start=4
   IF n_elements(centralexclude) EQ 0 then centralexclude=0 
                                 ;If we want to fit everything as slope
                                 ;then just leave the most inner ring free
@@ -85,7 +85,7 @@ Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidt
   case (1) of
                                 ;If a small galaxy we fit the
                                 ;dispersion as 1
-     norings[0] LE 4:begin
+     norings[0] LE 4 OR finishafter EQ 1.1:begin
   ;      SDISinput1=['SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
   ;               ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
   ;               '25','5','1','0.1','0.5','0.05','3','70','70']    
@@ -120,17 +120,17 @@ Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidt
                 ',!SDIS '+strtrim(strcompress(string(norings[0]-3,format='(I3)')),1)+':'$
                 +strtrim(strcompress(string(start,format='(I3)')),1)+' SDIS_2 '+$
                 strtrim(strcompress(string(norings[0]-3,format='(I3)')),1)+$
-                ':'+strtrim(strcompress(string(start,format='(I3)')),1)+', SDIS 1 2 SDIS_2 1 2'
+                ':'+strtrim(strcompress(string(start,format='(I3)')),1)+', SDIS 1:3 SDIS_2 1:3'
         string2=string(SDISmax)+' '+string(SDISmax)+' '+string(SDISmax)
         string3=string(SDISmin)+' '+string(SDISmin)+' '+string(avinner)
-        string4=string(0.5*channelwidth)+' '+string(channelwidth)+' '+string(channelwidth)
-        string5=string(0.01*channelwidth)+' '+string(0.01*channelwidth)+' '+string(0.01*channelwidth)
-        string6=string(0.5*channelwidth)+' '+string(0.5*channelwidth)+' '+string(0.5*channelwidth)
-        string7=string(0.01*channelwidth)+' '+string(0.01*channelwidth)+' '+string(0.01*channelwidth)
+        string4=string(1.5*channelwidth)+' '+string(1.5*channelwidth)+' '+string(1.5*channelwidth)
+        string5=string(0.1*channelwidth)+' '+string(0.1*channelwidth)+' '+string(0.1*channelwidth)
+        string6=string(0.75*channelwidth)+' '+string(0.75*channelwidth)+' '+string(0.75*channelwidth)
+        string7=string(0.1*channelwidth)+' '+string(0.01*channelwidth)+' '+string(0.1*channelwidth)
         string8='3 3 3'
         string9='70 70 70'
+;        string10=' SDIS '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+' '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+' SDIS_2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+' '+strtrim(strcompress(string(norings[0],format='(I3)')),1)
         string10=' SDIS '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+' SDIS_2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)
-         
      End
                                 ;All other cases
      else:begin
@@ -154,17 +154,13 @@ Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidt
                 ', !SDIS '+strtrim(strcompress(string(velconstused-1,format='(I3)')),1)+$
                 ':'+strtrim(strcompress(string(start,format='(I3)')),1)+' SDIS_2 '$
                 +strtrim(strcompress(string(velconstused-1,format='(I3)')),1)+$
-                ':'+strtrim(strcompress(string(start,format='(I3)')),1)+',!SDIS '+$
-                strtrim(strcompress(string(norings[0],format='(I3)')),1)+':'+$
-                strtrim(strcompress(string(velconstused,format='(I3)')),1)+' SDIS_2 '$
-                +strtrim(strcompress(string(norings[0],format='(I3)')),1)+':'$
-                +strtrim(strcompress(string(velconstused,format='(I3)')),1)+'SDIS 1 2 SDIS_2 1 2'
+                ':'+strtrim(strcompress(string(start,format='(I3)')),1)+', SDIS 1:3 SDIS_2 1:3'
         string2=string(SDISmax)+' '+string(SDISmax)+' '+string(SDISmax)
         string3=string(avinner)+' '+string(SDISmin)+' '+string(SDISmin)
-        string4=string(0.1*channelwidth)+' '+string(channelwidth)+' '+string(channelwidth)
-        string5=string(0.01*channelwidth)+' '+string(0.01*channelwidth)+' '+string(0.01*channelwidth)
-        string6=string(channelwidth)+' '+string(0.5*channelwidth)+' '+string(0.5*channelwidth)
-        string7=string(0.01*channelwidth)+' '+string(0.01*channelwidth)+' '+string(0.01*channelwidth)
+        string4=string(1.5*channelwidth)+' '+string(1.5*channelwidth)+' '+string(1.5*channelwidth)
+        string5=string(0.1*channelwidth)+' '+string(0.1*channelwidth)+' '+string(0.1*channelwidth)
+        string6=string(0.75*channelwidth)+' '+string(0.75*channelwidth)+' '+string(0.75*channelwidth)
+        string7=string(0.1*channelwidth)+' '+string(0.01*channelwidth)+' '+string(0.1*channelwidth)
         string8='3 3 3'
         string9='70 70 70'
         string10=' SDIS '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+$

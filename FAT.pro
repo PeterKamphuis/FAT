@@ -4506,7 +4506,12 @@ noconfig:
         if VROTarr[lastreliablerings-1] LT avinner then vrotinput1[2]=string(VROTmin)+' '+string(VROTarr[lastreliablerings-1]*0.6)
                                 ;SDIS
         SDISarr=(SDISarr+SDISarr2)/2.
-        regularisation_sdis,SDISarr,tmpSBR,RADarr,log=log,max_par=SDISmax,min_par=SDISmin,arctan=0,fixedrings=velfixrings,difference=channelwidth/4.,cutoff=cutoff,gdlidl=gdlidl ,error= sigmasdis  
+        if norings[0] LT 4 OR finishafter EQ 1.1 then begin
+           SDISarr[*]=MEAN(SDISarr)
+           sigmasdis=replicate(channelwidth/4.,n_elements(SDISarr))
+        endif else begin
+           regularisation_sdis,SDISarr,tmpSBR,RADarr,log=log,max_par=SDISmax,min_par=SDISmin,arctan=0,fixedrings=velfixrings,difference=channelwidth/4.,cutoff=cutoff,gdlidl=gdlidl ,error= sigmasdis
+        endelse
         stringSDIS='SDIS= '+STRJOIN(string(SDISarr[0:n_elements(SDISarr)-1]),' ') 
         tmppos=where('SDIS' EQ tirificsecondvars)
         tirificsecond[tmppos]=stringSDIS
@@ -4884,7 +4889,13 @@ noconfig:
         ENDIF
          ;SDIS
         SDISarr=(SDISarr+SDISarr2)/2.
-        regularisation_sdis,SDISarr,tmpSBR,RADarr,log=log,max_par=SDISmax,min_par=SDISmin,arctan=0,fixedrings=velfixrings,difference=channelwidth/4.,cutoff=cutoff,gdlidl=gdlidl,error= sigmasdis  
+        if norings[0] LT 4 OR finishafter EQ 1.1 then begin
+           SDISarr[*]=MEAN(SDISarr)
+           sigmasdis=replicate(channelwidth/4.,n_elements(SDISarr))
+        endif else begin
+           regularisation_sdis,SDISarr,tmpSBR,RADarr,log=log,max_par=SDISmax,min_par=SDISmin,arctan=0,fixedrings=velfixrings,difference=channelwidth/4.,cutoff=cutoff,gdlidl=gdlidl ,error= sigmasdis
+        endelse
+       
         
      ENDIF
      
