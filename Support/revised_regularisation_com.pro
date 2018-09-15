@@ -371,10 +371,8 @@ restartall:
               print,tmperrors
            ENDIF
            if n_elements(PA[*,0]) GT 25 then begin
-              for i=0,n_elements(PA[0,*])-1 do begin
                  mean=MEAN(PA[*,i])
-                 tmperrors[fix(n_elements(PA[*,0])/2.):n_elements(PA[*,0])-1,i]=tmperrors[fix(n_elements(PA[*,0])/2.):n_elements(PA[*,0])-1,i]+SQRT(ABS(PA[fix(n_elements(PA[*,0])/2.):n_elements(PA[*,0])-1,i]-mean))
-              endfor
+                 tmperrors[fix(n_elements(PA[*,i])/2.):n_elements(PA[*,i])-1]=tmperrors[fix(n_elements(PA[*,i])/2.):n_elements(PA[*,i])-1]+SQRT(ABS(PA[fix(n_elements(PA[*,i])/2.):n_elements(PA[*,i])-1,i]-mean))
            endif
            errors[*,i]=(errors[*,i]+tmperrors[*])/2.
            tmp=WHERE(FINITE(errors[*,i]) EQ 0)
