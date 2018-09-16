@@ -257,7 +257,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   
   DEFSYSV, '!GDL', EXISTS = gdlidl ;is 1 when running GDL
   spawn,'pwd',originaldir
-;  goto,skipcatch
+  goto,skipcatch
   CATCH,Error_status  
   IF  Error_status NE 0. THEN BEGIN
     
@@ -3525,9 +3525,16 @@ noconfig:
         close,66
      ENDIF 
      testing1skip:
+
+
+     
                                 ;Reading out the fit values 
      Basicinfovars=['XPOS','YPOS','VSYS','PA','INCL','VROT']
      writenewtotemplate,tirificfirst,maindir+'/'+catdirname[i]+'/1stfit.def',Arrays=Basicinfovalues,VariableChange=Basicinfovars,Variables=tirificfirstvars,/EXTRACT
+     if testing EQ 1 then begin
+        newxpos=Basicinfovalues[0,0]
+        newypos=Basicinfovalues[0,1]
+     ENDIF
      RAhr=Basicinfovalues[0,0]
      RAdiff=maxchangeRA*3600./15.
      DEChr=Basicinfovalues[0,1]

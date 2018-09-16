@@ -685,13 +685,25 @@ restartall:
         IF RADIIin[3]/RADIIin[n_elements(PA[*,0])-1] GT 0.2 then begin
            PA[0:fixedrings[i],i]=TOTAL(PA[0:fixedrings[i],i],1)/(fixedrings[i]+1)
         ENDIF else begin
+           checkrms=0.
+           checkmean=0.
            checkrms=STDDEV(PA[4:9,i])
+           print,checkmean
+           print,'impossible'
            checkmean=MEAN(PA[4:9,i])
+           print,checkmean
+           print,'impossible'
            if keyword_set(debug) then begin
               print,'This is the rms, mean and 0 value'
               print,checkrms,checkmean,PA[0,i]
            ENDIF
            IF checkrms LT DDIV[i] then begin
+              print,'This is odd'
+              print,checkmean,checkrms
+              print,'what'
+              print,PA[0:9,i]
+              print,'This is not possible'
+              print,MEAN(PA[4:9,i])
               IF ABS(PA[0,i]-checkmean) GE checkrms then PA[0:3,i]=checkmean 
            ENDIF
            PA[0:fixedrings[i],i]=TOTAL(PA[0:fixedrings[i],i])/(fixedrings[i]+1)
