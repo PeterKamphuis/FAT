@@ -85,7 +85,7 @@ Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidt
   case (1) of
                                 ;If a small galaxy we fit the
                                 ;dispersion as 1
-     norings[0] LE 4 OR finishafter EQ 1.1:begin
+     norings[0] LE 4 OR finish_after EQ 1.1:begin
   ;      SDISinput1=['SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
   ;               ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
   ;               '25','5','1','0.1','0.5','0.05','3','70','70']    

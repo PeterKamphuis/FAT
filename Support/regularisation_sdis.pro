@@ -1,4 +1,4 @@
-Pro regularisation_sdis,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixedringsin,REVERSE=rev,NOWEIGHT=noweight,Difference=DDivin,cutoff=cutoffin,arctan=arctanin,debug=debug,order=order,max_deviation=maxdevin,max_par=PAmaxin,min_par=PAminin,accuracy=accuracy,extending=extending,gdlidl=gdlidl,log=log
+Pro regularisation_sdis,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixedringsin,NOWEIGHT=noweight,Difference=DDivin,cutoff=cutoffin,arctan=arctanin,debug=debug,order=order,max_deviation=maxdevin,max_par=PAmaxin,min_par=PAminin,accuracy=accuracy,extending=extending,gdlidl=gdlidl,log=log
 
 ;+
 ; NAME:
@@ -156,7 +156,6 @@ Pro regularisation_sdis,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixedringsin
      cutoff[0:last-1]=cutoff[last]
   endif
   IF cutoff[n_elements(PA[*])-1] EQ 0 then cutoff[n_elements(PA[*])-1]=cutoff[n_elements(PA[*])-2]
-  IF keyword_set(rev) and fixedrings GE n_elements(RADII)-1 then fixedrings=n_elements(RADII)-2
   if keyword_set(debug) then begin
      print,'A new regularization starts here'
      print,'PA'
