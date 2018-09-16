@@ -112,7 +112,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   convertradec,RA,DEC
   tmp=WHERE(plotpara EQ 'VSYS')
   vsys=strtrim(string(double(Arrays[0,n_elements(plotpara)-2]),format='(F10.1)'),2)
-                                ;disper=strtrim(string(double(Arrays[0,n_elements(plotpara)-4]),format='(F10.1)'),2)
+  disper=strtrim(string(double(Arrays[0,n_elements(plotpara)-4]),format='(F10.1)'),2)
   tmp=WHERE(plotpara EQ 'BMAJ')
   majbeam=strtrim(string(double(Arrays[0,n_elements(plotpara)-6]),format='(F10.1)'),2)
   ringsize=strtrim(string(double(Arrays[n_elements(Arrays[*,0])-1,0]-Arrays[n_elements(Arrays[*,0])-2,0]),format='(F10.1)'),2)
@@ -286,7 +286,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
      convertradec,RAmod,DECmod
      tmp=WHERE(plotpara EQ 'VSYS')
      vsysmod=strtrim(string(double(ModArrays[0,tmp]),format='(F10.1)'),2)
-    ; dispermod=strtrim(string(double(ModArrays[0,n_elements(plotpara)-4]),format='(F10.1)'),2)
+     dispermod=strtrim(string(double(ModArrays[0,n_elements(plotpara)-4]),format='(F10.1)'),2)
      XYOUTS,0.60,0.89,'Systemic Velocity= '+vsys+' ('+vsysmod+') km s!E-1',/normal,alignment=0.,charthick=charthick,color='000000'x
      XYOUTS,0.60,0.87,'R.A.= '+RA+' ('+RAmod+')',/normal,alignment=0.,charthick=charthick,color='000000'x
      XYOUTS,0.60,0.85,'DEC.= '+DEC+' ('+DECmod+')',/normal,alignment=0.,charthick=charthick,color='000000'x
