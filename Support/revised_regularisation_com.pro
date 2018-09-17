@@ -693,6 +693,10 @@ restartall:
            checkmean=MEAN(PA[4:9,i])
            print,checkmean
            print,'impossible'
+           print,i
+           print,MEAN(PA[4:9,0])
+           print,'WTF'
+           
            if keyword_set(debug) then begin
               print,'This is the rms, mean and 0 value'
               print,checkrms,checkmean,PA[0,i]
