@@ -529,7 +529,7 @@ refit:
      print,para
   endif
   if para[0] LT RADII[2] OR  para[0] GT RADII[n_elements(RADII)-2] OR $
-     para[3] LT PAmin OR  para[3] GT PAmax OR para[2] GT 20. then begin
+     para[3] LT PAmin OR  para[3] GT PAmax OR abs(para[2]) GT 20. then begin
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         printf,66,linenumber()+'REGULARISATION_SDIS: The arctan fit has failed because one of the following was true:'
@@ -537,7 +537,7 @@ refit:
         printf,66,linenumber()+'REGULARISATION_SDIS: '+string(para[0])+' GT '+string(RADII[n_elements(RADII)-2])
         printf,66,linenumber()+'REGULARISATION_SDIS: '+string(para[2])+' LT '+string(PAmin)
         printf,66,linenumber()+'REGULARISATION_SDIS: '+string(para[2])+' GT '+string(PAmax)
-        printf,66,linenumber()+'REGULARISATION_SDIS: '+string(para[1])+' GT '+string(15.)
+        printf,66,linenumber()+'REGULARISATION_SDIS: '+string(para[1])+' GT '+string(20.)
         printf,66,fitPA
         printf,66,linenumber()+'REGULARISATION_SDIS: With the following coefficients '+STRJOIN('c'+strtrim(string(a,format='(I1)'),2)+'='+strtrim(string(para),2),', ')
     
