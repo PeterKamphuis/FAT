@@ -55,6 +55,10 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ; MODIFICATION HISTORY:
 ;      14-09-2018 P.Kamphuis; Intoducing ring by ring SDIS
 ;                             fitting. Migrated to v6.0
+;      14-09-2018 P.Kamphuis; Allowing 8% fractional change change of center when
+;                             rings > 25  
+;      13-09-2018 P.Kamphuis; Increased the VROT slope range for large
+;                             galaxies (> 25 rings).   
 ;      06-08-2018 P.Kamphuis; Added line to ensure that integer cubes
 ;                             are scaled.    
 ;      03-12-2017 P.Kamphuis; Made sure that in the end _opt is
@@ -3150,14 +3154,18 @@ noconfig:
            goto,shiftcenter
         ENDIF ELSE BEGIN
                                 ;if the shift is more than two beams
-                                ;from the initial guess something went wrong
-           IF    ABS(RADeg-newxpos) GT catmajbeam[i]/1800. OR ABS(DECDeg-newypos) GT catmajbeam[i]/1800. then begin
+                                ;from the initial guess something went
+                                ;wrong
+           IF norings LE 25 then resetlimit=catmajbeam[i]/1800. else begin
+              resetlimit=catmajbeam[i]/3600.*norings[0]*0.08
+           ENDELSE
+           IF    ABS(RADeg-newxpos) GT resetlimit OR ABS(DECDeg-newypos) GT resetlimit then begin
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"The center shifted more than 2 major beams. Not applying this shift."
+                 printf,66,linenumber()+"The center shifted more than "+string(resetlimit*3600/catmajbeam[i])+" major beams. Not applying this shift."
                  close,66
               ENDIF ELSE BEGIN
-                 print,linenumber()+"The center shifted than 2 major beams. Not applying this shift."
+                 print,linenumber()+"The center shifted more than "+string(resetlimit*3600/catmajbeam[i])+" major beams. Not applying this shift."
               ENDELSE
               IF paraised then begin
                  tmppos=where('PA' EQ tirificfirstvars)
@@ -3522,6 +3530,10 @@ noconfig:
                                 ;Reading out the fit values 
      Basicinfovars=['XPOS','YPOS','VSYS','PA','INCL','VROT']
      writenewtotemplate,tirificfirst,maindir+'/'+catdirname[i]+'/1stfit.def',Arrays=Basicinfovalues,VariableChange=Basicinfovars,Variables=tirificfirstvars,/EXTRACT
+     if testing EQ 1 then begin
+        newxpos=Basicinfovalues[0,0]
+        newypos=Basicinfovalues[0,1]
+     ENDIF
      RAhr=Basicinfovalues[0,0]
      RAdiff=maxchangeRA*3600./15.
      DEChr=Basicinfovalues[0,1]
@@ -3875,7 +3887,6 @@ noconfig:
                                 ;PA
      PAinput2=[PAinput1,' ']
      PAinput3=[PAinput1,' ']
-                                
                                 ;IF we have a decent amount of rings
                                 ;and we are not fitting a flat disk
                                 ;with half beams than we let the rings
@@ -3890,7 +3901,6 @@ noconfig:
         PAinput2[3]='0.5'
         PAinput3[5]='2.0'
         PAinput3[3]='0.5'
-   
                                                           ;update INCL and PA
         set_warp_slopev3,SBRarr,SBRarr2,cutoff,INCLinput2,PAinput2,INCLinput3,PAinput3,norings,log=log,innerfix=innerfix
      endif else begin
@@ -4693,7 +4703,11 @@ noconfig:
      get_newringsv9,SBRav,SBRav,2.*cutoff,velconstused
      velconstused--
      IF double(norings[0]) GT 15. then begin
-        IF velconstused GT norings[0]-ceil(norings[0]/10.) then velconstused=norings[0]-ceil(norings[0]/10.)
+        IF double(norings[0]) LT 25. then fact = 10 else fact= 20-(norings[0]/2.5)
+        if fact LT 6 then fact=6
+        
+        IF velconstused GT norings[0]-ceil(norings[0]/fact) then velconstused=norings[0]-ceil(norings[0]/fact)
+        
      ENDIF
      prefunc=0. 
      IF norings[0]-velconstused LT 2 then velconstused=norings[0]-1
@@ -4898,7 +4912,6 @@ noconfig:
        
         
      ENDIF
-     
                                 ;As the SBR used is the average and
                                 ;the rotation curve is the same for
                                 ;both side we only need to fit one
