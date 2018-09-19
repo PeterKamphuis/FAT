@@ -69,7 +69,7 @@ Pro revised_regularisation_com,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
 ; EXAMPLE:
 ;      
 ;
-; MODIFICATION HISTORY:
+; MODIFICATION HISTORY:  
 ;       13-09-2018 P.Kamphuis; Added increased errors for outer rings
 ;                              when galaxies >25 rings. This increase
 ;                              is based on their deviation from the
@@ -371,8 +371,8 @@ restartall:
               print,tmperrors
            ENDIF
            if n_elements(PA[*,0]) GT 25 then begin
-                 mean=MEAN(PA[*,i])
-                 tmperrors[fix(n_elements(PA[*,i])/2.):n_elements(PA[*,i])-1]=tmperrors[fix(n_elements(PA[*,i])/2.):n_elements(PA[*,i])-1]+SQRT(ABS(PA[fix(n_elements(PA[*,i])/2.):n_elements(PA[*,i])-1,i]-mean))
+                 meanlarge=MEAN(PA[*,i])
+                 tmperrors[fix(n_elements(PA[*,i])/2.):n_elements(PA[*,i])-1]=tmperrors[fix(n_elements(PA[*,i])/2.):n_elements(PA[*,i])-1]+SQRT(ABS(PA[fix(n_elements(PA[*,i])/2.):n_elements(PA[*,i])-1,i]-meanlarge))
            endif
            errors[*,i]=(errors[*,i]+tmperrors[*])/2.
            tmp=WHERE(FINITE(errors[*,i]) EQ 0)
@@ -686,29 +686,15 @@ restartall:
            PA[0:fixedrings[i],i]=TOTAL(PA[0:fixedrings[i],i],1)/(fixedrings[i]+1)
         ENDIF else begin
            checkrms=0.
-           checkmean=0.
+           checkmen=0.
            checkrms=STDDEV(PA[4:9,i])
-           print,checkmean
-           print,'impossible'
-           checkmean=MEAN(PA[4:9,i])
-           print,checkmean
-           print,'impossible'
-           print,i
-           print,MEAN(PA[4:9,0])
-           print,'WTF'
-           
+           checkmen=TOTAL(PA[4:9,i])/6. 
            if keyword_set(debug) then begin
               print,'This is the rms, mean and 0 value'
-              print,checkrms,checkmean,PA[0,i]
+              print,checkrms,checkmen,PA[0,i]
            ENDIF
            IF checkrms LT DDIV[i] then begin
-              print,'This is odd'
-              print,checkmean,checkrms
-              print,'what'
-              print,PA[0:9,i]
-              print,'This is not possible'
-              print,MEAN(PA[4:9,i])
-              IF ABS(PA[0,i]-checkmean) GE checkrms then PA[0:3,i]=checkmean 
+              IF ABS(PA[0,i]-checkmen) GE checkrms then PA[0:3,i]=checkmen 
            ENDIF
            PA[0:fixedrings[i],i]=TOTAL(PA[0:fixedrings[i],i])/(fixedrings[i]+1)
            
