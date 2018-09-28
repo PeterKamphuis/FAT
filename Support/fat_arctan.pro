@@ -52,14 +52,15 @@ endif else begin
    coeff = CURVEFIT(axis, profile, error, start,FUNCTION_NAME='FATARCTAN')
 ENDELSE
 if coeff[1] LT 0. then coeff[1]=abs(coeff[1])
-C=abs(axis[fix(n_elements(axis)/3.*2)]-axis[fix(n_elements(axis)/3.)])
-
+;C=abs(axis[fix(n_elements(axis)/3.*1.5)]-axis[fix(n_elements(xaxis)/3.)])
+C=axis[n_elements(axis)-1]*0.2
 profile=-1.*ATAN((axis-coeff[0])/(C+coeff[1]))/!pi*abs(coeff[2])+coeff[3]
 
 return,coeff
 end
 
 FUNCTION FATARCTAN, X, P
-  C=abs(X[fix(n_elements(x)/3.*2)]-X[fix(n_elements(x)/3.)])
+  ;C=abs(X[fix(n_elements(x)/3.*1.5)]-X[fix(n_elements(x)/3.)])
+  C=X[n_elements(X)-1]*0.2
   RETURN, -1.*ATAN((X-P[0])/(C+abs(P[1])))/!pi*abs(P[2])+P[3] 
 END

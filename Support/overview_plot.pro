@@ -133,6 +133,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   A = FIndGen(16) * (!PI*2/16.) 
   UserSym, cos(A), sin(A), /fill
   ssize=2.5
+  spawn,'mv Overview.png Overview_Prev.png'
   IF gdlidl then begin
 
 ;                                ;Currently GDL does not recognize true

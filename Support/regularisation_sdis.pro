@@ -571,7 +571,7 @@ refit:
         goto,tryagain             
      endif
      fitPA[n_elements(fitPA)-3:n_elements(fitPA)-1]=MEAN(fitPA[n_elements(fitPA)-3:n_elements(fitPA)-1])
-     newPA=PAsmooth
+     newPA[*]=MEAN(fitPA)
      IF newPA[0] LT maxpa*0.8 then newpa[0:1]=maxpa*0.8
      arctan=1 
   endif else begin
@@ -584,7 +584,9 @@ refit:
      for i=n_elements(fitPA)-3,n_elements(fitPA)-1 do newPA[i]=(fitPA[i]+MEAN(fitPA[n_elements(fitPA)-3:n_elements(fitPA)-1]))/2.
   endif else newPA[n_elements(fitPA)-2:n_elements(fitPA)-1]=MEAN(newPA[n_elements(fitPA)-2:n_elements(fitPA)-1])
 
-  
+  diff = ABS(MEAN(newPA[*]) -newPA[*])
+  tmp= WHERE(diff GT errors)
+  IF tmp[0] EQ -1 then newPA[*]=MEAN(newPA)
   cleanup:
    
   IF fixedrings GT n_elements(newPA)-1 then fixedrings=n_elements(newPA)-1

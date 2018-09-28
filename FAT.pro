@@ -1,4 +1,4 @@
-Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATION_CHECK=installation_check,LVHIS_TEST=lvhistest,PAPER_TEST=papertest,RES_TEST=restest
+Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATION_CHECK=installation_check,LVHIS_TEST=lvhistest,PAPER_TEST=papertest,RES_TEST=restest,AGC=agctest
 
 ;+
 ; NAME:
@@ -330,7 +330,11 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   endif
   if keyword_set(restest) then begin
      spawn,'printenv FAT_TEST_DIR',fatmaintest
-     configfile=fatmaintest+'Test_Res_v5.0/FAT_INPUT.config'
+     configfile=fatmaintest+'/Test_Res_v5.0/FAT_INPUT.config'
+  endif
+  if keyword_set(agctest) then begin
+     spawn,'printenv FAT_TEST_DIR',fatmaintest
+     configfile=fatmaintest+'/AGC_Base/FAT_INPUT.config'
   endif
   IF n_elements(configfile) EQ 0 then begin
      configfile='FAT_INPUT.config'
@@ -1536,7 +1540,7 @@ noconfig:
                                 ;get the kinematical PA
      obtain_velpa,moment1map,velPA,center=[RApix[0],DECpix[0]],intensity=moment0map
      IF ABS(velPA[0]-newPA[0]) LT 25. then begin
-        avPA[0]=(velPA[0]+newPA[0])/2. 
+        avPA[0]=(velPA[0]/velPA[1]+newPA[0]/newPA[1])/(1./velPA[1]+1./newPA[1]) 
         avPA[1]=SQRT(velPA[1]^2+newPA[1]^2)/2. 
      endif else begin
         IF FINITE(velPA[0]) then begin
@@ -2248,20 +2252,38 @@ noconfig:
                                 ;   IF we have a low inclination we first want to fit the PA by itself
      PAest=0.
      INCLest=0.
+     
      IF catinc[i]  LT 50 AND counter EQ 0. then begin
                                 ;If we have a small number of beams
                                 ;acros the minor axis the inclination
                                 ;is very unsure and we first want to
                                 ;fit the inclination
-        IF ceil(norings[0]*COS(catinc[i]*!DtoR)) LE 5 then begin
-           goto,notfornow
+        
+        IF ceil(norings[0]*COS(catinc[i]*!DtoR)) LE 5 OR catinc[i] LT 40. then begin
+                                ;goto,notfornow
+                                ;at low incl tirfic is good at going
+                                ;up so
+           catinc[i]=catinc[i]-catincdev[i]
+           ; Avoid runaway rotation
+           IF catinc[i] LT 5 then catinc[i]=5.
+           tmppos=where('INCL' EQ tirificfirstvars)
+           tirificfirst[tmppos]='INCL='+strtrim(strcompress(string(catinc[i])))
+           tmppos=where('INCL_2' EQ tirificfirstvars)
+           tirificfirst[tmppos]='INCL_2='+strtrim(strcompress(string(catinc[i])))
+           TMP_VEL=W50/2./SIN(ABS(catinc[i])*!pi/180.)
+           IF TMP_VEL GT 300. then TMP_VEL= 300.
+           tmppos=where('VROT' EQ tirificfirstvars)
+           tirificfirst[tmppos]='VROT= 0. '+strtrim(strcompress(string(tmp_vel)))
+           tmppos=where('VROT_2' EQ tirificfirstvars)
+           tirificfirst[tmppos]='VROT_2= 0. '+strtrim(strcompress(string(tmp_vel)))
            INCLest=1
            INCLinput1=['INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                        ' INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
-                       '90.',string(catinc[i]-catincdev[i]),string(0.5),string(0.1),string(1.0),string(0.1),'3','70','70']  
+                       '90.',string(catinc[i]-catincdev[i]-5),string(0.5),string(0.1),string(1.0),string(0.1),'3','70','70']  
            PAinput1=['PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                      ' PA_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
                      string((catPA[i])+catPAdev[i]+40.),string((catPA[i])-catPAdev[i]-40),string(6),string(0.1),string(0.05),string(0.01),'3','70','70']
+           IF INCLinput1[2] LT 2. then INCLinput1[2]='2'
 
            IF PAfixboun NE 'n' then begin
               IF PAfixboun EQ 'w' then begin
@@ -2303,6 +2325,7 @@ noconfig:
            spawn,gipsyfirst,isthere2
            ; Let's check how we did in the fit
            get_progress,maindir+'/'+catdirname[i]+'/progress1.txt',AC1,nopoints,loops,toymodels
+         
            ;If not accepted we try again
            IF AC1 EQ 0. and INCLest LT 5 then begin
               IF size(log,/TYPE) EQ 7 then begin
@@ -2316,6 +2339,7 @@ noconfig:
               catPA[i]=firstfitvalues[0,0]
               catinc[i]=firstfitvalues[0,2]
               catmaxrot[i]=firstfitvalues[1,4]
+              IF catinc[i] LT 5 then catinc[i]=5.
               PAinput1=['PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                         ' PA_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
                         string((catPA[i])+catPAdev[i]+30.),string((catPA[i])-catPAdev[i]-30),string(5),string(0.1),string(0.05),string(0.01),'3','70','70']
@@ -2343,6 +2367,7 @@ noconfig:
               writenewtotemplate,tirificfirst,maindir+'/'+catdirname[i]+'/1stfit.def',Arrays=firstfitvalues,VariableChange=VariablesWanted
               catPA[i]=firstfitvalues[0,0]
               catinc[i]=firstfitvalues[0,2]
+              IF catinc[i] LT 5 then catinc[i]=5.
               catmaxrot[i]=firstfitvalues[1,4]
            ENDELSE
            notfornow:
@@ -2441,7 +2466,7 @@ noconfig:
                                 ;well
         newPA=[firstfitvalues[0,0],ABS(firstfitvalues[0,0]-newPA[0])+newPA[1]]
         IF INCLest GT 0. then begin
-           newinclination=[firstfitvalues[0,2],20.]
+           newinclination=[firstfitvalues[0,2],catincdev[i]]
            newrot=firstfitvalues[1,4]
         ENDIF else begin
            obtain_inclinationv8,moment0map,newPA,newinclination,[RApix[0],DECpix[0]],extend=noringspix,noise=momnoise,beam=catmajbeam[i]/(pixelsizeRA*3600.),gdlidl=gdlidl 
@@ -4520,7 +4545,7 @@ noconfig:
            SDISarr[*]=MEAN(SDISarr)
            sigmasdis=replicate(channelwidth/4.,n_elements(SDISarr))
         endif else begin
-           regularisation_sdis,SDISarr,tmpSBR,RADarr,log=log,max_par=SDISmax,min_par=SDISmin,arctan=0,fixedrings=velfixrings,difference=channelwidth/4.,cutoff=cutoff,gdlidl=gdlidl ,error= sigmasdis
+           regularisation_sdis,SDISarr,tmpSBR,RADarr,log=log,max_par=SDISmax,min_par=SDISmin,arctan=1,fixedrings=velfixrings,difference=channelwidth/4.,cutoff=cutoff,gdlidl=gdlidl ,error= sigmasdis
         endelse
         stringSDIS='SDIS= '+STRJOIN(string(SDISarr[0:n_elements(SDISarr)-1]),' ') 
         tmppos=where('SDIS' EQ tirificsecondvars)
@@ -4907,7 +4932,7 @@ noconfig:
            SDISarr[*]=MEAN(SDISarr)
            sigmasdis=replicate(channelwidth/4.,n_elements(SDISarr))
         endif else begin
-           regularisation_sdis,SDISarr,tmpSBR,RADarr,log=log,max_par=SDISmax,min_par=SDISmin,arctan=0,fixedrings=velfixrings,difference=channelwidth/4.,cutoff=cutoff,gdlidl=gdlidl ,error= sigmasdis
+           regularisation_sdis,SDISarr,tmpSBR,RADarr,log=log,max_par=SDISmax,min_par=SDISmin,arctan=prefunc,fixedrings=velfixrings,difference=channelwidth/4.,cutoff=cutoff,gdlidl=gdlidl ,error= sigmasdis
         endelse
        
         

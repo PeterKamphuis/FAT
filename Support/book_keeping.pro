@@ -81,6 +81,7 @@ Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishaft
      printf,66,linenumber()+"BOOK_KEEPING: Removing the following files from "+currentdir
      close,66
   ENDIF
+  spawn,'rm -f .convert.defaults'
   IF finishafter EQ 0 then begin
      spawn,'rm -Rf Optimized Intermediate Finalmodel No_Warp Residuals',isthere
      spawn,'rm -Rf PV-Diagrams/Finalmodel_xv.fits PV-Diagrams/No_Warp_xv.fits PV-Diagrams/Cube_preprocessed_small_1_xv.fits  PV-Diagrams/Cube_preprocessed_small_2_xv.fits'
