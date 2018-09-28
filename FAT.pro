@@ -53,6 +53,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      29-09-2018 P.Kamphuis; Increased velconstused to 2.5*cutoff  
 ;      14-09-2018 P.Kamphuis; Intoducing ring by ring SDIS
 ;                             fitting. Migrated to v6.0
 ;      14-09-2018 P.Kamphuis; Allowing 8% fractional change change of center when
@@ -1394,7 +1395,7 @@ noconfig:
                                 ;Obtain the cutoff values without
                                 ;inclination corrections.
      rad=[0.,((findgen(maxrings+2.))*catmajbeam[i]+catmajbeam[i]/5.)]
-     calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i]],cutoffor
+     calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i],channelwidth],cutoffor,vsys=catVSYS[i]
                                 ;And print the values
    
      IF size(log,/TYPE) EQ 7 then begin
@@ -1616,7 +1617,8 @@ noconfig:
         norings[0]=(maxrings-3)*2.
         noringspix=norings[0]*(catmajbeam[i]/2.)/(ABS(sxpar(headermap,'cdelt1'))*3600.)
         rad=[0.,((findgen(maxrings*2.))*(catmajbeam[i]/2)+catmajbeam[i]/10.)]
-        calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i]],cutoffor
+        calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i],channelwidth],cutoffor,vsys=catVSYS[i]
+ 
         cutoffor=cutoffor/SQRT(norings[0])
         cutoff=cutoffor*cutoffcorrection
         IF norings LT 3. then begin
@@ -1678,7 +1680,9 @@ noconfig:
            rad=[0.,rings[0:9],(findgen(fix((maxrings-10.)/2.)))*catmajbeam[i]*2+catmajbeam[i]/5.+11.*catmajbeam[i]]
            IF finishafter GT 1 then finishafter=2.1
            maxrings=10.+fix((maxrings-10.)/2.)
-           calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i]],cutoffor
+           
+           calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i],channelwidth],cutoffor,vsys=catVSYS[i]
+ 
            cutoff=cutoffor*cutoffcorrection
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
@@ -3724,7 +3728,7 @@ noconfig:
            maxrings=maxrings*2.
            noringspix=norings[0]*(catmajbeam[i]/2.)/(ABS(sxpar(headermap,'cdelt1'))*3600.)
            rad=[0.,((findgen(maxrings))*(catmajbeam[i]/2.)+catmajbeam[i]/10.)]
-           calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i]],cutoffor
+           calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i],channelwidth],cutoffor,vsys=catVSYS[i]
            cutoff=cutoffor*cutoffcorrection
            tmp=rad[0:norings[0]-1]
            rad=tmp
@@ -3852,7 +3856,7 @@ noconfig:
      IF SDISmax LT 15. then SDISmax=15.
      IF sdismax GT 40. then SDISmax=40.
                                 ; See how much of the rotation curve we want to fit as a slope
-     get_newringsv9,SBRarr,SBRarr2,2.*cutoff,velconstused
+     get_newringsv9,SBRarr,SBRarr2,2.5*cutoff,velconstused
      velconstused--
      IF norings[0] GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
      set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter
@@ -4280,7 +4284,7 @@ noconfig:
      sbr_check,tirificsecond, tirificsecondvars,sbrarr,sbrarr2,cutoff     
                                 ;We get the rings for which we only
                                 ;want to fit a slope in the rotation curve
-     get_newringsv9,SBRarr,SBRarr2,2.*cutoff,velconstused
+     get_newringsv9,SBRarr,SBRarr2,2.5*cutoff,velconstused
      velconstused--
      IF norings[0] GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
      IF (TOTAL(VROTarr[1:2])/2. GT 150 AND VROTarr[1] GT VROTarr[2] AND VROTarr[1] GT VROTarr[3]) OR $
@@ -4725,7 +4729,7 @@ noconfig:
                                 ;combination gives good results
                                 ;let's leave it like this.
      SBRav=(SBRarr+SBRarr2)/2.
-     get_newringsv9,SBRav,SBRav,2.*cutoff,velconstused
+     get_newringsv9,SBRav,SBRav,2.5*cutoff,velconstused
      velconstused--
      IF double(norings[0]) GT 15. then begin
         IF double(norings[0]) LT 25. then fact = 10 else fact= 20-(norings[0]/2.5)

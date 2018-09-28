@@ -1,4 +1,4 @@
-Pro calc_edge,noise,radii,bm,cutoffrings
+Pro calc_edge,noise,radii,bm,cutoffrings,vsys=vsys
 
 ;+
 ; NAME:
@@ -17,8 +17,8 @@ Pro calc_edge,noise,radii,bm,cutoffrings
 ; INPUTS:
 ;       noise = is a scalar with the rms of the cube to be fitted 
 ;       radii = an array with the nodes of the model in arcsec
-;       bm    = a two dimensional array with the FWHM of the major and
-;       minor axis of the beam of the observation
+;       bm    = a three dimensional array with the FWHM of the major and
+;       minor axis of the beam of the observation plus the channelwidth
 ;
 ; OPTIONAL INPUTS:
 ;       -
@@ -41,6 +41,8 @@ Pro calc_edge,noise,radii,bm,cutoffrings
 ;
 ;
 ; MODIFICATION HISTORY:
+;     29-09-2018 P. Kamphuis: Ratio now calculated in column denisties
+;                             and added a factor ^0.82 to it.  
 ;     Written by P.Kamphuis 01-01-2015 
 ; NOTE:
 ;     We take the sensitivity limit provided in equation 4 of Josza et
@@ -54,7 +56,12 @@ Pro calc_edge,noise,radii,bm,cutoffrings
 ;-
   COMPILE_OPT IDL2 
 
-ratio=noise/0.0036
+if n_elements(vsys) EQ 0 then vsys=100.
+level=noise*1000.
+columndensity,level,vsys,bm[0:1],vwidth=bm[2]
+J2007col=9.61097e+19   
+ratio=(level/J2007col)^0.5
+
 beamsolid=(!pi*bm[0]*bm[1])/(4.*ALOG(2.))
 ringarea=dblarr(n_elements(radii))
 IF RADII[0] GT 0 then begin
