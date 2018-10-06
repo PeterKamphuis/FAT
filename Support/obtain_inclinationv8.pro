@@ -402,7 +402,6 @@ ENDIF
 
 If inclination[0] LT 40. AND inclination[1] LT abs(40.-inclination[0])/2. then inclination[1]=abs(40.-inclination[0])/2.
 If inclination[0] LT 5. then inclination[0]=5.
-
 IF inclination[0] LT 80 AND inclination [0] GT 20 AND extend GT 3.*beam[0]/10. then inclination[0]=inclination[0]-2
 end
 

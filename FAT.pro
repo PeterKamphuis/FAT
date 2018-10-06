@@ -335,7 +335,7 @@ Pro FAT,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   endif
   if keyword_set(agctest) then begin
      spawn,'printenv FAT_TEST_DIR',fatmaintest
-     configfile=fatmaintest+'/AGC_Base/FAT_INPUT.config'
+     configfile=fatmaintest+'/Better_Base/FAT_INPUT.config'
   endif
   IF n_elements(configfile) EQ 0 then begin
      configfile='FAT_INPUT.config'
@@ -1562,6 +1562,7 @@ noconfig:
                                 ;that the cutoff value should be
                                 ;declined and below that increased
      cutoffcorrection=SIN(75.*!DtoR)/SIN((newinclination[0]+newinclination[1]/2.)*!DtoR)
+     IF newinclination[0] GT 80. then cutoffcorrection=0.9
      IF newinclination[0]+newinclination[1]/2. GT 50 then cutoffcorrection=1.
      IF newinclination[0]+newinclination[1]/2. LT 50 AND newinclination[0]+newinclination[1]/2. GT 40  then cutoffcorrection=1.+(50-(newinclination[0]+newinclination[1]/2.))*0.05    
      IF cutoffcorrection GT 2.5 then cutoffcorrection=2.5
@@ -2267,7 +2268,7 @@ noconfig:
                                 ;goto,notfornow
                                 ;at low incl tirfic is good at going
                                 ;up so
-           catinc[i]=catinc[i]-catincdev[i]
+           IF  catinc[i] LT 25 then catinc[i]=catinc[i]-catincdev[i]
            ; Avoid runaway rotation
            IF catinc[i] LT 5 then catinc[i]=5.
            tmppos=where('INCL' EQ tirificfirstvars)
@@ -2283,7 +2284,7 @@ noconfig:
            INCLest=1
            INCLinput1=['INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                        ' INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
-                       '90.',string(catinc[i]-catincdev[i]-5),string(0.5),string(0.1),string(1.0),string(0.1),'3','70','70']  
+                       '90.',string(catinc[i]-catincdev[i]-5),string(5),string(0.5),string(0.1),string(0.01),'3','70','70']  
            PAinput1=['PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                      ' PA_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
                      string((catPA[i])+catPAdev[i]+40.),string((catPA[i])-catPAdev[i]-40),string(6),string(0.1),string(0.05),string(0.01),'3','70','70']
@@ -2359,7 +2360,7 @@ noconfig:
               ENDIF
               INCLinput1=['INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                           ' INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
-                          '90.',string(catinc[i]-catincdev[i]-20),string(3),string(0.1),string(0.5),string(0.1),'3','70','70']  
+                          '90.',string(catinc[i]-catincdev[i]-20),string(10),string(1),string(0.1),string(0.01),'3','70','70']  
               Writefittingvariables,tirificfirst,painput1,inclinput1,vrotinputINCL
               INCLest=INCLest+1.
               goto,againINCLestimate
@@ -2480,6 +2481,7 @@ noconfig:
                                 ;when we get a new inclination we need
                                 ;to reset our cutoff values.
         cutoffcorrection=SIN(75.*!DtoR)/SIN((newinclination[0]+newinclination[1]/2.)*!DtoR)
+        IF newinclination[0] GT 80. then cutoffcorrection=0.9
         IF newinclination[0]+newinclination[1]/2. GT 50 then cutoffcorrection=1.
         IF newinclination[0]+newinclination[1]/2. LT 50 AND newinclination[0]+newinclination[1]/2. GT 40  then cutoffcorrection=1.+(50-(newinclination[0]+newinclination[1]/2.))*0.05
     
@@ -2617,6 +2619,7 @@ noconfig:
                                 ;when we get a new inclination we need
                                 ;to reset our cutoff values.
            cutoffcorrection=SIN(75.*!DtoR)/SIN((newinclination[0]+newinclination[1]/2.)*!DtoR)
+           IF newinclination[0] GT 80. then cutoffcorrection=0.9
            IF newinclination[0]+newinclination[1]/2. GT 50 then cutoffcorrection=1.
            IF newinclination[0]+newinclination[1]/2. LT 50 AND newinclination[0]+newinclination[1]/2. GT 40  then cutoffcorrection=1.+(50-(newinclination[0]+newinclination[1]/2.))*0.05
     
@@ -3026,6 +3029,7 @@ noconfig:
                                 ;when we get a new inclination we need
                                 ;to reset our cutoff values.
      cutoffcorrection=SIN(75.*!DtoR)/SIN((catinc[i]+newinclination[1]/2.)*!DtoR)
+     IF newinclination[0] GT 80. then cutoffcorrection=0.9
      IF catinc[i]+newinclination[1]/2. GT 50 then cutoffcorrection=1.
      IF catinc[i]+newinclination[1]/2. LT 50 AND catinc[i]+newinclination[1]/2. GT 40  then cutoffcorrection=1.+(50-(catinc[i]+newinclination[1]/2.))*0.05
     
@@ -3853,8 +3857,8 @@ noconfig:
                                 ; The maximum should not be less than
                                 ; 80 /sin(inclination) as it becomes
                                 ; more uncartain at lower inclination
-     IF SDISmax LT 15. then SDISmax=15.
-     IF sdismax GT 40. then SDISmax=40.
+     IF SDISmax LT 25. then SDISmax=25.
+     IF sdismax GT 50. then SDISmax=50.
                                 ; See how much of the rotation curve we want to fit as a slope
      get_newringsv9,SBRarr,SBRarr2,2.5*cutoff,velconstused
      velconstused--
@@ -4890,8 +4894,12 @@ noconfig:
       
         tmpSBR=(SBRarror+SBRarr2or)/2.
         tmphigh=str_sep(strtrim(strcompress(VROTinput1[1]),2),' ')
-        tmplow=str_sep(strtrim(strcompress(VROTinput1[2]),2),' ')
-     
+                                ;This way things would be set to
+                                ;avinner which would heavily penalize
+                                ;slowly rising curves.
+                                ;tmplow=str_sep(strtrim(strcompress(VROTinput1[2]),2),' ')
+        
+        tmplow=vrotmin
         vmaxdev=MAX([30.,7.5*channelwidth*(1.+vresolution)])
         verror=MAX([5.,channelwidth/2.*(1.+vresolution)/SQRT(sin(INCLang[0]*!DtoR))])
         IF ~(FINITE(verror)) then verror=channelwidth/2.*(1.+vresolution)/SQRT(sin(5.*!DtoR))
@@ -5537,7 +5545,7 @@ noconfig:
                     ,'500',string(channelwidth),string(channelwidth*0.5),string(0.1*channelwidth),string(0.5*channelwidth),string(0.1*channelwidth),'3','70','70',' ']
                                 ;SDIS
         SDISinput1=['SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
-                    '40','3','1','0.1','0.5','0.05','3','70','70']    
+                    '40','3',string(channelwidth*0.5),string(0.1*channelwidth),string(0.5*channelwidth),string(0.1*channelwidth),'3','70','70']    
                                 ;Z0
         Z0input1=['Z0 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                   ' Z0_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
@@ -5595,6 +5603,7 @@ noconfig:
      gipsyfirst=strarr(1)
      gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
      spawn,gipsyfirst,isthere2
+     spawn,'cp tirific.def the_last_input.def'
      finalsmooth=2.
      overwrite=0.
      get_progress,maindir+'/'+catdirname[i]+'/progress2.txt',AC2,nopoints,loops,toymodels

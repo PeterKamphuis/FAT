@@ -207,6 +207,7 @@ Pro regularisation_sdis,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixedringsin
   IF n_elements(PA) GT 5 then begin
      IF PA[0] LT MEDIAN(PA) then PA[0:2] = MEAN(PA[0:2])
      PA[n_elements(PA)-3:n_elements(PA)-1] = MEAN(PA[n_elements(PA)-3:n_elements(PA)-1])
+     IF  MEAN(PA[0:2]) GT 1.5*MEAN(PA[3:5]) then PA[0:2]=1.2*MEAN(PA[3:5])
   ENDIF
   PAsmooth=dblarr(n_elements(PA[*]))
   PAsmooth[0]=PA[0]                               
@@ -529,15 +530,16 @@ refit:
      print,para
   endif
   if para[0] LT RADII[2] OR  para[0] GT RADII[n_elements(RADII)-2] OR $
-     para[3] LT PAmin OR  para[3] GT PAmax OR abs(para[2]) GT 20. then begin
+     para[3] LT PAmin OR  para[3] GT PAmax OR abs(para[2]) GT 25. then begin
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
+        a=findgen(n_elements(para))
         printf,66,linenumber()+'REGULARISATION_SDIS: The arctan fit has failed because one of the following was true:'
         printf,66,linenumber()+'REGULARISATION_SDIS: '+string(para[0])+' LT '+string(RADII[2])
         printf,66,linenumber()+'REGULARISATION_SDIS: '+string(para[0])+' GT '+string(RADII[n_elements(RADII)-2])
-        printf,66,linenumber()+'REGULARISATION_SDIS: '+string(para[2])+' LT '+string(PAmin)
-        printf,66,linenumber()+'REGULARISATION_SDIS: '+string(para[2])+' GT '+string(PAmax)
-        printf,66,linenumber()+'REGULARISATION_SDIS: '+string(para[1])+' GT '+string(20.)
+        printf,66,linenumber()+'REGULARISATION_SDIS: '+string(para[3])+' LT '+string(PAmin)
+        printf,66,linenumber()+'REGULARISATION_SDIS: '+string(para[3])+' GT '+string(PAmax)
+        printf,66,linenumber()+'REGULARISATION_SDIS: '+string(para[2])+' GT '+string(25.)
         printf,66,fitPA
         printf,66,linenumber()+'REGULARISATION_SDIS: With the following coefficients '+STRJOIN('c'+strtrim(string(a,format='(I1)'),2)+'='+strtrim(string(para),2),', ')
     
@@ -581,7 +583,7 @@ refit:
 
   newPA[0:2]=MEAN(newPA[0:2])
   if n_elements(PA) GT 6 then begin
-     for i=n_elements(fitPA)-3,n_elements(fitPA)-1 do newPA[i]=(fitPA[i]+MEAN(fitPA[n_elements(fitPA)-3:n_elements(fitPA)-1]))/2.
+      newPA[n_elements(fitPA)-3:n_elements(fitPA)-1]=MEAN(newPA[n_elements(newPA)-3:n_elements(newPA)-1])
   endif else newPA[n_elements(fitPA)-2:n_elements(fitPA)-1]=MEAN(newPA[n_elements(fitPA)-2:n_elements(fitPA)-1])
 
   diff = ABS(MEAN(newPA[*]) -newPA[*])
