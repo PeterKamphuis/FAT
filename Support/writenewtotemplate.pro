@@ -5,7 +5,8 @@ Pro WriteNewToTemplate,Template,NewFileName,VARIABLES=TemplateVariables,ARRAYS=A
 ;
 ; PURPOSE:
 ;       Routine to write a tirific def file into the template used
-;
+;       !!!!!!!!!!!!!!!!!Be aware it will only write the variables
+;       indicated in VariableChange!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ; CATEGORY:
 ;       Support
 ; 

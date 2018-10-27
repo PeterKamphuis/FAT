@@ -290,7 +290,7 @@ restartall:
   IF keyword_set(noweight) then begin
      errors[*]=ddiv[0]
   ENDIF ELSE BEGIN
-     IF n_elements(RADII) LT 15 then ratio=cutoff[0:n_elements(SBR)-1]/(SBR[*]*RADII[*]) else ratio=cutoff[0:n_elements(SBR)-1]/SBR
+     IF n_elements(RADII) LT 15 then ratio=cutoff[0:n_elements(SBR)-1]/(SQRT(SBR[*])*RADII[*]) else ratio=cutoff[0:n_elements(SBR)-1]/SBR
      tmp=MAX(ratio,min=norm)
      tmp=WHERE(ratio EQ norm)
      ratio=ratio/norm
@@ -325,26 +325,26 @@ restartall:
      ENDIF
                                 ;If there are rings that are fixed we
                                 ;will set the error to that of the
-                                ;last unfixed ring. adittionally if
+                                ;last unfixed ring/2.. adittionally if
                                 ;we have any errors less than ddiv
                                 ;they will also be set to ddiv
      if n_elements(fixedrings) GT 0 then begin
-       
-           errors[0:fixedrings-1]=errors[fixedrings]
+        
+        
                                 ;if the errors are less than ddiv in
                                 ;the inner half set them to ddiv in
                                 ;the outer half we average between the
                                 ;surrounding errors
-           tmp=WHERE(errors[0:fix(n_elements(errors[*])/2.)] LT DDiv)
-           IF tmp[0] NE -1 then errors[tmp]=DDiv
-           tmp=WHERE(errors[fix(n_elements(errors[*])/2.+1):n_elements(errors[*])-1] LT DDiv)
-           IF tmp[0] NE -1 then begin
-              tmp=tmp+fix(n_elements(errors[*])/2.+1)
-              for j=0,n_elements(tmp)-1 do begin
-                 IF tmp[j] LT n_elements(errors[*])-1 then errors[tmp[j]]=(errors[fix(tmp[j]-1)]+errors[fix(tmp[j]+1)])/2. else errors[tmp[j]]=errors[fix(tmp[j]-1)]
-              endfor
-           ENDIF
-       
+        tmp=WHERE(errors[0:fix(n_elements(errors[*])/2.)] LT DDiv)
+        IF tmp[0] NE -1 then errors[tmp]=DDiv
+        tmp=WHERE(errors[fix(n_elements(errors[*])/2.+1):n_elements(errors[*])-1] LT DDiv)
+        IF tmp[0] NE -1 then begin
+           tmp=tmp+fix(n_elements(errors[*])/2.+1)
+           for j=0,n_elements(tmp)-1 do begin
+              IF tmp[j] LT n_elements(errors[*])-1 then errors[tmp[j]]=(errors[fix(tmp[j]-1)]+errors[fix(tmp[j]+1)])/2. else errors[tmp[j]]=errors[fix(tmp[j]-1)]
+           endfor
+        ENDIF        
+        errors[0:fixedrings-1]=errors[fixedrings]/2.
         IF keyword_set(debug) then begin
            print,'The errors modified for the rings that are fixed'
            print,errors
@@ -539,8 +539,8 @@ restartall:
         IF tmp[0] NE -1 then errors[tmp]=3*maxdev[0]
      ENDIF
   ENDIF
-  tmp=WHERE(errors LT ddiv)
-  IF tmp[0] NE -1 then errors[tmp]=ddiv
+  tmp=WHERE(errors LT ddiv/2.)
+  IF tmp[0] NE -1 then errors[tmp]=ddiv/2.
   IF ~keyword_set(nocentral) then errors[n_elements(errors)-2:n_elements(errors)-1]=maxdev[0]/2.
   errors[n_elements(errors)-1]=errors[n_elements(errors)-1]*centralerrmult
   IF keyword_set(debug) then begin
@@ -669,10 +669,10 @@ refit:
         print,'This is our beginorder',beginorder
      ENDIF
   endif else begin
-     endorder=n_elements(PA[*])-2
+     endorder=n_elements(PA[*])-2-fixedrings
      maxendorder=endorder
      IF endorder LT 2 then endorder=2
-     IF endorder GT 5 then endorder=5
+     IF endorder GT 6 then endorder=6
      beginorder=2
      IF keyword_set(debug) then begin
         print,'this is the fixedrings',fixedrings
@@ -902,7 +902,7 @@ refit:
         ENDELSE
      ENDIF
      locmax=WHERE(MAX(PA) EQ PA)
-     if locmax[n_elements(locmax)-1] GT n_elements(PA)/2. then newPA[0:fixedrings]=newPA[fixedrings+1]
+     if locmax[n_elements(locmax)-1] GT n_elements(PA)/2. then newPA[0:fixedrings]=newPA[fixedrings]
      endch=floor(n_elements(PA)/3.)
      IF endch GT 3 then endch=3
      decline=0

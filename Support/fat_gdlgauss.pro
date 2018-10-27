@@ -37,6 +37,7 @@ FUNCTION FAT_GDLGAUSS, axis, profile
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       17-10-2018 P.Kamphuis ; Made a better estimate of sigma and center  
 ;       Written 02-06-2016 P.Kamphuis v1.0
 ;
 ; NOTE:
@@ -44,12 +45,14 @@ FUNCTION FAT_GDLGAUSS, axis, profile
 ;     
 ;-
   
-error=REPLICATE(0.5,n_elements(axis))
-start=[MAX(profile),MEAN(axis),MAX(axis)/2.]
-coeff = MPFITFUN('FATGAUSS', axis, profile, error, start,/QUIET)
-f=coeff[0]*EXP(-0.5*((axis[*]-coeff[1])/coeff[2])^2)
+  error=REPLICATE(0.5,n_elements(axis))
+  tmp=WHERE(profile GT MAX(profile)/2.)
+  sig=(axis[tmp[n_elements(tmp)-1]]-axis[tmp[0]])/(2*SQRT(2*ALOG(2.)))
+  start=[MAX(profile),axis[fix(n_elements(axis)/2.)],sig]
+  coeff = MPFITFUN('FATGAUSS', axis, profile, error, start,/quiet)
+  f=coeff[0]*EXP(-0.5*((axis[*]-coeff[1])/coeff[2])^2)
 
-return,f
+  return,f
 end
 
 FUNCTION FATGAUSS, X, P
