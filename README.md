@@ -6,7 +6,11 @@ Introduction
 
 The Fully Automated TiRiFiC is an IDL/GDL wrapper around the tilted ring fitting code ([TiRiFiC](http://gigjozsa.github.io/tirific/)) that aims to fully automate the process of fitting simple tilted ring models to line emission cubes. This code is still in the development phase and hence errors and bugs can be present. Nevertheless, the code has extensively been tested and the results and a more extensive description of the code are documented in [Kamphuis et al. 2015](http://arxiv.org/abs/1507.00413) 
 
-The file [Current_Status.pdf](./Current_Status.pdf)  provides an overview of plots from [Kamphuis et al. (2015)](http://arxiv.org/abs/1507.00413) which illustrate the performance of the current version of FAT. This fully tested version is available on the master branch. Typically the current version works much better then the version from 2015. However, as we have also reduced the applied errors the plots in this document show that performance is comparable, i.e. the fits are equally accurate with smaller errors. Additionally, as FAT now employs a Monte Carlo method in the regularisation of the parameters the final model can sometimes differ slightly. However this should always be within the calculated errors. If not please open an issue on the GitHub. The very latest version of FAT will always be available on the FAT-GDL-Beta branch. Although this branch will contain a stable version that has been tested on some galaxies, it will not be tested on the full database and overview plots will not be available. If you are looking for specific functionality or find that FAT is not performing well despite the galaxy having regular rotation or just want to chat about tilted ring modelling pipelines please do not hesitate to contact me.
+The file [Current_Status.pdf](./Current_Status.pdf)  provides an overview of plots from [Kamphuis et al. (2015)](http://arxiv.org/abs/1507.00413) which illustrate the performance of the current version of FAT. This fully tested version is available on the master branch. Typically the current version works much better then the version from 2015. However, as we have also reduced the applied errors the plots in this document show that performance is comparable, i.e. the fits are equally accurate with smaller errors. Additionally, as FAT now employs a Monte Carlo method in the regularisation of the parameters the final model can sometimes differ slightly. However this should always be within the calculated errors. If not please open an issue on the GitHub. The very latest version of FAT will always be available on the FAT-Beta branch. Although this branch will contain a stable version that has been tested on some galaxies, it will not be tested on the full database and overview plots will not be available. 
+
+Even though the master will always work under both GDL and IDL the main development is now done under GDL. This might mean that the FAT-Beta is not always working under IDL and that results in this branch can sometimes be better under GDL.
+
+If you are looking for specific functionality or find that FAT is not performing well despite the galaxy having regular rotation or just want to chat about tilted ring modelling pipelines please do not hesitate to contact me.
 
 It is important to remember that FAT is meant for batch fitting. Hence, the aim of the code is to provide tilted ring models that are accurate for a large fraction of galaxies. Ideally, FAT should identify galaxies that are not fitted well however this feature is not optimal yet. When fitting individual galaxies it is recommended to run FAT and then fine tune the model by hand in [TiRiFiC](http://gigjozsa.github.io/tirific/). In most cases such fine tuning will be limited to a few outer rings but in the case of complex galaxies with significant non-cylindrically symmetric motions the models can fail (Or in the case of very bad data but that is not a FAT issue).
 
@@ -18,14 +22,14 @@ The code requires full installation of:
 
     IDL 7.0 or higher or GDL 0.9.6 or higher with astrolib
     TiRiFiC v2.2.3 or higher 
-    SoFiA v 0.4.0 or higher  
+    SoFiA v 0.4.0 or higher 
     Standard unix commands pwd, mkdir, rm, cp, ls, python
 
 [astrolib](http://idlastro.gsfc.nasa.gov/) (note the Coyote Library Dependencies for newer versions), [GDL](http://gnudatalanguage.sourceforge.net/), [IDL](https://www.harrisgeospatial.com/docs/using_idl_home.html),[TiRiFiC](http://gigjozsa.github.io/tirific/download_and_installation.html), [SoFiA](https://github.com/SoFiA-Admin/SoFiA)
 
 IDL/GDL needs to be able to execute tirific, sofia, rename and the standard unix commands from a spawn command. All other dependencies should be in IDL and available with the normal IDL distributions. 
 
-To run under GDL you will additionally need the package mpfit for GDL by Ole Streicher (https://packages.debian.org/sid/all/gdl-mpfit/download)
+To run under GDL you will additionally need the package mpfit for GDL by Ole Streicher (https://packages.debian.org/sid/all/gdl-mpfit/download).
 The GDL version is tested under Ubuntu 16.04 and runs after running the command
 
 	sudo apt-get install gnudatalanguage gdl-astrolib gdl-mpfit libplplot-dev
@@ -44,7 +48,7 @@ You will also have to make a softlink in the Support directory to file sofia_pip
 
 	cd Support/
   	ln -s pathtosofiainstallation/sofia_pipeline.py sofia_pipeline.py
-	
+Where `pathtosofiainstallation` is the name of the PATH leading to your local installation of SoFiA.
 Once you have installed FAT you can check that it has been installed properly by running FAT as 
 	
 	IDL/GDL>.r FAT.pro
@@ -97,8 +101,9 @@ The code requires a catalogue with input sources to know which cubes to fit and 
 maindir should contain the path where the directories for all galaxies are stored. FAT can produce large amounts of output if requested (e.g. Models for each step, xvdiagrams, Fitting logs, see maps_output parameter). In order to keep this managable each galaxy requires its own directory. There is no default for this parameter.
 
         outputcatalogue=Path/nameofresult.txt
-
-The code will write a summary of the succes of the fit for each galaxy in this file. If not provided the code will produce increased output in the terminal.
+	
+In these three variables `Path_to_catalog_dir`,`Path_to_dir_with_input` and `Path` should be replaced with the local path name to where your input catalog can be found, the path to the directory where the galaxy directories reside and the path to where you want the output catalog to be. 
+The code will write a summary of the succes of the fit for each galaxy in this file.
 
         new_output='y'
 
