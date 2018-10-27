@@ -1,4 +1,4 @@
-Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATION_CHECK=installation_check,LVHIS_TEST=lvhistest,PAPER_TEST=papertest,RES_TEST=restest
+Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATION_CHECK=installation_check,LVHIS_TEST=lvhistest,PAPER_TEST=papertest,RES_TEST=restest,AGC=agctest
 
 ;+
 ; NAME:
@@ -53,6 +53,17 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      25-10-2018 P.Kamphuis; Fixed a bug where VROT[0] was not kept
+;                             at 0 before regularisation.  
+;      29-09-2018 P.Kamphuis; Increased velconstused to 2.5*cutoff  
+;      14-09-2018 P.Kamphuis; Intoducing ring by ring SDIS
+;                             fitting. Migrated to v6.0
+;      14-09-2018 P.Kamphuis; Allowing 8% fractional change of center when
+;                             rings > 25  
+;      13-09-2018 P.Kamphuis; Increased the VROT slope range for large
+;                             galaxies (> 25 rings).   
+;      06-08-2018 P.Kamphuis; Added line to ensure that integer cubes
+;                             are scaled.    
 ;      03-12-2017 P.Kamphuis; Made sure that in the end _opt is
 ;                             stripped from the current fit cube. Else
 ;                             the PV-Diagrams are not found.  
@@ -251,7 +262,7 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   
   DEFSYSV, '!GDL', EXISTS = gdlidl ;is 1 when running GDL
   spawn,'pwd',originaldir
-;  goto,skipcatch
+  ; goto,skipcatch
   CATCH,Error_status  
   IF  Error_status NE 0. THEN BEGIN
     
@@ -289,7 +300,7 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
      stop
   ENDIF
   skipcatch:
-  version='v5.0.3'
+  version='v6.0'
                                 ;First thing we do is to check whether we run IDL or GDL
   DEFSYSV, '!GDL', EXISTS = gdlidl ;is 1 when running GDL
   if n_elements(supportdir) EQ 0 then supportdir='Support'
@@ -322,7 +333,11 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   endif
   if keyword_set(restest) then begin
      spawn,'printenv FAT_TEST_DIR',fatmaintest
-     configfile=fatmaintest+'Test_Res_v5.0/FAT_INPUT.config'
+     configfile=fatmaintest+'/Test_Res_v5.0/FAT_INPUT.config'
+  endif
+  if keyword_set(agctest) then begin
+     spawn,'printenv FAT_TEST_DIR',fatmaintest
+     configfile=fatmaintest+'/Better_Base/FAT_INPUT.config'
   endif
   IF n_elements(configfile) EQ 0 then begin
      configfile='FAT_INPUT.config'
@@ -348,12 +363,12 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   RESOLVE_ROUTINE, 'create_residuals'
   RESOLVE_ROUTINE, 'dec_names'
   RESOLVE_ROUTINE, 'extract_pv'
+  RESOLVE_ROUTINE, 'fat_arctan',/IS_FUNCTION,/COMPILE_FULL_FILE
   RESOLVE_ROUTINE, 'fat_fit',/IS_FUNCTION
   IF gdlidl then RESOLVE_ROUTINE,'fat_gdlgauss',/IS_FUNCTION,/COMPILE_FULL_FILE
   RESOLVE_ROUTINE, 'fat_hanning',/IS_FUNCTION
   RESOLVE_ROUTINE, 'fat_ploterror'
   RESOLVE_ROUTINE, 'fat_smooth',/IS_FUNCTION
-  RESOLVE_ROUTINE, 'fit_ellipse',/IS_FUNCTION
   RESOLVE_ROUTINE, 'getdhi'
   RESOLVE_ROUTINE, 'get_fixedringsv9'
   RESOLVE_ROUTINE, 'get_newringsv9'
@@ -364,8 +379,8 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   RESOLVE_ROUTINE, 'isnumeric',/IS_FUNCTION
   RESOLVE_ROUTINE, 'linenumber',/IS_FUNCTION
   RESOLVE_ROUTINE, 'momentsv2'
-  RESOLVE_ROUTINE, 'obtain_inclinationv8'
-  RESOLVE_ROUTINE, 'obtain_pav2'
+;  RESOLVE_ROUTINE, 'obtain_inclinationv8'
+  RESOLVE_ROUTINE, 'obtain_pa_incl',/COMPILE_FULL_FILE
   RESOLVE_ROUTINE, 'obtain_velpa'
   RESOLVE_ROUTINE, 'obtain_w50'
   RESOLVE_ROUTINE, 'organize_output'
@@ -374,6 +389,7 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   RESOLVE_ROUTINE, 'preprocessing'
   RESOLVE_ROUTINE, 'ra_names' 
   RESOLVE_ROUTINE, 'read_template'
+  RESOLVE_ROUTINE, 'regularisation_sdis'
   RESOLVE_ROUTINE, 'rename'
   RESOLVE_ROUTINE, 'revised_regularisation_com'
   RESOLVE_ROUTINE, 'revised_regularisation_rot'
@@ -381,6 +397,7 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   RESOLVE_ROUTINE, 'run_sofia'
   RESOLVE_ROUTINE, 'sbr_check'
   RESOLVE_ROUTINE, 'set_sbr'
+  RESOLVE_ROUTINE, 'set_sdis'
   RESOLVE_ROUTINE, 'set_vrotv6'
   RESOLVE_ROUTINE, 'set_warp_slopev3'
   RESOLVE_ROUTINE, 'showpixelsmap'
@@ -840,6 +857,12 @@ noconfig:
                                 ;read in the cube and check
                                 ;it's header
         dummy=readfits(maindir+'/'+catdirname[i]+'/'+currentfitcube+cubeext,header,/NOSCALE,/SILENT)
+                                ;if the cube is in integer format we
+                                ;should scale the values in order to
+                                ;not mess thing up
+        IF sxpar(header,'BITPIX') EQ 16 then dummy=readfits(maindir+'/'+catdirname[i]+'/'+currentfitcube+cubeext,header,/SILENT)
+           
+
         IF n_elements(catmajbeam) GT 0 then begin
            beam=[catmajbeam[i],catminbeam[i]]
         ENDIF ELSE beam=[1,1]
@@ -1346,7 +1369,7 @@ noconfig:
      tmp=WHERE(mask EQ 1.)
      maxbright=MAX(dummy[tmp])
      maxSN=maxbright/catnoise[i]
-     IF maxSN LT 4. then begin
+     IF maxSN LT 2. then begin
         openu,1,outputcatalogue,/APPEND
         printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,' The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit.'
         close,1    
@@ -1363,6 +1386,7 @@ noconfig:
      pixelarea=ABS(3600.^2*sxpar(header,'CDELT2')*sxpar(header,'CDELT1'))
      pixelsizeRA=ABS(sxpar(header,'CDELT1'))
      pixelsizeDEC=ABS(sxpar(header,'CDELT2'))
+     pixelsize=(pixelsizeRA+pixelsizeDEC)/2.
                                 ;Let's get the size of the cube
      imagesize=sxpar(header,'CDELT2')*(sxpar(header,'NAXIS2')/2.)*3600.
                                 ;IF it is not in km/s convert
@@ -1373,7 +1397,7 @@ noconfig:
                                 ;Obtain the cutoff values without
                                 ;inclination corrections.
      rad=[0.,((findgen(maxrings+2.))*catmajbeam[i]+catmajbeam[i]/5.)]
-     calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i]],cutoffor
+     calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i],channelwidth],cutoffor,vsys=catVSYS[i]
                                 ;And print the values
    
      IF size(log,/TYPE) EQ 7 then begin
@@ -1409,8 +1433,10 @@ noconfig:
         bookkeeping=5
         goto,finishthisgalaxy
      ENDIF                   
-                                ;Now let's obtain a initial pa and inclination for the galaxy    
-     obtain_pav2,moment0map,newPA,inclination=newinclination,center=[RApix[0],DECpix[0]],noise=momnoise,iterations=10.
+                                ;Now let's obtain a initial pa
+                                ;and inclination for the galaxy
+     obtain_pa_incl,moment0map,newPA,newinclination,[RApix[0],DECpix[0]],NOISE=momnoise,BEAM=catmajbeam[i]/(pixelsize*3600.),gdlidl=gdlidl,extent=noringspix
+
                                 ;Let's check wether the PA
                                 ;lines up with the kinematical
                                 ;or needs a 180  degree shift
@@ -1516,20 +1542,25 @@ noconfig:
         PAfixboun='n'
      ENDELSE
      avPA=dblarr(2)
+     mismatch=0.
                                 ;get the kinematical PA
      obtain_velpa,moment1map,velPA,center=[RApix[0],DECpix[0]],intensity=moment0map
      IF ABS(velPA[0]-newPA[0]) LT 25. then begin
-        avPA[0]=(velPA[0]+newPA[0])/2. 
+        avPA[0]=(velPA[0]/velPA[1]+newPA[0]/newPA[1])/(1./velPA[1]+1./newPA[1]) 
         avPA[1]=SQRT(velPA[1]^2+newPA[1]^2)/2. 
      endif else begin
         IF FINITE(velPA[0]) then begin
            avPA[0]=velPA[0]
            avPA[1]=velPA[1]
+;recalculate the inclination based on the velPA in case it is very
+;different from the found PA
+           mismatch=1
+        ;   obtain_inclinationv8,moment0map,avPA,newinclination,[RApix[0],DECpix[0]],extend=noringspix,noise=momnoise,beam=catmajbeam[i]/(pixelsizeRA*3600.),gdlidl=gdlidl
         ENDIF else avPA=newPA
      ENDELSE
                                 ;recalculate the inclination
     
-     obtain_inclinationv8,moment0map,avPA,newinclination,[RApix[0],DECpix[0]],extend=noringspix,noise=momnoise,beam=catmajbeam[i]/(pixelsizeRA*3600.),gdlidl=gdlidl
+  
    
      obtain_w50,dummy,mask,header,W50   
                                 ;We want to adjust the cutoff values
@@ -1540,6 +1571,7 @@ noconfig:
                                 ;that the cutoff value should be
                                 ;declined and below that increased
      cutoffcorrection=SIN(75.*!DtoR)/SIN((newinclination[0]+newinclination[1]/2.)*!DtoR)
+     IF newinclination[0] GT 80. then cutoffcorrection=0.9
      IF newinclination[0]+newinclination[1]/2. GT 50 then cutoffcorrection=1.
      IF newinclination[0]+newinclination[1]/2. LT 50 AND newinclination[0]+newinclination[1]/2. GT 40  then cutoffcorrection=1.+(50-(newinclination[0]+newinclination[1]/2.))*0.05    
      IF cutoffcorrection GT 2.5 then cutoffcorrection=2.5
@@ -1595,7 +1627,8 @@ noconfig:
         norings[0]=(maxrings-3)*2.
         noringspix=norings[0]*(catmajbeam[i]/2.)/(ABS(sxpar(headermap,'cdelt1'))*3600.)
         rad=[0.,((findgen(maxrings*2.))*(catmajbeam[i]/2)+catmajbeam[i]/10.)]
-        calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i]],cutoffor
+        calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i],channelwidth],cutoffor,vsys=catVSYS[i]
+ 
         cutoffor=cutoffor/SQRT(norings[0])
         cutoff=cutoffor*cutoffcorrection
         IF norings LT 3. then begin
@@ -1645,7 +1678,7 @@ noconfig:
            print,linenumber()+"Fitting with half the beam major axis FWHM as ringsize."
         Endelse  
      ENDIF ELSE BEGIN
-        IF maxrings GT 25 then begin
+        IF maxrings GT 25 AND norings[0] GT 20 then begin
            doubled=1
            tmpring=norings[0]-10.
            IF newinclination[0] LT 40 then tmpring=tmpring+2
@@ -1657,7 +1690,9 @@ noconfig:
            rad=[0.,rings[0:9],(findgen(fix((maxrings-10.)/2.)))*catmajbeam[i]*2+catmajbeam[i]/5.+11.*catmajbeam[i]]
            IF finishafter GT 1 then finishafter=2.1
            maxrings=10.+fix((maxrings-10.)/2.)
-           calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i]],cutoffor
+           
+           calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i],channelwidth],cutoffor,vsys=catVSYS[i]
+ 
            cutoff=cutoffor*cutoffcorrection
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
@@ -1721,7 +1756,6 @@ noconfig:
      catPA[i]=newPA[0]
      catPAdev[i]=newPA[1]
      catinc[i]=newinclination[0]
-    
      catincdev[i]=newinclination[1]
                                 ;calculate the vmax based on inclination and W50
      IF catinc[i] LT 40 then begin
@@ -2231,20 +2265,55 @@ noconfig:
                                 ;   IF we have a low inclination we first want to fit the PA by itself
      PAest=0.
      INCLest=0.
-     IF catinc[i]  LT 50 AND counter EQ 0. then begin
+     
+     IF (catinc[i]  LT 50 OR mismatch EQ 1) AND counter EQ 0. then begin
                                 ;If we have a small number of beams
                                 ;acros the minor axis the inclination
                                 ;is very unsure and we first want to
                                 ;fit the inclination
-        IF ceil(norings[0]*COS(catinc[i]*!DtoR)) LE 5 then begin
-           goto,notfornow
+        PAinincl=catPA[i]
+        INCLinincl=catinc[i]
+        maxrotinincl=catmaxrot[i]
+        fixstring='VROT '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+':'+strtrim(strcompress(string(fix(norings[0]*0.5+2),format='(I3)')),1)+' VROT_2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+':'+strtrim(strcompress(string(fix(norings[0]*0.5+2),format='(I3)')),1)
+        IF ceil(norings[0]*COS(catinc[i]*!DtoR)) LE 5 OR catinc[i] LT 30. OR mismatch EQ 1 then begin
+                                ;goto,notfornow
+                                ;at low incl tirfic is good at going
+                                ;up so
+           ; IF  catinc[i] LT 25 then catinc[i]=catinc[i]-catincdev[i]
+                                ; Avoid runaway rotation
+           IF mismatch EQ 1 then begin
+              IF size(log,/TYPE) EQ 7 then begin
+                 openu,66,log,/APPEND
+                 printf,66,linenumber()+"Because of a difference between the kinematic PA and the morphological PA we will scramble the inclination."
+                 printf,66,linenumber()+"Original inclination ="+string(catinc[i])+" New = "+string(catinc[i]-5.)
+                 close,66
+              ENDIF
+              catinc[i]=catinc[i]-5.
+              catincdev[i]=catincdev[i]+10.
+           ENDIF ELSE BEGIN
+              catinc[i]=catinc[i]-3.
+              catincdev[i]=catincdev[i]+5.
+           ENDELSE
+           IF catinc[i] LT 5 then catinc[i]=5.
+           
+           tmppos=where('INCL' EQ tirificfirstvars)
+           tirificfirst[tmppos]='INCL='+strtrim(strcompress(string(catinc[i])))
+           tmppos=where('INCL_2' EQ tirificfirstvars)
+           tirificfirst[tmppos]='INCL_2='+strtrim(strcompress(string(catinc[i])))
+           TMP_VEL=W50/2./SIN(ABS(INCLinincl)*!pi/180.)
+           IF TMP_VEL GT 300. then TMP_VEL= 300.
+           tmppos=where('VROT' EQ tirificfirstvars)
+           tirificfirst[tmppos]='VROT= 0. '+strtrim(strcompress(string(tmp_vel)))
+           tmppos=where('VROT_2' EQ tirificfirstvars)
+           tirificfirst[tmppos]='VROT_2= 0. '+strtrim(strcompress(string(tmp_vel)))
            INCLest=1
            INCLinput1=['INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                        ' INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
-                       '90.',string(catinc[i]-catincdev[i]),string(0.5),string(0.1),string(1.0),string(0.1),'3','70','70']  
+                       '90.',string(catinc[i]-catincdev[i]-5),string(5),string(0.1),string(0.5),string(0.05),'5','70','70']  
            PAinput1=['PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                      ' PA_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
                      string((catPA[i])+catPAdev[i]+40.),string((catPA[i])-catPAdev[i]-40),string(6),string(0.1),string(0.05),string(0.01),'3','70','70']
+           IF INCLinput1[2] LT 2. then INCLinput1[2]='2'
 
            IF PAfixboun NE 'n' then begin
               IF PAfixboun EQ 'w' then begin
@@ -2256,16 +2325,17 @@ noconfig:
                  IF catPA[i]-catPAdev[i]-40. LT 0. then PAinput1[2]='0'
               ENDIF
            ENDIF
-           VROTinputINCL=['VROT 2:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-                          ' VROT_2 2:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)$
+   
+           VROTinputINCL=['!VROT '+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+':2 '+$
+                          ' VROT_2 '+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+':2'$
                           ,string(VROTmax),string(0.),$
-                          string(channelwidth),string(0.1*channelwidth),string(channelwidth),string(0.01*channelwidth),'3','70','70']
+                          string(channelwidth),string(0.1*channelwidth),string(0.5*channelwidth),string(0.01*channelwidth),'3','70','70',fixstring]
         
            Writefittingvariables,tirificfirst,inclinput1,VROTinputINCL,painput1,sbrinput1,sbrinput2
            againINCLestimate:
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"Because there are only a few beams across the minor axis we first adjust the inclination "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
+              printf,66,linenumber()+"Because there are only a few beams across the minor axis or we have low inclination we first adjust the inclination "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
               close,66
            ENDIF 
            openw,1,maindir+'/'+catdirname[i]+'/tirific.def'
@@ -2286,6 +2356,7 @@ noconfig:
            spawn,gipsyfirst,isthere2
            ; Let's check how we did in the fit
            get_progress,maindir+'/'+catdirname[i]+'/progress1.txt',AC1,nopoints,loops,toymodels
+         
            ;If not accepted we try again
            IF AC1 EQ 0. and INCLest LT 5 then begin
               IF size(log,/TYPE) EQ 7 then begin
@@ -2293,12 +2364,13 @@ noconfig:
                  printf,66,linenumber()+"The INCL estimate was not accepted try again. Tries: "+string(INCLest) 
                  close,66
               ENDIF 
-              VariablesWanted=['PA','PA_2','INCL','INCL_2','VROT','VROT_2']
+              VariablesWanted=['PA','PA_2','INCL','INCL_2','VROT','VROT_2','SBR','SBR_2']
               firstfitvalues=0.
               writenewtotemplate,tirificfirst,maindir+'/'+catdirname[i]+'/1stfit.def',Arrays=firstfitvalues,VariableChange=VariablesWanted
               catPA[i]=firstfitvalues[0,0]
               catinc[i]=firstfitvalues[0,2]
               catmaxrot[i]=firstfitvalues[1,4]
+              IF catinc[i] LT 5 then catinc[i]=5.
               PAinput1=['PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                         ' PA_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
                         string((catPA[i])+catPAdev[i]+30.),string((catPA[i])-catPAdev[i]-30),string(5),string(0.1),string(0.05),string(0.01),'3','70','70']
@@ -2314,19 +2386,32 @@ noconfig:
               ENDIF
               INCLinput1=['INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                           ' INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
-                          '90.',string(catinc[i]-catincdev[i]-20),string(3),string(0.1),string(0.5),string(0.1),'3','70','70']  
+                          '90.',string(catinc[i]-catincdev[i]-20),string(10),string(1),string(0.1),string(0.01),'3','70','70']  
               Writefittingvariables,tirificfirst,painput1,inclinput1,vrotinputINCL
               INCLest=INCLest+1.
               goto,againINCLestimate
            ENDIF ELSE BEGIN
               
               ;When accepted update our values
-              VariablesWanted=['PA','PA_2','INCL','INCL_2','VROT','VROT_2']
+              VariablesWanted=['PA','PA_2','INCL','INCL_2','VROT','VROT_2','SBR','SBR_2']
               firstfitvalues=0.
               writenewtotemplate,tirificfirst,maindir+'/'+catdirname[i]+'/1stfit.def',Arrays=firstfitvalues,VariableChange=VariablesWanted
+             
+              IF size(log,/TYPE) EQ 7 then begin
+                 openu,66,log,/APPEND
+                 printf,66,linenumber()+"Because of low inclination (<30) or small number of beams across minor axis (< 5):"
+                 printf,66,linenumber()+"We have adjusted the PA from "+string(PAinincl)+" to "+string(firstfitvalues[0,0])+'+/-'+string(newPA[1])
+                 printf,66,linenumber()+"The inclination from "+string(INCLinincl)+" to "+string(firstfitvalues[0,2])+'+/-'+string(newinclination[1])
+                 printf,66,linenumber()+"The max rotation from "+string(maxrotinincl)+" to "+string(firstfitvalues[n_elements(firstfitvalues[*,0])-2,4])+'+/-'+string(catmaxrotdev[1])
+                 printf,66,linenumber()+"We have adjusted the fit setting of the inclination and VROT." 
+                 close,66
+              ENDIF
               catPA[i]=firstfitvalues[0,0]
               catinc[i]=firstfitvalues[0,2]
+              IF catinc[i] LT 5 then catinc[i]=5.
               catmaxrot[i]=firstfitvalues[1,4]
+
+              
            ENDELSE
            notfornow:
         ENDIF
@@ -2351,10 +2436,10 @@ noconfig:
               IF catPA[i]-catPAdev[i]-30. LT 0. then PAinput1[2]='0'
            ENDIF
         ENDIF
-        VROTinputPA=['VROT 2:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-                     ' VROT_2 2:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)$
+        VROTinputPA=['!VROT '+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+':2 '+$
+                     ' VROT_2 '+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+':2'$
                      ,string(VROTmax),string(0.),$
-                     string(channelwidth),string(0.01*channelwidth),string(channelwidth),string(0.01*channelwidth),'3','70','70']
+                     string(channelwidth),string(0.01*channelwidth),string(channelwidth),string(0.01*channelwidth),'3','70','70',fixstring]
         Writefittingvariables,tirificfirst,painput1,sbrinput1,sbrinput2,VROTinputPA
         
         againPAestimate:
@@ -2416,24 +2501,25 @@ noconfig:
                                 ;get the values from these adapted
                                 ;models and write them into the
                                 ;tirific array
-        VariablesWanted=['PA','PA_2','INCL','INCL_2','VROT','VROT_2']
+        VariablesWanted=['PA','PA_2','INCL','INCL_2','VROT','VROT_2','SBR','SBR_2']
         firstfitvalues=0.
         writenewtotemplate,tirificfirst,maindir+'/'+catdirname[i]+'/1stfit.def',Arrays=firstfitvalues,VariableChange=VariablesWanted
                                 ;if the change is large we want to
                                 ;adjust our inc and vrot estimates as
                                 ;well
         newPA=[firstfitvalues[0,0],ABS(firstfitvalues[0,0]-newPA[0])+newPA[1]]
-        IF INCLest GT 0. then begin
-           newinclination=[firstfitvalues[0,2],20.]
+       ; IF INCLest GT 0. then begin
+           newinclination=[firstfitvalues[0,2],catincdev[i]]
            newrot=firstfitvalues[1,4]
-        ENDIF else begin
-           obtain_inclinationv8,moment0map,newPA,newinclination,[RApix[0],DECpix[0]],extend=noringspix,noise=momnoise,beam=catmajbeam[i]/(pixelsizeRA*3600.),gdlidl=gdlidl 
+       ; ENDIF else begin
+       ;    obtain_inclinationv8,moment0map,newPA,newinclination,[RApix[0],DECpix[0]],extend=noringspix,noise=momnoise,beam=catmajbeam[i]/(pixelsizeRA*3600.),gdlidl=gdlidl 
            
-           IF newinclination[0] LT 40 then newrot=W50/2./SIN(ABS(newinclination[0]+5.0)*!pi/180.) else newrot=W50/2./SIN(newinclination[0]*!pi/180.) 
-        ENDELSE
+        ;   IF newinclination[0] LT 40 then newrot=W50/2./SIN(ABS(newinclination[0]+5.0)*!pi/180.) else newrot=W50/2./SIN(newinclination[0]*!pi/180.) 
+      ;  ENDELSE
                                 ;when we get a new inclination we need
                                 ;to reset our cutoff values.
         cutoffcorrection=SIN(75.*!DtoR)/SIN((newinclination[0]+newinclination[1]/2.)*!DtoR)
+        IF newinclination[0] GT 80. then cutoffcorrection=0.9
         IF newinclination[0]+newinclination[1]/2. GT 50 then cutoffcorrection=1.
         IF newinclination[0]+newinclination[1]/2. LT 50 AND newinclination[0]+newinclination[1]/2. GT 40  then cutoffcorrection=1.+(50-(newinclination[0]+newinclination[1]/2.))*0.05
     
@@ -2453,22 +2539,24 @@ noconfig:
         IF INCLest GT 0. then begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"Because of a low number of beams across the minor axis,"
-              printf,66,linenumber()+"We have adjusted the PA from to "+string(catPA[i])+'+/-'+string(newPA[1])
-              printf,66,linenumber()+"The inclination to "+string(catInc[i])+'+/-'+string(newinclination[1])
-              printf,66,linenumber()+"Maxrot to "+string(newrot[0])+'+/-'+string(catmaxrotdev[i])
+              printf,66,linenumber()+"Because of low inclination (<30) or small number of beams across minor axis (< 5):"
+              printf,66,linenumber()+"We have adjusted the PA from "+string(PAinincl)+' to '+string(newPA[0])+'+/-'+string(newPA[1])
+              printf,66,linenumber()+"The inclination from "+string(INCLinincl)+" to "+string(newinclination[0])+'+/-'+string(newinclination[1])
+              printf,66,linenumber()+"The max rotation from "+string(maxrotinincl)+" to "+string(newrot[0])+'+/-'+string(catmaxrotdev[i])
               printf,66,linenumber()+"We have adjusted the fit setting of the inclination and VROT." 
               close,66
            ENDIF
         ENDIF ELSE BEGIN
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"Because of low inclination "+string(catinc[i])
-              printf,66,linenumber()+"We have adjusted the PA from "+string(catPA[i])+" to "+string(firstfitvalues[0,0])+'+/-'+string(newPA[1])
-              printf,66,linenumber()+"The inclination from "+string(catInc[i])+" to "+string(newinclination[0])+'+/-'+string(newinclination[1])
+              printf,66,linenumber()+"Because of low inclination (<50) :"
+              printf,66,linenumber()+"We have adjusted the PA from "+string(PAinincl)+' to '+string(newPA[0])+'+/-'+string(newPA[1])
+              printf,66,linenumber()+"The inclination from "+string(INCLinincl)+" to "+string(newinclination[0])+'+/-'+string(newinclination[1])
+              printf,66,linenumber()+"The max rotation from "+string(maxrotinincl)+" to "+string(newrot[0])+'+/-'+string(catmaxrotdev[i])
               printf,66,linenumber()+"We have adjusted the fit setting of the inclination and VROT." 
               close,66
            ENDIF
+         
         ENDELSE
         catPAdev[i]=15.
         catinc[i]=newinclination[0]
@@ -2566,24 +2654,25 @@ noconfig:
         ENDELSE
 
         
-        IF INCLest LT 1 then begin
-           obtain_inclinationv8,moment0map,newPA,newinclination,[RApix[0],DECpix[0]],extend=noringspix,noise=momnoise,beam=catmajbeam[i]/(pixelsizeRA*3600.),gdlidl=gdlidl
+;        IF INCLest LT -11 then begin
+;           obtain_inclinationv8,moment0map,newPA,newinclination,[RApix[0],DECpix[0]],extend=noringspix,noise=momnoise,beam=catmajbeam[i]/(pixelsizeRA*3600.),gdlidl=gdlidl
                                 ;when we get a new inclination we need
                                 ;to reset our cutoff values.
-           cutoffcorrection=SIN(75.*!DtoR)/SIN((newinclination[0]+newinclination[1]/2.)*!DtoR)
-           IF newinclination[0]+newinclination[1]/2. GT 50 then cutoffcorrection=1.
-           IF newinclination[0]+newinclination[1]/2. LT 50 AND newinclination[0]+newinclination[1]/2. GT 40  then cutoffcorrection=1.+(50-(newinclination[0]+newinclination[1]/2.))*0.05
+;           cutoffcorrection=SIN(75.*!DtoR)/SIN((newinclination[0]+newinclination[1]/2.)*!DtoR)
+;           IF newinclination[0] GT 80. then cutoffcorrection=0.9
+;           IF newinclination[0]+newinclination[1]/2. GT 50 then cutoffcorrection=1.
+;           IF newinclination[0]+newinclination[1]/2. LT 50 AND newinclination[0]+newinclination[1]/2. GT 40  then cutoffcorrection=1.+(50-(newinclination[0]+newinclination[1]/2.))*0.05
     
-           IF cutoffcorrection GT 2.5 then cutoffcorrection=2.5
-           IF doubled and cutoffcorrection GT 1. then cutoffcorrection=SQRT(cutoffcorrection)
+;           IF cutoffcorrection GT 2.5 then cutoffcorrection=2.5
+;           IF doubled and cutoffcorrection GT 1. then cutoffcorrection=SQRT(cutoffcorrection)
   
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+"Cutoff values will be adjusted for inclination by multiplying them with"+string(cutoffcorrection)
-              close,66
-           ENDIF
-           cutoff=cutoffor*cutoffcorrection
-        ENDIF
+;           IF size(log,/TYPE) EQ 7 then begin
+;              openu,66,log,/APPEND
+;              printf,66,linenumber()+"Cutoff values will be adjusted for inclination by multiplying them with"+string(cutoffcorrection)
+;              close,66
+;           ENDIF
+;           cutoff=cutoffor*cutoffcorrection
+;        ENDIF
         tmppos=where('SBR' EQ VariablesWanted)
         SBRarr=firstfitvalues[*,tmppos]
         
@@ -2883,8 +2972,10 @@ noconfig:
      endif
                                 ; Let's see if the values are too close to the boundaries or not
                                 ;First the inclination
-     diffmax=ABS(firstfitvalues[0,0]-double(inclinput1[1]))
-     diffmin=ABS(firstfitvalues[0,0]-double(inclinput1[2]))                            
+     diffmax=ABS(double(inclinput1[1])-firstfitvalues[0,0])
+     diffmin=ABS(firstfitvalues[0,0]-double(inclinput1[2]))
+     IF inclinput1[2] EQ 5. then diffmin = 0.2*catincdev[i]
+     IF inclinput1[1] EQ 90 then diffmax = 0.2*catincdev[i]
      oldinc=catinc[i]
      oldpa=catpa[i]
      paraised=0.
@@ -2980,6 +3071,7 @@ noconfig:
                                 ;when we get a new inclination we need
                                 ;to reset our cutoff values.
      cutoffcorrection=SIN(75.*!DtoR)/SIN((catinc[i]+newinclination[1]/2.)*!DtoR)
+     IF newinclination[0] GT 80. then cutoffcorrection=0.9
      IF catinc[i]+newinclination[1]/2. GT 50 then cutoffcorrection=1.
      IF catinc[i]+newinclination[1]/2. LT 50 AND catinc[i]+newinclination[1]/2. GT 40  then cutoffcorrection=1.+(50-(catinc[i]+newinclination[1]/2.))*0.05
     
@@ -3137,14 +3229,18 @@ noconfig:
            goto,shiftcenter
         ENDIF ELSE BEGIN
                                 ;if the shift is more than two beams
-                                ;from the initial guess something went wrong
-           IF    ABS(RADeg-newxpos) GT catmajbeam[i]/1800. OR ABS(DECDeg-newypos) GT catmajbeam[i]/1800. then begin
+                                ;from the initial guess something went
+                                ;wrong
+           IF norings LE 25 then resetlimit=catmajbeam[i]/1800. else begin
+              resetlimit=catmajbeam[i]/3600.*norings[0]*0.08
+           ENDELSE
+           IF    ABS(RADeg-newxpos) GT resetlimit OR ABS(DECDeg-newypos) GT resetlimit then begin
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"The center shifted more than 2 major beams. Not applying this shift."
+                 printf,66,linenumber()+"The center shifted more than "+string(resetlimit*3600/catmajbeam[i])+" major beams. Not applying this shift."
                  close,66
               ENDIF ELSE BEGIN
-                 print,linenumber()+"The center shifted than 2 major beams. Not applying this shift."
+                 print,linenumber()+"The center shifted more than "+string(resetlimit*3600/catmajbeam[i])+" major beams. Not applying this shift."
               ENDELSE
               IF paraised then begin
                  tmppos=where('PA' EQ tirificfirstvars)
@@ -3509,6 +3605,10 @@ noconfig:
                                 ;Reading out the fit values 
      Basicinfovars=['XPOS','YPOS','VSYS','PA','INCL','VROT']
      writenewtotemplate,tirificfirst,maindir+'/'+catdirname[i]+'/1stfit.def',Arrays=Basicinfovalues,VariableChange=Basicinfovars,Variables=tirificfirstvars,/EXTRACT
+     if testing EQ 1 then begin
+        newxpos=Basicinfovalues[0,0]
+        newypos=Basicinfovalues[0,1]
+     ENDIF
      RAhr=Basicinfovalues[0,0]
      RAdiff=maxchangeRA*3600./15.
      DEChr=Basicinfovalues[0,1]
@@ -3640,7 +3740,9 @@ noconfig:
      Vfrom1=firstfitvalues[*,tmppos]
      half=fix(n_elements(firstfitvalues[*,tmppos])/2.)
      VROTarr[*]=firstfitvalues[*,tmppos]
-     tmppos=where('SBR' EQ firstfitvaluesnames)
+     tmppos=where('SDIS' EQ firstfitvaluesnames)
+     SDISarr=dblarr(n_elements(firstfitvalues[*,tmppos]))
+     tmppos=where('SDIS_2' EQ firstfitvaluesnames)
      SBRarr=firstfitvalues[*,tmppos]
      tmppos=where('INCL' EQ firstfitvaluesnames)
      INCLang=firstfitvalues[*,tmppos]
@@ -3672,7 +3774,7 @@ noconfig:
            maxrings=maxrings*2.
            noringspix=norings[0]*(catmajbeam[i]/2.)/(ABS(sxpar(headermap,'cdelt1'))*3600.)
            rad=[0.,((findgen(maxrings))*(catmajbeam[i]/2.)+catmajbeam[i]/10.)]
-           calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i]],cutoffor
+           calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i],channelwidth],cutoffor,vsys=catVSYS[i]
            cutoff=cutoffor*cutoffcorrection
            tmp=rad[0:norings[0]-1]
            rad=tmp
@@ -3787,17 +3889,36 @@ noconfig:
                                 ; more uncartain at lower inclination
      IF VROTmax LT 60. then VROTmax=60.
      IF vrotmax GT 600. then VROTmax=600.
+                                ;SDIS
+     SDISmax=MAX(SDISarr,Min=SDISmin)
+     SDISmax=SDISmax*1.5     
+     SDISmin=SDISmin/4.
+                                ;the minimum can never be less than
+                                ;the channelwidth
+     IF SDISmin LT channelwidth then SDISmin=channelwidth
+                                ; The maximum should not be less than
+                                ; 80 /sin(inclination) as it becomes
+                                ; more uncartain at lower inclination
+     IF SDISmax LT 25. then SDISmax=25.
+     IF sdismax GT 50. then SDISmax=50.
                                 ; See how much of the rotation curve we want to fit as a slope
-     get_newringsv9,SBRarr,SBRarr2,2.*cutoff,velconstused
+     get_newringsv9,SBRarr,SBRarr2,2.5*cutoff,velconstused
      velconstused--
      IF norings[0] GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
      set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter
+     set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,avinner=avinner,finish_after=finishafter
                                 ;set the surface brightness values
      set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,/initial,doubled=doubled
-                                ;SDIS
-     SDISinput1=['SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-                 ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
-                 '25','5','1','0.1','0.5','0.05','3','70','70']    
+                                ;SDIS 14-09-2018 let's make an
+                                ;attempt at fitting the dispersion in
+                                ;a similar fashion to the pa
+ ;    SDISinput1=['SDIS 1:'+strtrim(strcompress(string(innerfix,format='(F7.4)')),1)+$
+ ;                ' SDIS_2 1:'+strtrim(strcompress(string(innerfix,format='(F7.4)')),1),$
+ ;                string(30.),string(5.),string(1.),string(0.1),string(0.5),string(0.1),'3','70','70']
+        
+  ;   SDISinput1=['SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+  ;               ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
+  ;               '25','5','1','0.1','0.5','0.05','3','70','70']    
                                 ;Z0
      Z0input1=['Z0 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                ' Z0_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
@@ -3886,8 +4007,9 @@ noconfig:
            Writefittingvariables,tirificsecond,inclinput1,painput1,vrotinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
                                  xposinput1,yposinput1,vsysinput1,sdisinput1
         ENDIF ELSE BEGIN
-           Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
-                                 xposinput1,yposinput1,vsysinput1,sdisinput1
+           Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                 vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                 xposinput1,yposinput1,vsysinput1
         ENDELSE
      endif else begin
                                 ;Else we allow more variation in the
@@ -3906,8 +4028,9 @@ noconfig:
            Writefittingvariables,tirificsecond,xposinput1,yposinput1,vsysinput1,inclinput1,painput1,vrotinput1,$
                                  sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,sdisinput1
         ENDIF ELSE BEGIN
-           Writefittingvariables,tirificsecond,xposinput1,yposinput1,vsysinput1,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,$
-                                 sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,sdisinput1
+           Writefittingvariables,tirificsecond,xposinput1,yposinput1,vsysinput1,$
+                                 inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,$
+                                 sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1
         ENDELSE
      endelse
                                 ;Setting a bunch of fit tracking variables
@@ -4022,14 +4145,33 @@ noconfig:
      tmp=WHERE(VROTarr GT VROTmax)
      IF tmp[0] ne -1 then VROTarr[tmp]=VROTmax*0.8
      tmp=WHERE(VROTarr LT VROTmin)
-     IF tmp[0] ne -1 then VROTarr[tmp]=VROTmin*2.
+     IF tmp[0] ne -1 then begin
+        IF tmp[0] EQ 0 then begin
+           IF n_elements(tmp) GT 1 then VROTarr[tmp[1:n_elements(tmp)-1]]=VROTmin*2.
+        ENDIF ELSE VROTarr[tmp]=VROTmin*2.
+     ENDIF
+     tmppos=where('SDIS' EQ secondfitvaluesnames)
+     SDISarr=secondfitvalues[*,tmppos]
+                                ;We check that it is not out off bound
+     tmp=WHERE(SDISarr GT SDISmax)
+     IF tmp[0] ne -1 then SDISarr[tmp]=SDISmax*0.8
+     tmp=WHERE(SDISarr LT SDISmin)
+     IF tmp[0] ne -1 then SDISarr[tmp]=SDISmin*1.5
      
      tmppos=where('SBR' EQ secondfitvaluesnames)
      SBRarr=secondfitvalues[*,tmppos]
                                 ;We always want to smooth the surface brightnes. Added 16-06-2017
      get_newringsv9,SBRarr,SBRarr2,cutoff,newindrings,/individual
-     SBRarr=fat_hanning(SBRarr,rings=newindrings[0])      
-     SBRarror=SBRarr
+     SBRarr=fat_hanning(SBRarr,rings=newindrings[0])
+                                ;and take the central point as the
+                                ;extension of the previous two. Added 18-10-2018
+     inSBR=SBRarr[1:2]
+     inRad=RADarr[1:2]
+     newRAD=RADarr[0:2]
+     newSBR=1
+     interpolate,inSBR,inRad,newradii=newRAD,output=newSBR
+     SBRarr[0]=newSBR[0]
+    
      
      tmppos=where('INCL' EQ secondfitvaluesnames)
      INCLang=secondfitvalues[*,tmppos]
@@ -4041,7 +4183,19 @@ noconfig:
      tmp=WHERE(VROTarr2 GT VROTmax)
      IF tmp[0] ne -1 then VROTarr2[tmp]=VROTmax*0.8
      tmp=WHERE(VROTarr2 LT VROTmin)
-     IF tmp[0] ne -1 then VROTarr2[tmp]=VROTmin*2.
+     IF tmp[0] ne -1 then begin
+        IF tmp[0] EQ 0 then begin
+           IF n_elements(tmp) GT 1 then VROTarr2[tmp[1:n_elements(tmp)-1]]=VROTmin*2.
+        ENDIF ELSE VROTarr2[tmp]=VROTmin*2.
+     ENDIF
+   
+     tmppos=where('SDIS_2' EQ secondfitvaluesnames)
+     SDISarr2=secondfitvalues[*,tmppos]
+                                ;We check that it is not out off bound
+     tmp=WHERE(SDISarr2 GT SDISmax)
+     IF tmp[0] ne -1 then SDISarr2[tmp]=SDISmax*0.8
+     tmp=WHERE(SDISarr2 LT SDISmin)
+     IF tmp[0] ne -1 then SDISarr2[tmp]=SDISmin*1.5
      
  
      tmppos=where('SBR_2' EQ secondfitvaluesnames)
@@ -4049,6 +4203,13 @@ noconfig:
                                 ;We always want to smooth the surface brightnes. Added 16-06-2017
      get_newringsv9,SBRarr,SBRarr2,cutoff,newindrings,/individual
      SBRarr2=fat_hanning(SBRarr2,rings=newindrings[1])
+     inSBR=SBRarr2[1:2]
+     inRad=RADarr[1:2]
+     newSBR=1.
+     interpolate,inSBR,inRad,newradii=newRAD,output=newSBR
+     SBRarr2[0]=(newSBR[0]+SBRarr[0])/2.
+     SBRarr[0]=(newSBR[0]+SBRarr[0])/2.
+     SBRarror=SBRarr
      SBRarr2or=SBRarr2
      
      tmppos=where('INCL_2' EQ secondfitvaluesnames)
@@ -4193,9 +4354,10 @@ noconfig:
      sbr_check,tirificsecond, tirificsecondvars,sbrarr,sbrarr2,cutoff     
                                 ;We get the rings for which we only
                                 ;want to fit a slope in the rotation curve
-     get_newringsv9,SBRarr,SBRarr2,2.*cutoff,velconstused
+     get_newringsv9,SBRarr,SBRarr2,2.5*cutoff,velconstused
      velconstused--
      IF norings[0] GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
+     xind=0
      IF (TOTAL(VROTarr[1:2])/2. GT 150 AND VROTarr[1] GT VROTarr[2] AND VROTarr[1] GT VROTarr[3]) OR $
         (MEAN(VROTarr[1:n_elements(vrotarr)-1]) GT 250.) then begin
         x=n_elements(VROTarr)-1
@@ -4218,6 +4380,7 @@ noconfig:
            tmppos=where('VROT_2' EQ tirificsecondvars)
            tirificsecond[tmppos]=stringVROT
            slope=1
+           xind=x
            IF norings[0]-x GT velconstused then velconstused=norings[0]-x
         ENDIF ELSE BEGIN
            IF MEAN(VROTarr[1:n_elements(vrotarr)-1]) GT 250. then begin
@@ -4238,7 +4401,7 @@ noconfig:
                  tmppos=where('VROT_2' EQ tirificsecondvars)
                  tirificsecond[tmppos]=stringVROT
                  slope=1
-                 IF norings[0]-xind GT velconstused then velconstused=norings[0]-xind
+                                ;            IF norings[0]-xind GT velconstused then velconstused=norings[0]-xind
                  IF size(log,/TYPE) EQ 7 then begin
                     openu,66,log,/APPEND
                     printf,66,linenumber()+'This is a massive galaxy hence we flatten the outer part if xind is less '+$
@@ -4272,6 +4435,7 @@ noconfig:
         IF velfixrings GT 1 then VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1]=TOTAL(VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1])/n_elements(VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1])
      ENDIF
      set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,finish_after=finishafter,slope=slope
+     set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,finish_after=finishafter,slope=slope
                                 ;Then set the surface brighness profile parameters
      set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,doubled=doubled
                                 ;Update the rings to be fitted in the other parameters
@@ -4380,7 +4544,13 @@ noconfig:
            SBRarr[lastreliablerings:n_elements(SBRarr)-1]=cutoff[lastreliablerings:n_elements(SBRarr)-1]*6.
            INCLang[lastreliablerings:n_elements(SBRarr)-1]=INCLang[lastreliablerings-1+INCLrings]
            PAang[lastreliablerings:n_elements(SBRarr)-1]=PAang[lastreliablerings-1+PArings]
-           IF lastreliablerings EQ 1 then VROTarr[lastreliablerings:n_elements(SBRarr)-1]=MEAN(VROTarr[1:n_elements(VROTarr)-1]) else VROTarr[lastreliablerings:n_elements(SBRarr)-1]=VROTarr[lastreliablerings-1]
+           IF lastreliablerings EQ 1 then begin
+              VROTarr[lastreliablerings:n_elements(SBRarr)-1]=MEAN(VROTarr[1:n_elements(VROTarr)-1])
+              SDISarr[lastreliablerings:n_elements(SBRarr)-1]=MEAN(SDISarr[1:n_elements(SDISarr)-1])
+           ENDIF else BEGIN
+              VROTarr[lastreliablerings:n_elements(SBRarr)-1]=VROTarr[lastreliablerings-1]
+              SDISarr[lastreliablerings:n_elements(SDISarr)-1]=SDISarr[lastreliablerings-1]
+           ENDELSE
            comin=[[PAang],[INCLang]]
            errors=[[0.],[0.]]
            
@@ -4407,7 +4577,13 @@ noconfig:
            SBRarr2[lastreliablerings:n_elements(SBRarr2)-1]=cutoff[lastreliablerings:n_elements(SBRarr2)-1]*6.
            INCLang2[lastreliablerings:n_elements(SBRarr2)-1]=INCLang2[lastreliablerings-1+INCLrings]
            PAang2[lastreliablerings:n_elements(SBRarr2)-1]=PAang2[lastreliablerings-1+PArings]
-           IF lastreliablerings EQ 1 then VROTarr2[lastreliablerings:n_elements(SBRarr)-1]=MEAN(VROTarr2[1:n_elements(VROTarr2)-1]) else VROTarr2[lastreliablerings:n_elements(SBRarr2)-1]=VROTarr2[lastreliablerings-1]
+           IF lastreliablerings EQ 1 then BEGIN
+              VROTarr2[lastreliablerings:n_elements(SBRarr)-1]=MEAN(VROTarr2[1:n_elements(VROTarr2)-1])
+              SDISarr2[lastreliablerings:n_elements(SBRarr)-1]=MEAN(SDISarr2[1:n_elements(SDISarr2)-1])
+           ENDIF else BEGIN
+              VROTarr2[lastreliablerings:n_elements(SBRarr2)-1]=VROTarr2[lastreliablerings-1]
+              SDISarr2[lastreliablerings:n_elements(SBRarr2)-1]=SDISarr2[lastreliablerings-1]
+           ENDELSE
             comin=[[PAang2],[INCLang2]]
            errors=[[0.],[0.]]
            revised_regularisation_com,comin,SBRarr2or,RADarr,fixedrings=3,difference=[1.,4.*exp(-catinc[i]^2.5/10^3.5)+1.5],cutoff=cutoff,arctan=1,order=polorder,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[1./4.,1.],error=errors ,gdlidl=gdlidl,log=log 
@@ -4439,6 +4615,21 @@ noconfig:
         tirificsecond[tmppos]=stringVROT
                                 ;If we do this we also need to check the vrot min
         if VROTarr[lastreliablerings-1] LT avinner then vrotinput1[2]=string(VROTmin)+' '+string(VROTarr[lastreliablerings-1]*0.6)
+                                ;SDIS
+        SDISarr=(SDISarr+SDISarr2)/2.
+        if norings[0] LT 4 OR finishafter EQ 1.1 then begin
+           SDISarr[*]=MEAN(SDISarr)
+           sigmasdis=replicate(channelwidth/4.,n_elements(SDISarr))
+        endif else begin
+           regularisation_sdis,SDISarr,tmpSBR,RADarr,log=log,max_par=SDISmax,min_par=SDISmin,arctan=1,fixedrings=velfixrings,difference=channelwidth/4.,cutoff=cutoff,gdlidl=gdlidl ,error= sigmasdis
+        endelse
+        stringSDIS='SDIS= '+STRJOIN(string(SDISarr[0:n_elements(SDISarr)-1]),' ') 
+        tmppos=where('SDIS' EQ tirificsecondvars)
+        tirificsecond[tmppos]=stringSDIS
+        stringSDIS='SDIS_2= '+STRJOIN(string(SDISarr[0:n_elements(SDISarr)-1]),' ') 
+        tmppos=where('SDIS_2' EQ tirificsecondvars)
+        tirificsecond[tmppos]=stringSDIS
+         
         stringSBR='SBR= '+STRJOIN(string(SBRarr),' ') 
         tmppos=where('SBR' EQ tirificsecondvars)
         tirificsecond[tmppos]=stringSBR
@@ -4451,7 +4642,7 @@ noconfig:
                                  sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,sdisinput1
         ENDIF ELSE BEGIN
            Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,$
-                                 sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,sdisinput1
+                                 sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1
         ENDELSE
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
@@ -4610,10 +4801,14 @@ noconfig:
                                 ;combination gives good results
                                 ;let's leave it like this.
      SBRav=(SBRarr+SBRarr2)/2.
-     get_newringsv9,SBRav,SBRav,2.*cutoff,velconstused
+     get_newringsv9,SBRav,SBRav,2.5*cutoff,velconstused
      velconstused--
      IF double(norings[0]) GT 15. then begin
-        IF velconstused GT norings[0]-ceil(norings[0]/10.) then velconstused=norings[0]-ceil(norings[0]/10.)
+        IF double(norings[0]) LT 25. then fact = 10 else fact= 20-(norings[0]/2.5)
+        if fact LT 6 then fact=6
+        
+        IF velconstused GT norings[0]-ceil(norings[0]/fact) then velconstused=norings[0]-ceil(norings[0]/fact)
+        
      ENDIF
      prefunc=0. 
      IF norings[0]-velconstused LT 2 then velconstused=norings[0]-1
@@ -4640,78 +4835,79 @@ noconfig:
               ENDIF else velconstused=norings[0]
            ENDIF else velconstused=norings[0]
         ENDIF
-        slope=0
-        IF size(log,/TYPE) EQ 7 then begin
-           openu,66,log,/APPEND
-           printf,66,linenumber()+"This is VROT before checking for a massive galaxy."
-           printf,66,VROTarr
-           close,66
-        ENDIF
-        IF (TOTAL(VROTarr[1:2])/2. GT 150 AND VROTarr[1] GT VROTarr[2] AND VROTarr[1] GT VROTarr[3]) OR $
-           (MEAN(VROTarr[1:n_elements(vrotarr)-1]) GT 250.) then begin
-           x=n_elements(VROTarr)-1
-           WHILE VROTarr[x] GT  VROTarr[x-1] AND x GT fix(n_elements(VROTarr)/2) DO x--
+;        slope=0
+ ;       IF size(log,/TYPE) EQ 7 then begin
+ ;          openu,66,log,/APPEND
+ ;          printf,66,linenumber()+"This is VROT before checking for a massive galaxy."
+ ;          printf,66,VROTarr
+ ;          close,66
+ ;       ENDIF
+  ;      IF (TOTAL(VROTarr[1:2])/2. GT 150 AND VROTarr[1] GT VROTarr[2] AND VROTarr[1] GT VROTarr[3]) OR $
+  ;         (MEAN(VROTarr[1:n_elements(vrotarr)-1]) GT 250.) then begin
+  ;         x=n_elements(VROTarr)-1
+  ;         WHILE VROTarr[x] GT  VROTarr[x-1] AND x GT fix(n_elements(VROTarr)/2) DO x--
       
            
-           IF x LT n_elements(VROTarr)-1 then begin
-              IF size(log,/TYPE) EQ 7 then begin
-                 openu,66,log,/APPEND
-                 printf,66,linenumber()+'This is a massive galaxy hence we flatten the outer part if x is less '+$
-                        strtrim(string(n_elements(VROTarr)-1),2)
-                 printf,66,linenumber()+'From ring '+strtrim(string(x),2)+' on we have the value '+strtrim(string(VROTarr[x]),2)
-                 close,66
-              ENDIF
-              VROTarr[x:n_elements(VROTarr)-1]=VROTarr[x]
-              stringVROT='VROT= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
-              tmppos=where('VROT' EQ tirificsecondvars)
-              tirificsecond[tmppos]=stringVROT
-              stringVROT='VROT_2= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
-              tmppos=where('VROT_2' EQ tirificsecondvars)
-              tirificsecond[tmppos]=stringVROT
-              slope=1
-              IF norings[0]-x GT velconstused then velconstused=norings[0]-x
-           ENDIF ELSE BEGIN
-              IF MEAN(VROTarr[1:n_elements(vrotarr)-1]) GT 250. then begin
-                 min=MAX(VROTarr)
-                 xind=n_elements(VROTarr)-1
-                 for x=fix(n_elements(VROTarr)/2),n_elements(VROTarr)-1 do begin
-                    IF VROTarr[x] LT min then begin
-                       min=VROTarr[x]
-                       xind=x
-                    ENDIF
-                 ENDFOR
-                 IF xind LT n_elements(VROTarr)-1 then begin          
-                    VROTarr[xind:n_elements(VROTarr)-1]=VROTarr[xind]
-                    stringVROT='VROT= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
-                    tmppos=where('VROT' EQ tirificsecondvars)
-                    tirificsecond[tmppos]=stringVROT
-                    stringVROT='VROT_2= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
-                    tmppos=where('VROT_2' EQ tirificsecondvars)
-                    tirificsecond[tmppos]=stringVROT
-                    slope=1
-                    IF norings[0]-xind GT velconstused then velconstused=norings[0]-xind
-                    IF size(log,/TYPE) EQ 7 then begin
-                       openu,66,log,/APPEND
-                       printf,66,linenumber()+'This is a massive galaxy hence we flatten the outer part if xind is less '+$
-                              strtrim(string(n_elements(VROTarr)-1),2)
-                       printf,66,linenumber()+'From ring '+strtrim(string(xind),2)+' on we have the value '+strtrim(string(VROTarr[xind]),2)
-                       close,66
-                    ENDIF
-                 ENDIF
-              ENDIF
-           ENDELSE
-        ENDIF
+   ;        IF x LT n_elements(VROTarr)-1 then begin
+    ;          IF size(log,/TYPE) EQ 7 then begin
+     ;            openu,66,log,/APPEND
+      ;           printf,66,linenumber()+'This is a massive galaxy hence we flatten the outer part if x is less '+$
+       ;                 strtrim(string(n_elements(VROTarr)-1),2)
+       ;          printf,66,linenumber()+'From ring '+strtrim(string(x),2)+' on we have the value '+strtrim(string(VROTarr[x]),2)
+       ;          close,66
+       ;       ENDIF
+       ;       VROTarr[x:n_elements(VROTarr)-1]=VROTarr[x]
+       ;       stringVROT='VROT= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
+       ;       tmppos=where('VROT' EQ tirificsecondvars)
+       ;       tirificsecond[tmppos]=stringVROT
+       ;       stringVROT='VROT_2= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
+       ;       tmppos=where('VROT_2' EQ tirificsecondvars)
+       ;       tirificsecond[tmppos]=stringVROT
+       ;       slope=1
+       ;       IF norings[0]-x GT velconstused then velconstused=norings[0]-x
+       ;    ENDIF ELSE BEGIN
+ ;             IF MEAN(VROTarr[1:n_elements(vrotarr)-1]) GT 250. then begin
+ ;                min=MAX(VROTarr)
+  ;               xind=n_elements(VROTarr)-1
+   ;              for x=fix(n_elements(VROTarr)/2),n_elements(VROTarr)-1 do begin
+   ;                 IF VROTarr[x] LT min then begin
+   ;                    min=VROTarr[x]
+   ;                    xind=x
+    ;;                ENDIF
+   ;              ENDFOR
+   ;              IF xind LT n_elements(VROTarr)-1 then begin          
+   ;                 VROTarr[xind:n_elements(VROTarr)-1]=VROTarr[xind]
+   ;                 stringVROT='VROT= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
+   ;                 tmppos=where('VROT' EQ tirificsecondvars)
+   ;                 tirificsecond[tmppos]=stringVROT
+   ;                 stringVROT='VROT_2= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
+   ;                 tmppos=where('VROT_2' EQ tirificsecondvars)
+   ;                 tirificsecond[tmppos]=stringVROT
+                                ;                 slope=1
+        ;Check that or fixedrings are larger then the flattened outer part
+        IF norings[0]-xind GT velconstused then velconstused=norings[0]-xind
+   ;                 IF size(log,/TYPE) EQ 7 then begin
+   ;                    openu,66,log,/APPEND
+   ;                    printf,66,linenumber()+'This is a massive galaxy hence we flatten the outer part if xind is less '+$
+   ;                           strtrim(string(n_elements(VROTarr)-1),2)
+   ;                    printf,66,linenumber()+'From ring '+strtrim(string(xind),2)+' on we have the value '+strtrim(string(VROTarr[xind]),2)
+   ;                    close,66
+  ;                  ENDIF
+  ;               ENDIF
+  ;            ENDIF
+  ;         ENDELSE
+  ;      ENDIF
    
         velfixrings=norings[0]-velconstused
         IF velfixrings LT 1 then velfixrings=1
         IF velfixrings EQ 1 AND norings[0] GT 5 then velfixrings=2
         
-        locmax=WHERE(MAX(VROTarr) EQ VROTarr)
-        IF size(log,/TYPE) EQ 7 then begin
-           openu,66,log,/APPEND
-           printf,66,linenumber()+"Vmax occurs at ring no "+string(locmax[n_elements(locmax)-1]+1)
-           close,66
-        ENDIF
+       ; locmax=WHERE(MAX(VROTarr) EQ VROTarr)
+       ; IF size(log,/TYPE) EQ 7 then begin
+       ;    openu,66,log,/APPEND
+       ;    printf,66,linenumber()+"Vmax occurs at ring no "+string(locmax[n_elements(locmax)-1]+1)
+       ;    close,66
+       ; ENDIF
         if locmax[n_elements(locmax)-1] LT n_elements(VROTarr)/2.  AND MEAN(VROTarr[fix(n_elements(VROTarr)/2.):n_elements(VROTarr)-1]) GT 120. then begin
             IF size(log,/TYPE) EQ 7 then begin
                openu,66,log,/APPEND
@@ -4767,10 +4963,14 @@ noconfig:
       
         tmpSBR=(SBRarror+SBRarr2or)/2.
         tmphigh=str_sep(strtrim(strcompress(VROTinput1[1]),2),' ')
-        tmplow=str_sep(strtrim(strcompress(VROTinput1[2]),2),' ')
-     
+                                ;This way things would be set to
+                                ;avinner which would heavily penalize
+                                ;slowly rising curves.
+                                ;tmplow=str_sep(strtrim(strcompress(VROTinput1[2]),2),' ')
+        
+        tmplow=vrotmin
         vmaxdev=MAX([30.,7.5*channelwidth*(1.+vresolution)])
-        verror=MAX([5.,channelwidth/2.*(1.+vresolution)/SQRT(sin(INCLang[0]*!DtoR))])
+        verror=MAX([4.,channelwidth/2.*(1.+vresolution)/SQRT(sin(INCLang[0]*!DtoR))])
         IF ~(FINITE(verror)) then verror=channelwidth/2.*(1.+vresolution)/SQRT(sin(5.*!DtoR))
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
@@ -4807,6 +5007,16 @@ noconfig:
            printf,66,linenumber()+"And fixed "+string(velfixrings)+" rings."
            Close,66
         ENDIF
+         ;SDIS
+        SDISarr=(SDISarr+SDISarr2)/2.
+        if norings[0] LT 4 OR finishafter EQ 1.1 then begin
+           SDISarr[*]=MEAN(SDISarr)
+           sigmasdis=replicate(channelwidth/4.,n_elements(SDISarr))
+        endif else begin
+           regularisation_sdis,SDISarr,tmpSBR,RADarr,log=log,max_par=SDISmax,min_par=SDISmin,arctan=prefunc,fixedrings=velfixrings,difference=channelwidth/4.,cutoff=cutoff,gdlidl=gdlidl ,error= sigmasdis
+        endelse
+       
+        
      ENDIF
                                 ;As the SBR used is the average and
                                 ;the rotation curve is the same for
@@ -4873,7 +5083,12 @@ noconfig:
      tmppos=where('VROT_2' EQ tirificsecondvars)
      tirificsecond[tmppos]=stringVROT
   
-
+     stringSDIS='SDIS= '+STRJOIN(string(SDISarr[0:n_elements(SDISarr)-1]),' ') 
+     tmppos=where('SDIS' EQ tirificsecondvars)
+     tirificsecond[tmppos]=stringSDIS
+     stringSDIS='SDIS_2= '+STRJOIN(string(SDISarr[0:n_elements(SDISarr)-1]),' ') 
+     tmppos=where('SDIS_2' EQ tirificsecondvars)
+     tirificsecond[tmppos]=stringSDIS
 
      
                                 ;IF we have not done too many
@@ -5008,7 +5223,9 @@ noconfig:
            changeradii,tirificsecond,norings[0]  
            lastcutrings=norings[0] 
                                 ;Set the fitting parameters       
-           set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter    
+           set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter
+           set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,finish_after=finishafter,slope=slope
+  
                                 ;Adapt the other fitting parameters
                                 ;first the SBRarr
            set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,log=log,doubled=doubled
@@ -5025,11 +5242,11 @@ noconfig:
                             ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
               vsysinput1[0]=' VSYS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                             ' VSYS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
-              sdisinput1[0]=' SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-                            ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
+             ; sdisinput1[0]=' SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+                ;            ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
               Writefittingvariables,tirificsecond,inclinput1,painput1,$
-                                    vrotinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
-                                    xposinput1,yposinput1,vsysinput1,sdisinput1              
+                                    vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                    xposinput1,yposinput1,vsysinput1              
            ENDIF ELSE BEGIN
                                 ;Need to update the arrays otherwise might use
                                 ;them later with wrong ring numbers
@@ -5046,16 +5263,16 @@ noconfig:
                             ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
               vsysinput1[0]=' VSYS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                             ' VSYS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
-              sdisinput1[0]=' SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-                            ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
+             ; sdisinput1[0]=' SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+              ;              ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
               IF norings[0] LE 6 then begin
                  Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
-                                       vrotinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
-                                       xposinput1,yposinput1,vsysinput1,sdisinput1
+                                       vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                       xposinput1,yposinput1,vsysinput1
               ENDIF ELSE BEGIN
                  Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
-                                       vrotinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1,$
-                                       xposinput1,yposinput1,vsysinput1,sdisinput1
+                                       vrotinput1,sdisinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                       xposinput1,yposinput1,vsysinput1
               ENDELSE              
            ENDELSE
                                 ;Update counters and go to a new
@@ -5222,21 +5439,23 @@ noconfig:
                          ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
            vsysinput1[0]=' VSYS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                          ' VSYS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
-           sdisinput1[0]=' SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-                         ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
+          ; sdisinput1[0]=' SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+           ;              ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
                                 ;Rotation settings
            set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter
+           set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,finish_after=finishafter,slope=slope
+  
                                 ;Write the parameters to the tirific array
            IF norings[0] LE 4 or finishafter EQ 1.1 then begin
-              Writefittingvariables,tirificsecond,inclinput1,painput1,vrotinput1,$
-                                    sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,xposinput1,yposinput1,vsysinput1 ,sdisinput1 
+              Writefittingvariables,tirificsecond,inclinput1,painput1,vrotinput1,sdisinput1, $
+                                    sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,xposinput1,yposinput1,vsysinput1 
            ENDIF ELSE BEGIN
               IF norings[0] LE 6 then begin
-                 Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,$
-                                       sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,xposinput1,yposinput1,vsysinput1 ,sdisinput1 
+                 Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1, sdisinput1,$
+                                       sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,xposinput1,yposinput1,vsysinput1 
               ENDIF else begin
-                 Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,$
-                                       sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1,xposinput1,yposinput1,vsysinput1 ,sdisinput1 
+                 Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1, sdisinput1,$
+                                       sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1,xposinput1,yposinput1,vsysinput1 
               ENDELSE
            ENDELSE
                                 ;Update counters and go back to the fitting proces
@@ -5282,23 +5501,25 @@ noconfig:
                       ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
         vsysinput1[0]=' VSYS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                       ' VSYS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
-        sdisinput1[0]=' SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
-                      ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
-        set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter 
+       ; sdisinput1[0]=' SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+        ;              ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
+        set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter
+        set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,finish_after=finishafter,slope=slope
+  
                                 ;But we need to reset all the fitting parameters
         IF trytwo LT 2. then begin
            IF AC1 NE 1 then begin
               ;If the first estimate is not accepted either 
               IF norings[0] LE 4 OR finishafter EQ 1.1  then begin
                  Writefittingvariables,tirificsecond,inclinput1,painput1,z0input1,xposinput1,yposinput1,$
-                                       vsysinput1,vrotinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,sdisinput1  
+                                       vsysinput1,vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3 
               ENDIF ELSE BEGIN
                  IF norings[0] LE 6 then begin
                     Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,z0input1,xposinput1,yposinput1,$
-                                          vsysinput1,vrotinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,sdisinput1  
+                                          vsysinput1,vrotinput1, sdisinput1 ,sbrinput1,sbrinput2,sbrinput4,sbrinput3 
                  ENDIF else begin
                     Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,z0input1,xposinput1,yposinput1,$
-                                          vsysinput1,vrotinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,sdisinput1 
+                                          vsysinput1,vrotinput1, sdisinput1 ,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3
                  ENDELSE
               ENDELSE
               IF size(log,/TYPE) EQ 7 then begin
@@ -5310,12 +5531,12 @@ noconfig:
                                 ;IF only the second model is not
                                 ;accepted try without fitting the center
               IF norings[0] LE 4  OR finishafter EQ 1.1  then begin
-                 Writefittingvariables,tirificsecond,inclinput1,painput1,vrotinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3 ,sdisinput1 
+                 Writefittingvariables,tirificsecond,inclinput1,painput1,vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3 
               ENDIF ELSE BEGIN
                  IF norings[0] LE 6 then begin
-                    Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,sdisinput1
+                    Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,sdisinput1 ,sbrinput1,sbrinput2,sbrinput4,sbrinput3
                  ENDIF ELSE begin
-                    Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,sdisinput1
+                    Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,sdisinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3
                  ENDELSE
               ENDELSE
               IF size(log,/TYPE) EQ 7 then begin
@@ -5393,7 +5614,7 @@ noconfig:
                     ,'500',string(channelwidth),string(channelwidth*0.5),string(0.1*channelwidth),string(0.5*channelwidth),string(0.1*channelwidth),'3','70','70',' ']
                                 ;SDIS
         SDISinput1=['SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
-                    '40','3','1','0.1','0.5','0.05','3','70','70']    
+                    '40','3',string(channelwidth*0.5),string(0.1*channelwidth),string(0.5*channelwidth),string(0.1*channelwidth),'3','70','70']    
                                 ;Z0
         Z0input1=['Z0 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                   ' Z0_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
@@ -5426,7 +5647,7 @@ noconfig:
                     ,'500',string(channelwidth),string(channelwidth*0.1),string(0.05*channelwidth),string(0.5*channelwidth),string(0.1*channelwidth),'3','70','70',' ']
      ENDELSE
                                 ;write the parameters to the tirific array
-     Writefittingvariables,tirificsecond,PAinput1,INCLinput1,VROTinput1,SBRinput1,SBRinput2,SDISinput1,Z0input1 
+     Writefittingvariables,tirificsecond,PAinput1,INCLinput1,VROTinput1,SDISinput1,SBRinput1,SBRinput2,Z0input1 
      IF testing GE 2 OR finalsmooth EQ 2. then goto,testing2check
                                 ;Write to file
      openw,1,maindir+'/'+catdirname[i]+'/tirific.def'
@@ -5451,6 +5672,7 @@ noconfig:
      gipsyfirst=strarr(1)
      gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
      spawn,gipsyfirst,isthere2
+     spawn,'cp tirific.def the_last_input.def'
      finalsmooth=2.
      overwrite=0.
      get_progress,maindir+'/'+catdirname[i]+'/progress2.txt',AC2,nopoints,loops,toymodels
@@ -5526,8 +5748,8 @@ noconfig:
         ENDELSE
         tmppos=where('LOOPS' EQ tirificsecondvars)
         tirificsecond[tmppos]='LOOPS=  0'
-        errorsadd=['VROT','VROT_2','PA','PA_2','INCL','INCL_2']
-        tmpfile=strarr(n_elements(tirificsecond)+6)
+        errorsadd=['VROT','VROT_2','PA','PA_2','INCL','INCL_2','SDIS','SDIS_2']
+        tmpfile=strarr(n_elements(tirificsecond)+8)
         added=0
                                 ;Add the errors to the final tirific
                                 ;file
@@ -5578,6 +5800,14 @@ noconfig:
                      IF n_elements(sigmaincl2) LT newrings then   sigmaincl2=replicate(4,newrings)
                     tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(sigmaincl2[0:newrings-1]))),' ')
                  end
+                 6: begin
+                     IF n_elements(sigmasdis) LT newrings then   sigmasdis=replicate(channelwidth/2.,newrings) 
+                    tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(sigmasdis[0:newrings-1]))),' ')
+                 end
+                 7: begin
+                     IF n_elements(sigmasdis) LT newrings then   sigmasdis=replicate(channelwidth/2.,newrings) 
+                    tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(sigmasdis[0:newrings-1]))),' ')
+                 end
                  else:print,'odd'
               endcase
            endif else tmpfile[j+added]=tirificsecond[j]
@@ -5603,7 +5833,7 @@ noconfig:
         close,66
      ENDIF
                                 ;Write the final info and pv-diagrams
-     Basicinfovars=['XPOS','YPOS','VSYS','PA','INCL','VROT']
+     Basicinfovars=['XPOS','YPOS','VSYS','PA','INCL','VROT','SDIS']
      writenewtotemplate,tirificsecond,maindir+'/'+catdirname[i]+'/2ndfit.def',Arrays=Basicinfovalues,VariableChange=Basicinfovars,Variables=tirificsecondvars,/EXTRACT
      RAhr=Basicinfovalues[0,0]
      RAdiff=maxchangeRA*3600./15.

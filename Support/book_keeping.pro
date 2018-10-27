@@ -54,6 +54,8 @@ Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishaft
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       08-10-2018 P.Kamphuis; Added the removal of .convert.default
+;                              which magick seems to produce now.  
 ;       03-12-2017 P.Kamphuis; Added a debug option for printing
 ;                              output.
 ;       17-11-2017 P.Kamphuis; Split out the 4 and 4.5 condition to

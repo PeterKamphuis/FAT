@@ -70,10 +70,15 @@ Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       25-10-2018 P.Kamphuis; Increased errors for small
+;                              galaxies. Minimum error now
+;                              ddiv/2. Increased the maximum allowed
+;                              endorder to 6.       
 ;       08-03-2017 P.Kamphuis; The reduction of the central point
 ;                              pulls down the central point too much. Hence we will not pull
 ;                              it down with the mean of the outer most point but by the
-;                              following 4 points (Or if less then 4 point the mean of all points  
+;                              following 4 points (Or if less then 4
+;                              point the mean of all points  
 ;       07-03-2017 P.Kamphuis; Improved the error constuction for the
 ;                              inner part of well resolved galaxies  
 ;       30-03-2016 P.Kamphuis; A complete overhaul of this routine

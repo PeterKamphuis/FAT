@@ -33,6 +33,9 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
 ;       AXIS,COLORMAPS,COLOUR_BAR,COLUMNDENSITY,CONTOUR,DEVICE,FILE_TEST(),LOADCT,MAX(),N_ELEMENTS(),OPLOT,PLOT,FAT_PLOTERR,READFITS(),SET_PLOT,SHOWPIXELSMAP,WRITENEWTOTEMPLATE,XYOUTS
 ;
 ; MODIFICATION HISTORY:
+;       10-10-2018 P.Kamphuis; An existing Overview.png will be moved
+;                              to Overview_Prev.png.  
+;       10-10-2018 P.Kamphuis; Addition of SDIS plotting as radial parameter.  
 ;       14-11-2017 P.Kamphuis; Increased and improved checking for convert      
 ;       22-03-2017 P.Kamphuis; Increased checking for Imagick convert
 ;                              in order to trim the png. Improved

@@ -37,7 +37,7 @@ FUNCTION FAT_ARCTAN, axis, profile,error=error,gdlidl=gdlidl
 ;      
 ;
 ; MODIFICATION HISTORY:
-;       Written 02-06-2016 P.Kamphuis v1.0
+;       Written 10-10-2018 P.Kamphuis v1.0
 ;
 ; NOTE:
 ;
