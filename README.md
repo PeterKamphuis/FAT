@@ -23,13 +23,15 @@ The code requires full installation of:
     IDL 7.0 or higher or GDL 0.9.6 or higher with astrolib
     TiRiFiC v2.2.3 or higher 
     SoFiA v 0.4.0 or higher 
+    mpfit package
     Standard unix commands pwd, mkdir, rm, cp, ls, python
 
 [astrolib](http://idlastro.gsfc.nasa.gov/) (note the Coyote Library Dependencies for newer versions), [GDL](http://gnudatalanguage.sourceforge.net/), [IDL](https://www.harrisgeospatial.com/docs/using_idl_home.html),[TiRiFiC](http://gigjozsa.github.io/tirific/download_and_installation.html), [SoFiA](https://github.com/SoFiA-Admin/SoFiA)
 
 IDL/GDL needs to be able to execute tirific, sofia, rename and the standard unix commands from a spawn command. All other dependencies should be in IDL and available with the normal IDL distributions. 
 
-To run under GDL you will additionally need the package mpfit for GDL by Ole Streicher (https://packages.debian.org/sid/all/gdl-mpfit/download).
+To run under GDL you will additionally need the package mpfit for GDL by Ole Streicher (https://packages.debian.org/sid/all/gdl-mpfit/download). Since version 6.0 mpfit is also a requirement when run under idl. The IDL version can be found here: https://cow.physics.wisc.edu/~craigm/idl/fitqa.html#download
+
 The GDL version is tested under Ubuntu 16.04 and runs after running the command
 
 	sudo apt-get install gnudatalanguage gdl-astrolib gdl-mpfit libplplot-dev
