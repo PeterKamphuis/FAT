@@ -72,8 +72,8 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   
   arrays=1.
   IF gdlidl then SET_PLOT,'PS' else SET_PLOT, 'Z'
-  plotpara=['RADI','SBR','SBR_2','VROT','VROT_ERR','PA','PA_ERR','PA_2','PA_2_ERR','INCL','INCL_ERR','INCL_2','INCL_2_ERR','BMAJ','SDIS','XPOS','YPOS','VSYS']
-  plotstart=[[1,3,5,9],[2,3,7,11],[0,1,1,1]]
+  plotpara=['RADI','SBR','SBR_2','VROT','VROT_ERR','PA','PA_ERR','PA_2','PA_2_ERR','INCL','INCL_ERR','INCL_2','INCL_2_ERR','BMAJ','SDIS','XPOS','YPOS','VSYS','SDIS_ERR']
+  plotstart=[[1,3,14,5,9],[2,3,14,7,11],[0,1,4,1,1]]
   Template=1.
   WriteNewToTemplate,Template,'Finalmodel/Finalmodel.def',ARRAYS=Arrays,VARIABLECHANGE=plotpara,/EXTRACT
   IF FILE_TEST('ModelInput.def') then begin
@@ -92,12 +92,12 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         else:Varunits[i]=''
      endcase
   endfor
-  maxvar=dblarr(4)
-  minvar=dblarr(4)
-  buffer=dblarr(4)
+  maxvar=dblarr(5)
+  minvar=dblarr(5)
+  buffer=dblarr(5)
   minvar[*]=100000
   maxvar[*]=-10000
-  for i=0,3 do begin
+  for i=0,4 do begin
      tmpvals=[Arrays[*,plotstart[i,0]],Arrays[*,plotstart[i,1]]]
      tmplocs=WHERE(tmpvals NE 0.)
      tmpmax=MAX(tmpvals[tmplocs],MIN=tmpmin)
@@ -105,12 +105,16 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
      IF tmpmin LT Minvar[i] then Minvar[i]=tmpmin
      buffer[i]=(ABS(Maxvar[i])+ABS(minvar[i]))/20.
   endfor
-  RA=double(Arrays[0,n_elements(plotpara)-3])
-  DEC=double(Arrays[0,n_elements(plotpara)-2])
+  tmp=WHERE(plotpara EQ 'XPOS')
+  RA=double(Arrays[0,tmp])
+  tmp=WHERE(plotpara EQ 'YPOS')
+  DEC=double(Arrays[0,tmp])
   convertradec,RA,DEC
-  vsys=strtrim(string(double(Arrays[0,n_elements(plotpara)-1]),format='(F10.1)'),2)
+  tmp=WHERE(plotpara EQ 'VSYS')
+  vsys=strtrim(string(double(Arrays[0,n_elements(plotpara)-2]),format='(F10.1)'),2)
   disper=strtrim(string(double(Arrays[0,n_elements(plotpara)-4]),format='(F10.1)'),2)
-  majbeam=strtrim(string(double(Arrays[0,n_elements(plotpara)-5]),format='(F10.1)'),2)
+  tmp=WHERE(plotpara EQ 'BMAJ')
+  majbeam=strtrim(string(double(Arrays[0,n_elements(plotpara)-6]),format='(F10.1)'),2)
   ringsize=strtrim(string(double(Arrays[n_elements(Arrays[*,0])-1,0]-Arrays[n_elements(Arrays[*,0])-2,0]),format='(F10.1)'),2)
   tmp=WHERE(plotpara EQ 'INCL')
   ceninc=Arrays[0,tmp]
@@ -129,6 +133,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   A = FIndGen(16) * (!PI*2/16.) 
   UserSym, cos(A), sin(A), /fill
   ssize=2.5
+  spawn,'mv Overview.png Overview_Prev.png'
   IF gdlidl then begin
 
 ;                                ;Currently GDL does not recognize true
@@ -152,12 +157,12 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   
   maxradii=MAX([plotradii[tmp],plotradii[tmp2]])+(plotradii[n_elements(plotradii)-1]-plotradii[n_elements(plotradii)-2])/2.
   
-  for i=0,3 do begin    
+  for i=0,4 do begin    
      IF i EQ 0 then begin
         
         plotvariable=Arrays[tmp,1]
         loadct,0,/silent
-        plot,plotradii,plotVariable,position=[0.15,0.9-4*ysize,0.55,0.9-3*ysize],xtitle='Radius (arcmin)',$
+        plot,plotradii,plotVariable,position=[0.15,0.95-5*ysize,0.55,0.95-4*ysize],xtitle='Radius (arcmin)',$
              xrange=[0.,maxradii],yrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]],ytickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xticklayout=1,background='ffffff'x,color='ffffff'x,/nodata
         if keyword_set(splined) then begin
            newrad=dblarr((n_elements(plotradii)-1)*10.+1)
@@ -203,8 +208,8 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
            oplot,newrad,newvar,color='0000FF'x,linestyle=2,symsize=ssize
         ENDIF ELSE oplot,plotradii,Arrays[tmp2,2],thick=lthick,color='0000FF'x,linestyle=2
         oplot,plotradii,Arrays[tmp2,2],psym=8,color='0000FF'x,linestyle=2,symsize=ssize
-        XYOUTs,0.05,0.9-3.5*ysize,plotpara[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,charsize=!p.charsize*1.25,color='000000'x,charthick=charthick
-        XYOUTs,0.08,0.9-3.5*ysize,varunits[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,color='000000'x,charthick=charthick
+        XYOUTs,0.05,0.95-4.5*ysize,plotpara[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,charsize=!p.charsize*1.25,color='000000'x,charthick=charthick
+        XYOUTs,0.08,0.95-4.5*ysize,varunits[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,color='000000'x,charthick=charthick
         
         IF FILE_TEST('ModelInput.def') then begin
            oplot,ModArrays[*,0],ModArrays[*,1],thick=lthick,color='FF0010'x
@@ -228,7 +233,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         loadct,0,/silent
         IF TOTAL(plotVariableErr) NE 0. then begin
            xerr=dblarr(n_elements(plotVariableErr))
-           fat_ploterror,plotradii,plotVariable,xerr,plotVariableErr,position=[0.15,0.9-(4-i)*ysize,0.55,0.9-(3-i)*ysize],$
+           fat_ploterror,plotradii,plotVariable,xerr,plotVariableErr,position=[0.15,0.95-(5-i)*ysize,0.55,0.95-(4-i)*ysize],$
                      xrange=[0.,maxradii],yrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]],xthick=xthick,ythick=ythick,xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xticklayout=1,charthick=charthick,thick=thick,charsize=charsize,linestyle=0,$
                      /noerase,color='000000'x,ERRCOLOR = '000000'x, ERRTHICK=!p.thick*0.4,psym=8,symsize=ssize
         ENDIF ELSE BEGIN
@@ -241,13 +246,13 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
            oplot,newrad,newvar,color='000000'x,linestyle=0,symsize=ssize
         ENDIF ELSE oplot,plotradii,plotVariable,thick=lthick,color='000000'x,linestyle=0
       
-        IF i EQ 3 then begin
+        IF i EQ 4 then begin
            AXIS,XAXIS=1,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,XRANGE = convertskyanglefunction(!X.CRANGE,distance),XTITLE='Radius (kpc)',color='000000'x 
         endif else begin
            AXIS,XAXIS=1,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,XRANGE = convertskyanglefunction(!X.CRANGE,distance),xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],color='000000'x 
         endelse
-        XYOUTs,0.05,0.9-(3.5-i)*ysize,plotpara[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,charsize=!p.charsize*1.25,color='000000'x,charthick=charthick
-        XYOUTs,0.08,0.9-(3.5-i)*ysize,varunits[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,color='000000'x,charthick=charthick
+        XYOUTs,0.05,0.95-(4.5-i)*ysize,plotpara[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,charsize=!p.charsize*1.25,color='000000'x,charthick=charthick
+        XYOUTs,0.08,0.95-(4.5-i)*ysize,varunits[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,color='000000'x,charthick=charthick
         loadct,40,/silent
         IF plotstart[i,0] NE plotstart[i,1] then begin
            plotvariable=Arrays[tmp2,plotstart[i,1]]
@@ -275,41 +280,42 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
      ENDELSE
   endfor
   IF FILE_TEST('ModelInput.def') then begin
-     RAmod=double(ModArrays[0,n_elements(plotpara)-3])
-     DECmod=double(ModArrays[0,n_elements(plotpara)-2])
+     tmp=WHERE(plotpara EQ 'XPOS')
+     RAmod=double(ModArrays[0,tmp])
+     tmp=WHERE(plotpara EQ 'YPOS')
+     DECmod=double(ModArrays[0,tmp])
      convertradec,RAmod,DECmod
-     vsysmod=strtrim(string(double(ModArrays[0,n_elements(plotpara)-1]),format='(F10.1)'),2)
+     tmp=WHERE(plotpara EQ 'VSYS')
+     vsysmod=strtrim(string(double(ModArrays[0,tmp]),format='(F10.1)'),2)
      dispermod=strtrim(string(double(ModArrays[0,n_elements(plotpara)-4]),format='(F10.1)'),2)
      XYOUTS,0.60,0.89,'Systemic Velocity= '+vsys+' ('+vsysmod+') km s!E-1',/normal,alignment=0.,charthick=charthick,color='000000'x
      XYOUTS,0.60,0.87,'R.A.= '+RA+' ('+RAmod+')',/normal,alignment=0.,charthick=charthick,color='000000'x
      XYOUTS,0.60,0.85,'DEC.= '+DEC+' ('+DECmod+')',/normal,alignment=0.,charthick=charthick,color='000000'x
-     XYOUTS,0.60,0.83,'Dispersion= '+disper+' ('+dispermod+') km s!E-1',/normal,alignment=0.,charthick=charthick,color='000000'x
-     XYOUTS,0.60,0.81,'Black lines: approaching side parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
-     XYOUTS,0.60,0.79,'Red lines: receding side parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
-     XYOUTS,0.60,0.77,'Blue lines: approaching side input model parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
-     XYOUTS,0.60,0.75,'Yellow lines: receding side input model parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
+     XYOUTS,0.60,0.83,'Black lines: approaching side parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
+     XYOUTS,0.60,0.81,'Red lines: receding side parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
+     XYOUTS,0.60,0.79,'Blue lines: approaching side input model parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
+     XYOUTS,0.60,0.77,'Yellow lines: receding side input model parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
      if fix(finishafter)/finishafter NE 1 OR finishafter EQ 1 then begin
-        XYOUTS,0.60,0.73,'The inclination and PA were not allowed to vary',/normal,color='000000'x
-        XYOUTS,0.60,0.71,'The major FWHM beam is '+majbeam+' arcsec',/normal,color='000000'x
-        XYOUTS,0.60,0.69,'We used rings of size '+ringsize+' arcsec',/normal,color='000000'x
-     ENDIF ELSE BEGIN
+        XYOUTS,0.60,0.75,'The inclination and PA were not allowed to vary',/normal,color='000000'x
         XYOUTS,0.60,0.73,'The major FWHM beam is '+majbeam+' arcsec',/normal,color='000000'x
         XYOUTS,0.60,0.71,'We used rings of size '+ringsize+' arcsec',/normal,color='000000'x
+     ENDIF ELSE BEGIN
+        XYOUTS,0.60,0.75,'The major FWHM beam is '+majbeam+' arcsec',/normal,color='000000'x
+        XYOUTS,0.60,0.73,'We used rings of size '+ringsize+' arcsec',/normal,color='000000'x
      ENDELSE
   ENDIF ELSE BEGIN
      XYOUTS,0.60,0.89,'Systemic Velocity= '+vsys+' km s!E-1',/normal,alignment=0.,charthick=charthick,color='000000'x
      XYOUTS,0.60,0.87,'R.A.= '+RA,/normal,alignment=0.,charthick=charthick,color='000000'x
      XYOUTS,0.60,0.85,'DEC.= '+DEC,/normal,alignment=0.,charthick=charthick,color='000000'x
-     XYOUTS,0.60,0.83,'Dispersion= '+disper+' km s!E-1',/normal,alignment=0.,charthick=charthick,color='000000'x
-     XYOUTS,0.60,0.81,'Black lines: approaching side parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
-     XYOUTS,0.60,0.79,'Red lines: receding side parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
+     XYOUTS,0.60,0.83,'Black lines: approaching side parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
+     XYOUTS,0.60,0.81,'Red lines: receding side parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
       if fix(finishafter)/finishafter NE 1 OR finishafter EQ 1 then begin
-        XYOUTS,0.60,0.77,'The inclination and PA were not allowed to vary',/normal,charthick=charthick,color='000000'x
-        XYOUTS,0.60,0.75,'The major FWHM beam is '+majbeam+' arcsec',/normal,charthick=charthick,color='000000'x
-        XYOUTS,0.60,0.73,'We used rings of size '+ringsize+' arcsec',/normal,charthick=charthick,color='000000'x
-     Endif ELSE BEGIN
+        XYOUTS,0.60,0.79,'The inclination and PA were not allowed to vary',/normal,charthick=charthick,color='000000'x
         XYOUTS,0.60,0.77,'The major FWHM beam is '+majbeam+' arcsec',/normal,charthick=charthick,color='000000'x
         XYOUTS,0.60,0.75,'We used rings of size '+ringsize+' arcsec',/normal,charthick=charthick,color='000000'x
+     Endif ELSE BEGIN
+        XYOUTS,0.60,0.79,'The major FWHM beam is '+majbeam+' arcsec',/normal,charthick=charthick,color='000000'x
+        XYOUTS,0.60,0.77,'We used rings of size '+ringsize+' arcsec',/normal,charthick=charthick,color='000000'x
      ENDELSE
   ENDELSE
                                 ;Currently GDL does not recognize true
