@@ -363,7 +363,8 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   RESOLVE_ROUTINE, 'create_residuals'
   RESOLVE_ROUTINE, 'dec_names'
   RESOLVE_ROUTINE, 'extract_pv'
-  RESOLVE_ROUTINE, 'fat_arctan',/IS_FUNCTION,/COMPILE_FULL_FILE
+  RESOLVE_ROUTINE, 'fat_arctan',/IS_FUNCTION
+  RESOLVE_ROUTINE, 'fatarctan',/IS_FUNCTION
   RESOLVE_ROUTINE, 'fat_fit',/IS_FUNCTION
   IF gdlidl then RESOLVE_ROUTINE,'fat_gdlgauss',/IS_FUNCTION,/COMPILE_FULL_FILE
   RESOLVE_ROUTINE, 'fat_hanning',/IS_FUNCTION
@@ -380,7 +381,8 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   RESOLVE_ROUTINE, 'linenumber',/IS_FUNCTION
   RESOLVE_ROUTINE, 'momentsv2'
 ;  RESOLVE_ROUTINE, 'obtain_inclinationv8'
-  RESOLVE_ROUTINE, 'obtain_pa_incl',/COMPILE_FULL_FILE
+  RESOLVE_ROUTINE, 'obtain_pa_incl'
+  RESOLVE_ROUTINE, 'obtain_ratios',/IS_FUNCTION
   RESOLVE_ROUTINE, 'obtain_velpa'
   RESOLVE_ROUTINE, 'obtain_w50'
   RESOLVE_ROUTINE, 'organize_output'

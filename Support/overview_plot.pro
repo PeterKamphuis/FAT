@@ -236,11 +236,11 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         loadct,0,/silent
         IF TOTAL(plotVariableErr) NE 0. then begin
            xerr=dblarr(n_elements(plotVariableErr))
-           fat_ploterror,plotradii,plotVariable,xerr,plotVariableErr,position=[0.15,0.95-(5-i)*ysize,0.55,0.95-(4-i)*ysize],$
+           fat_ploterror,plotradii,plotVariable,xerr,plotVariableErr,position=[0.15,0.95-(5.-i)*ysize,0.55,0.95-(4.-i)*ysize],$
                      xrange=[0.,maxradii],yrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]],xthick=xthick,ythick=ythick,xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xticklayout=1,charthick=charthick,thick=thick,charsize=charsize,linestyle=0,$
                      /noerase,color='000000'x,ERRCOLOR = '000000'x, ERRTHICK=!p.thick*0.4,psym=8,symsize=ssize
         ENDIF ELSE BEGIN
-           plot,plotradii,plotVariable,position=[0.15,0.9-(4-i)*ysize,0.55,0.9-(3-i)*ysize],$
+           plot,plotradii,plotVariable,position=[0.15,0.9-(4.-i)*ysize,0.55,0.9-(3.-i)*ysize],$
                 xrange=[0.,maxradii],yrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]],xthick=xthick,ythick=ythick,xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xticklayout=1,charthick=charthick,thick=thick,charsize=charsize,linestyle=0,$
                 /noerase,color='000000'x,psym=8,symsize=ssize
         ENDELSE
