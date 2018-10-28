@@ -165,7 +165,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         
         plotvariable=Arrays[tmp,1]
         loadct,0,/silent
-        plot,plotradii,plotVariable,position=[0.15,0.95-5*ysize,0.55,0.95-4*ysize],xtitle='Radius (arcmin)',$
+        plot,plotradii,plotVariable,position=[0.15,0.95-5.*ysize,0.55,0.95-4.*ysize],xtitle='Radius (arcmin)',$
              xrange=[0.,maxradii],yrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]],ytickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xticklayout=1,background='ffffff'x,color='ffffff'x,/nodata
         if keyword_set(splined) then begin
            newrad=dblarr((n_elements(plotradii)-1)*10.+1)
@@ -201,8 +201,8 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         columndensity,jynewlevels,double(vsys),[1.,1.],vwidth=1.,/NCOLUMN,/arcsquare
         AXIS,YAXIS=0,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,color='000000'x
         AXIS,YAXIS=1,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,ytickv=jynewlevels/1000.,ytickname=[strtrim(strcompress(string(newlevels[0],format='(I3)')),2),strtrim(strcompress(string(fix(newlevels[1]),format='(I2)')),2),strtrim(strcompress(string(fix(newlevels[2]),format='(I2)')),2)],yticks=2,yminor=3,color='000000'x
-        XYOUTs,0.60,0.9-3.5*ysize,'N!IH',/NORMAL,alignment=0.5,ORIENTATION=90, CHARTHICK=charthick,charsize=!p.charsize*1.25,color='000000'x
-        XYOUTs,0.63,0.9-3.5*ysize,'('+adst+' cm!E-2!N)' ,/NORMAL,alignment=0.5,ORIENTATION=90, CHARTHICK=charthick,charsize=charsize,color='000000'x
+        XYOUTs,0.60,0.95-4.5*ysize,'N!IH',/NORMAL,alignment=0.5,ORIENTATION=90, CHARTHICK=charthick,charsize=!p.charsize*1.25,color='000000'x
+        XYOUTs,0.63,0.95-4.5*ysize,'('+adst+' cm!E-2!N)' ,/NORMAL,alignment=0.5,ORIENTATION=90, CHARTHICK=charthick,charsize=charsize,color='000000'x
         AXIS,XAXIS=0,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,color='000000'x ,XTITLE='Radius (arcsec)'
         AXIS,XAXIS=1,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,XRANGE = convertskyanglefunction(!X.CRANGE,distance),xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],color='000000'x 
         loadct,40,/silent
@@ -211,8 +211,8 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
            oplot,newrad,newvar,color='0000FF'x,linestyle=2,symsize=ssize
         ENDIF ELSE oplot,plotradii,Arrays[tmp2,2],thick=lthick,color='0000FF'x,linestyle=2
         oplot,plotradii,Arrays[tmp2,2],psym=8,color='0000FF'x,linestyle=2,symsize=ssize
-        XYOUTs,0.05,0.95-4.5*ysize,plotpara[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,charsize=!p.charsize*1.25,color='000000'x,charthick=charthick
-        XYOUTs,0.08,0.95-4.5*ysize,varunits[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,color='000000'x,charthick=charthick
+        XYOUTs,0.05,0.9-4.5*ysize,plotpara[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,charsize=!p.charsize*1.25,color='000000'x,charthick=charthick
+        XYOUTs,0.08,0.9-4.5*ysize,varunits[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,color='000000'x,charthick=charthick
         
         IF FILE_TEST('ModelInput.def') then begin
            oplot,ModArrays[*,0],ModArrays[*,1],thick=lthick,color='FF0010'x
@@ -234,15 +234,17 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
            ENDELSE
         ENDELSE
         loadct,0,/silent
+        xerr=dblarr(n_elements(plotVariableErr))
         IF TOTAL(plotVariableErr) NE 0. then begin
-           xerr=dblarr(n_elements(plotVariableErr))
            fat_ploterror,plotradii,plotVariable,xerr,plotVariableErr,position=[0.15,0.95-(5.-i)*ysize,0.55,0.95-(4.-i)*ysize],$
                      xrange=[0.,maxradii],yrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]],xthick=xthick,ythick=ythick,xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xticklayout=1,charthick=charthick,thick=thick,charsize=charsize,linestyle=0,$
                      /noerase,color='000000'x,ERRCOLOR = '000000'x, ERRTHICK=!p.thick*0.4,psym=8,symsize=ssize
         ENDIF ELSE BEGIN
-           plot,plotradii,plotVariable,position=[0.15,0.9-(4.-i)*ysize,0.55,0.9-(3.-i)*ysize],$
-                xrange=[0.,maxradii],yrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]],xthick=xthick,ythick=ythick,xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xticklayout=1,charthick=charthick,thick=thick,charsize=charsize,linestyle=0,$
-                /noerase,color='000000'x,psym=8,symsize=ssize
+           fat_ploterror,plotradii,plotVariable,xerr,xerr,position=[0.15,0.95-(5.-i)*ysize,0.55,0.95-(4.-i)*ysize],$
+                         xrange=[0.,maxradii],yrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]],xthick=xthick,ythick=ythick,xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xticklayout=1,charthick=charthick,thick=thick,charsize=charsize,linestyle=0,$
+                         /noerase,color='000000'x,ERRCOLOR = '000000'x, ERRTHICK=!p.thick*0.4,psym=8,symsize=ssize
+
+           
         ENDELSE
         if keyword_set(splined) then begin
            newvar=spline(plotradii,plotVariable,newrad)
@@ -261,10 +263,11 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
            plotvariable=Arrays[tmp2,plotstart[i,1]]
            plotVariableErr=Arrays[tmp2,plotstart[i,1]+plotstart[i,2]]          
            IF TOTAL(plotVariableErr) NE 0. then begin
-              xerr=dblarr(n_elements(plotVariableErr))
+             xerr=dblarr(n_elements(plotVariableErr))
               fat_ploterror,plotradii,plotVariable,xerr,plotVariableErr,thick=lthick,color='0000FF'x,linestyle=2,ERRCOLOR = '0000FF'x, ERRTHICK=!p.thick*0.4,/over_plot,psym=8,symsize=ssize
            ENDIF ELSE BEGIN
-              oplot,plotradii,plotVariable,thick=lthick,color='0000FF'x,linestyle=2,psym=8,symsize=ssize
+              xerr=dblarr(n_elements(plotVariableErr))
+              fat_ploterror,plotradii,plotVariable,xerr,xerr,thick=lthick,color='0000FF'x,linestyle=2,ERRCOLOR = '0000FF'x, ERRTHICK=!p.thick*0.4,/over_plot,psym=8,symsize=ssize
            ENDELSE
            if keyword_set(splined) then begin
               newvar=spline(plotradii,plotVariable,newrad)
