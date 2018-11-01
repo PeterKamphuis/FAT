@@ -6,8 +6,7 @@ Pro obtain_pa_incl,map,PA,incl,center,EXTENT=extent,NOISE=noise,BEAM=beam,DEBUG=
 ;
 ; PURPOSE:
 ;       Program to get the Pa and inclination of a galaxy based
-;       on it's axis ratios in a full circle and their minimum
-;       and maximums at FWHM FW1.5M FW2.5M the median of that. 
+;       on it's axis ratios at the noise level in a full circle .
 ;
 ; CATEGORY:
 ;       Support
@@ -246,8 +245,7 @@ wrongpa:
                                 ;and create a median profile deprojected map and average out any inhomgeneities
 
      
-     
-     writefits,'dep_map.fits',dep_map,hed
+     IF keyword_set(debug) then writefits,'dep_map.fits',dep_map,hed
 
      angles=(findgen(fix(355./5.)))*5.
      
@@ -262,11 +260,11 @@ wrongpa:
      for i=0,n_elements(rot_map[0,*])-1 do begin
         for j=0,n_elements(rot_map[*,0])-1 do begin
            tmp=WHERE(maps[*,i,j] GT noise)
-           rot_map[i,j]=MIN(maps[tmp,i,j])
+           IF tmp[0] NE -1 then rot_map[i,j]=MIN(maps[tmp,i,j])
         endfor
      endfor
                                 ;rot_map=fat_smooth(rot_map,beam[0],/GAUSSIAN)
-     writefits,'rot_map.fits',rot_map,hed
+     IF keyword_set(debug) then writefits,'rot_map.fits',rot_map,hed
                                 ;Let's subtract this minimum
                                 ;map from the dep map
      
@@ -275,8 +273,7 @@ wrongpa:
      tmp=WHERE(res_map LT 2.*MEDIAN(res_map[WHERE(res_map GT 0.)]))
      res_map[tmp]=0.
      res_map=fat_smooth(res_map,3,/GAUSSIAN)
-     
-     writefits,'res_map.fits',res_map,hed
+     IF keyword_set(debug) then writefits,'res_map.fits',res_map,hed
 
      
                                 ;then we deproject the circular map
@@ -290,8 +287,7 @@ wrongpa:
         interpolate,prof,axis,newradii=newaxis,output=newprof
         inc_map[i,*]=newprof     
      endfor
-     
-     writefits,'inc_map.fits',inc_map,hed
+     IF keyword_set(debug) then writefits,'inc_map.fits',inc_map,hed
                                 ;Let's get a correction factor
                                 ;by measuring the inclination
                                 ;of the features
@@ -304,7 +300,7 @@ wrongpa:
                                 ;and we rotate it back to the estimated pa
      
      in_map=ROT(inc_map, -1*pa[0]-90,1.0,center[0],center[1],CUBIC=-0.5,/PIVOT)
-     writefits,'corr_res_map.fits',in_map,hed
+     IF keyword_set(debug) then writefits,'corr_res_map.fits',in_map,hed
                                 ;We need to check whether we have
                                 ;significan inhomogeneities
      tmp=WHERE(in_map NE 0.)
@@ -334,7 +330,7 @@ wrongpa:
         map=map-in_map
         bright=MEAN(map[tmp])
                                 ;map=fat_smooth(map,beam[0],/GAUSSIAN)
-        writefits,'corr_map.fits',map,hed
+        IF keyword_set(debug) then writefits,'corr_map.fits',map,hed
      
         space2=space2/2.      
         corrected_map++
