@@ -53,6 +53,7 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      30-10-2018 P.Kamphuis: Cleaned up the boudary adjustment parameters. 
 ;      25-10-2018 P.Kamphuis; Fixed a bug where VROT[0] was not kept
 ;                             at 0 before regularisation.  
 ;      29-09-2018 P.Kamphuis; Increased velconstused to 2.5*cutoff  
@@ -4396,13 +4397,47 @@ noconfig:
      PArings=0
 
      IF double(INCLinput1[1]) LT 90. OR double(INCLinput2[1]) LT 90. OR  double(INCLinput3[1]) LT 90.  AND norings[0] GT 4 then begin
-        tmp=WHERE(INCLang GE (double(INCLinput2[1])-double(INCLinput2[3])))
-        tmp2=WHERE(INCLang2 GE (double(INCLinput3[1])-double(INCLinput3[3])))      
-        IF n_elements(tmp) GE 2 OR n_elements(tmp2) GE 2 then begin
-           boundaryadjustment=1
-           IF double(INCLinput1[1]+5.) LT 90 then INCLinput1[1]=strtrim(strcompress(string(double(INCLinput1[1]+5.))),2) else INCLinput1[1]='90.'
-           IF double(INCLinput2[1]+5.) LT 90. then INCLinput2[1]=strtrim(strcompress(string(double(INCLinput2[1]+5.))),2) else INCLinput2[1]='90.'
-           IF double(INCLinput3[1]+5.) LT 90. then INCLinput3[1]=strtrim(strcompress(string(double(INCLinput3[1]+5.))),2) else INCLinput3[1]='90.'
+        ;tmp=WHERE(INCLang GE (double(INCLinput2[1])-double(INCLinput2[3])))
+        ;tmp2=WHERE(INCLang2 GE (double(INCLinput3[1])-double(INCLinput3[3])))
+        IF norings[0] LE 4 or finishafter EQ 1.1 then begin
+           tmp=WHERE(INCLang GE (double(INCLinput1[1])-double(INCLinput1[3])))
+           tmp2=WHERE(INCLang2 GE (double(INCLinput1[1])-double(INCLinput1[3])))
+        ENDIF ELSE BEGIN
+           tmp=WHERE(INCLang LE (double(INCLinput2[1])-double(INCLinput2[3])))
+           tmp2=WHERE(INCLang2 LE (double(INCLinput3[1])-double(INCLinput3[3])))
+        ENDELSE
+        IF tmp[0] EQ n_elements(INCLang)-2 then tmp=[-1]
+        IF tmp2[0] EQ n_elements(INCLang2)-2 then tmp2=[-1]
+        case 1 of
+           (n_elements(tmp) GE 2 OR n_elements(tmp) GE 2) AND  (norings[0] LE 4 or finishafter EQ 1.1): begin
+              IF INCLinput1[1] LT 90. then begin
+                 INCLinput1[1]=strtrim(strcompress(string(double(INCLinput1[1]+5.))),2)
+                 boundaryadjustment=1
+              ENDIF else  boundaryadjustment=0
+           end
+           n_elements(tmp) GE 2: begin
+              IF INCLinput2[1] LT 90 then begin
+                 INCLinput2[1]=strtrim(strcompress(string(double(INCLinput2[1]+5.))),2)
+                 boundaryadjustment=1
+              ENDIF else  boundaryadjustment=0
+           end
+           n_elements(tmp2) GE 2: begin
+              IF INCLinput3[1] LT 90 then begin
+                 INCLinput3[1]=strtrim(strcompress(string(double(INCLinput3[1]+5.))),2)
+                 boundaryadjustment=1
+              ENDIF else  boundaryadjustment=0
+           end
+           else:boundaryadjustment =0
+        endcase     
+;        IF n_elements(tmp) GE 2 OR n_elements(tmp2) GE 2 then begin
+ ;          boundaryadjustment=1
+  ;         IF double(INCLinput1[1]+5.) LT 90 then INCLinput1[1]=strtrim(strcompress(string(double(INCLinput1[1]+5.))),2) else INCLinput1[1]='90.'
+   ;        IF double(INCLinput2[1]+5.) LT 90. then INCLinput2[1]=strtrim(strcompress(string(double(INCLinput2[1]+5.))),2) else INCLinput2[1]='90.'
+                                ;       IF double(INCLinput3[1]+5.) LT
+                                ;       90. then
+                                ;       INCLinput3[1]=strtrim(strcompress(string(double(INCLinput3[1]+5.))),2) else INCLinput3[1]='90.'
+
+        IF boundaryadjustment EQ 1 then begin
            IF tmp[0] EQ -1 then tmp[0]=n_elements(INCLang)
            IF tmp2[0] EQ -1 then tmp2[0]=n_elements(INCLang)
            tmp=MAX([tmp,tmp2],min=lastreliablerings)
@@ -4410,18 +4445,46 @@ noconfig:
         ENDIF
      ENDIF
      IF double(INCLinput1[2]) GT 5 OR double(INCLinput2[2]) GT 5 OR double(INCLinput3[2]) GT 5 then begin
-        IF norings[0] LE 4 then begin
+        IF norings[0] LE 4 or finishafter EQ 1.1 then begin
            tmp=WHERE(INCLang LE (double(INCLinput1[2])+double(INCLinput1[3])))
            tmp2=WHERE(INCLang2 LE (double(INCLinput1[2])+double(INCLinput1[3])))
         ENDIF ELSE BEGIN
            tmp=WHERE(INCLang LE (double(INCLinput2[2])+double(INCLinput2[3])))
-           tmp2=WHERE(INCLang2 LE (double(INCLinput2[2])+double(INCLinput2[3])))
+           tmp2=WHERE(INCLang2 LE (double(INCLinput3[2])+double(INCLinput3[3])))
         ENDELSE
-        IF n_elements(tmp) GE 2 OR n_elements(tmp2) GE 2 then begin
-           boundaryadjustment=1
-           IF double(INCLinput1[2]-5.) GT 5. then INCLinput1[2]=strtrim(strcompress(string(double(INCLinput1[2]-5.))),2) else INCLinput1[2]='5.'
-           IF double(INCLinput2[2]-5.) GT 5. then INCLinput2[2]=strtrim(strcompress(string(double(INCLinput2[2]-5.))),2) else INCLinput2[2]='5.'
-           IF double(INCLinput3[2]-5.) GT 5. then INCLinput3[2]=strtrim(strcompress(string(double(INCLinput3[2]-5.))),2) else INCLinput3[2]='5.'
+
+        IF tmp[0] EQ n_elements(INCLang)-2 then tmp=[-1]
+        IF tmp2[0] EQ n_elements(INCLang2)-2 then tmp2=[-1]
+        case 1 of
+           (n_elements(tmp) GE 2 OR n_elements(tmp) GE 2) AND  (norings[0] LE 4 or finishafter EQ 1.1): begin
+              IF INCLinput1[2] GT 5. then begin
+                 INCLinput1[2]=strtrim(strcompress(string(double(INCLinput1[2]-5.))),2)
+                 boundaryadjustment=1
+              ENDIF else  boundaryadjustment=0
+           end
+           n_elements(tmp) GE 2: begin
+              IF INCLinput2[2] GT 5. then begin
+                 INCLinput2[2]=strtrim(strcompress(string(double(INCLinput2[2]-5.))),2)
+                 boundaryadjustment=1
+              ENDIF else  boundaryadjustment=0
+           end
+           n_elements(tmp2) GE 2: begin
+              IF INCLinput3[2] GT 5. then begin
+                 INCLinput3[2]=strtrim(strcompress(string(double(INCLinput3[2]-5.))),2)
+                 boundaryadjustment=1
+              ENDIF else  boundaryadjustment=0
+           end
+           else:boundaryadjustment =0
+        endcase    
+        
+       ; IF n_elements(tmp) GE 2 OR n_elements(tmp2) GE 2 then begin
+       ;    boundaryadjustment=1
+       ;    IF double(INCLinput1[2]-5.) GT 5. then INCLinput1[2]=strtrim(strcompress(string(double(INCLinput1[2]-5.))),2) else INCLinput1[2]='5.'
+       ;    IF double(INCLinput2[2]-5.) GT 5. then INCLinput2[2]=strtrim(strcompress(string(double(INCLinput2[2]-5.))),2) else INCLinput2[2]='5.'
+                                ;    IF double(INCLinput3[2]-5.) GT
+                                ;    5. then
+                                ;    INCLinput3[2]=strtrim(strcompress(string(double(INCLinput3[2]-5.))),2) else INCLinput3[2]='5.'
+        IF boundaryadjustment EQ 1 then begin
            IF tmp[0] EQ -1 then tmp[0]=n_elements(INCLang)
            IF tmp2[0] EQ -1 then tmp2[0]=n_elements(INCLang)
            tmp=MAX([tmp,tmp2,lastreliablerings],min=lastreliablerings)
@@ -4429,32 +4492,86 @@ noconfig:
         ENDIF
      ENDIF
      IF ABS(double(PAinput1[1])-double(PAinput1[2])) LT 400 OR ABS(double(PAinput2[1])-double(PAinput2[2])) LT 400 OR  ABS(double(PAinput3[1])-double(PAinput3[2])) LT 400 AND norings[0] GT 4 then begin
-        tmp=WHERE(PAang GE (double(PAinput2[1])-double(PAinput2[3])))
-        tmp2=WHERE(PAang2 GE (double(PAinput2[1])-double(PAinput2[3])))
-        IF n_elements(tmp) GE 2 OR n_elements(tmp2) GE 2 then begin
-           boundaryadjustment=1
-           IF PAinput1[1] LT 400 then PAinput1[1]=strtrim(strcompress(string(double(PAinput1[1]+10.))),2) else  boundaryadjustment=0
-           IF PAinput2[1] LT 400 then PAinput2[1]=strtrim(strcompress(string(double(PAinput2[1]+10.))),2) else  boundaryadjustment=0
-           IF PAinput3[1] LT 400 then PAinput3[1]=strtrim(strcompress(string(double(PAinput3[1]+10.))),2) else  boundaryadjustment=0
-           PArings++
-        ENDIF
+        IF norings[0] LE 4 or finishafter EQ 1.1 then begin
+           tmp=WHERE(PAang LE (double(PAinput1[2])-double(PAinput1[3])))
+           tmp2=WHERE(PAang2 LE (double(PAinput1[2])-double(PAinput1[3])))
+        ENDIF ELSE BEGIN
+           tmp=WHERE(PAang GE (double(PAinput2[1])-double(PAinput2[3])))
+           tmp2=WHERE(PAang2 GE (double(PAinput3[1])-double(PAinput3[3])))
+        ENDELSE
+       
+        IF tmp[0] EQ n_elements(PAang)-2 then tmp=[-1]
+        IF tmp2[0] EQ n_elements(PAang2)-2 then tmp2=[-1]
+        case 1 of
+           (n_elements(tmp) GE 2 OR n_elements(tmp) GE 2) AND  (norings[0] LE 4 or finishafter EQ 1.1): begin
+              IF PAinput1[1] LT 400 then begin
+                 PAinput1[1]=strtrim(strcompress(string(double(PAinput1[1]+10.))),2)
+                 boundaryadjustment=1
+              ENDIF else  boundaryadjustment=0
+           end
+           n_elements(tmp) GE 2: begin
+              IF PAinput2[1] LT 400 then begin
+                 PAinput2[1]=strtrim(strcompress(string(double(PAinput2[1]+10.))),2)
+                 boundaryadjustment=1
+              ENDIF else  boundaryadjustment=0
+           end
+           n_elements(tmp2) GE 2: begin
+              IF PAinput3[1] LT 400 then begin
+                 PAinput3[1]=strtrim(strcompress(string(double(PAinput3[1]+10.))),2)
+                 boundaryadjustment=1
+              ENDIF else  boundaryadjustment=0
+           end
+           else:boundaryadjustment =0
+        endcase
+     ;      OR n_elements(tmp2) GE 2 then begin
+        
+     ;      boundaryadjustment=1
+     ;      IF PAinput1[1] LT 400 then PAinput1[1]=strtrim(strcompress(string(double(PAinput1[1]+10.))),2) else  boundaryadjustment=0
+     ;      IF PAinput2[1] LT 400 then PAinput2[1]=strtrim(strcompress(string(double(PAinput2[1]+10.))),2) else  boundaryadjustment=0
+     ;      IF PAinput3[1] LT 400 then PAinput3[1]=strtrim(strcompress(string(double(PAinput3[1]+10.))),2) else  boundaryadjustment=0
+      ;     PArings++
+        ;ENDIF
         IF norings[0] LE 4 or finishafter EQ 1.1 then begin
            tmp=WHERE(PAang LE (double(PAinput1[2])+double(PAinput1[3])))
            tmp2=WHERE(PAang2 LE (double(PAinput1[2])+double(PAinput1[3])))
         ENDIF ELSE BEGIN
            tmp=WHERE(PAang LE (double(PAinput2[2])+double(PAinput2[3])))
-           tmp2=WHERE(PAang2 LE (double(PAinput2[2])+double(PAinput2[3])))
+           tmp2=WHERE(PAang2 LE (double(PAinput3[2])+double(PAinput3[3])))
         ENDELSE
-        IF n_elements(tmp) GE 2 OR n_elements(tmp2) GE 2 then begin
-           boundaryadjustment=1
-           IF PAinput1[2] GT -40 then PAinput1[2]=strtrim(strcompress(string(double(PAinput1[2]-10.))),2) else  boundaryadjustment=0
-           IF PAinput2[1] GT -40 then PAinput2[2]=strtrim(strcompress(string(double(PAinput2[2]-10.))),2) else  boundaryadjustment=0
-           IF PAinput3[1] GT -40 then PAinput3[2]=strtrim(strcompress(string(double(PAinput3[2]-10.))),2) else  boundaryadjustment=0
-           IF tmp[0] EQ -1 then tmp[0]=n_elements(INCLang)
-           IF tmp2[0] EQ -1 then tmp2[0]=n_elements(INCLang)
-           tmp=MAX([tmp,tmp2,lastreliablerings],min=lastreliablerings)
-           PArings++
-        ENDIF
+        IF tmp[0] EQ n_elements(PAang)-2 then tmp=[-1]
+        IF tmp2[0] EQ n_elements(PAang2)-2 then tmp2=[-1]
+        case 1 of
+           (n_elements(tmp) GE 2 OR n_elements(tmp) GE 2) AND  (norings[0] LE 4 or finishafter EQ 1.1): begin
+              IF PAinput1[2] GT -40 then begin
+                 PAinput1[2]=strtrim(strcompress(string(double(PAinput1[2]-10.))),2)
+                 boundaryadjustment=1
+              ENDIF else  boundaryadjustment=0
+           end
+           n_elements(tmp) GE 2: begin
+              IF PAinput2[2] GT -40 then begin
+                 PAinput2[2]=strtrim(strcompress(string(double(PAinput2[2]-10.))),2)
+                 boundaryadjustment=1
+              ENDIF else  boundaryadjustment=0
+           end
+           n_elements(tmp2) GE 2: begin
+              IF PAinput3[2] GT -40 then begin
+                 PAinput3[2]=strtrim(strcompress(string(double(PAinput3[2]-10.))),2)
+                 boundaryadjustment=1
+              ENDIF else  boundaryadjustment=0
+           end
+           else:boundaryadjustment =0
+        endcase
+;        IF n_elements(tmp) GE 2 OR n_elements(tmp2) GE 2 then begin
+;           boundaryadjustment=1
+;           IF PAinput1[2] GT -40 then PAinput1[2]=strtrim(strcompress(string(double(PAinput1[2]-10.))),2) else  boundaryadjustment=0
+;           IF PAinput2[1] GT -40 then PAinput2[2]=strtrim(strcompress(string(double(PAinput2[2]-10.))),2) else  boundaryadjustment=0
+;           IF PAinput3[1] GT -40 then PAinput3[2]=strtrim(strcompress(string(double(PAinput3[2]-10.))),2) else  boundaryadjustment=0
+;           IF tmp[0] EQ -1 then tmp[0]=n_elements(INCLang)
+;           IF tmp2[0] EQ -1 then tmp2[0]=n_elements(INCLang)
+;           tmp=MAX([tmp,tmp2,lastreliablerings],min=lastreliablerings)
+;           PArings++
+;        ENDIF
+        if boundaryadjustment EQ 1 then PArings++
      ENDIF
                                 ;If we determined that the boundaries should be updated than we need
                                 ;to check SBR and reset the values, as
