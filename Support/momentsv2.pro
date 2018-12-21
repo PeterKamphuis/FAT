@@ -87,7 +87,7 @@ Pro momentsv2,Cube,Momentmap,header,map,BLANK_VALUE=blanked,gdlidl=gdlidl
    if FINITE(minmap) then sxaddpar,header,'DATAMIN',minmap else sxaddpar,header,'DATAMIN',0.
 
 endif
-IF map EQ 1 then begin
+IF map GE 1 then begin
    buildaxii,header,xaxis,yaxis,zaxis=zaxis
 ;   blank=WHERE(FINITE(Cube) NE 1.)
 ;   IF blank[0] NE -1 then Cube[blank]=0  
@@ -111,9 +111,23 @@ IF map EQ 1 then begin
       endfor
    endif else begin
       c=rebin(reform(zaxis,1,1,n_elements(zaxis)),n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]),n_elements(Cube[0,0,*]))
-   endelse
+   endelse    
    Momentmap=TOTAL(c*Cube,3)/TOTAL(Cube,3)
-   maxmap=MAX(momentmap,MIN=minmap)
+   IF map GE 2 then begin
+      if gdlidl then begin
+         b=dblarr(n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]),n_elements(Cube[0,0,*]))
+         for i=0,n_elements(Cube[0,0,*])-1 do begin
+            b[*,*,i]=Momentmap[*,*]
+         endfor
+      endif else begin
+         b=rebin(reform(Momentmap,n_elements(Momentmap[0,*]),n_elements(Momentmap[*,0]),1),n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]),n_elements(Cube[0,0,*]))
+      endelse
+      d=c-b
+      b=1.
+      c=1.
+      Momentmap=SQRT(TOTAL(Cube*(d)^2,3)/TOTAL(Cube,3))
+   ENDIF
+   maxmap=MAX(momentmap[where(FINITE(momentmap) eq 1)],MIN=minmap)
    if FINITE(maxmap) then sxaddpar,header,'DATAMAX',maxmap else sxaddpar,header,'DATAMAX',zaxis[n_elements(zaxis)-1]
    if FINITE(minmap) then sxaddpar,header,'DATAMIN',minmap else sxaddpar,header,'DATAMIN',zaxis[0]
    sxaddpar,header,'BUNIT','KM/S'

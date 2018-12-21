@@ -1358,6 +1358,18 @@ refit:
      errincfact=1.
      goto,cleanup
   endif
+                                ;Finaaly we check how many values
+                                ;significantly deviate from the mean
+                                ;if it is one or less then 10% of the
+                                ;rings it is probably not a real
+                                ;deviation
+
+  for i=0,1 do begin
+     mean_par=MEAN(newPA[*,i])
+     dev_real=WHERE(newPA[*,i]+errors[*,i] LT mean_par OR newPA[*,i]-errors[*,i] GT mean_par)
+     IF n_elements(newPA[*,i]) LT 15 then limit=1 else limit = n_elements(newPA[*,i])*0.133333
+     IF n_elements(dev_real) LE limit then newPA[*,i]=mean_par
+  endfor
   
 
   errorin=errors

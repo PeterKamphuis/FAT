@@ -453,6 +453,8 @@ tryconfigagain:
                                 ;Parameters for finishing the fitting process early
                                 ;IF set to one the program finishes after this loop (The first 1 it encounters)
            'finishafter':finishafter=double(tmp[1])
+           ;Parameter to set the size of the rings (the default is 1)
+           'ring_size': ring_spacing = double(tmp[1])
                                 ;Input catalogue for the pipeline
            'catalogue':catalogue=tmp[1]
                                 ;Directory with all the directories of the galaxies to be fitted
@@ -578,11 +580,13 @@ noconfig:
   IF size(newlog,/TYPE) EQ 0 then newlog='y'
   IF size(newresult,/TYPE) EQ 0 then newresult='y'
   IF n_elements(vresolution) EQ 0 then vresolution=1.
+  IF n_elements(ring_spacing) EQ 0. then ring_spacing = 1.
   IF n_elements(optpixelbeam) EQ 0 then optpixelbeam=4.
   IF n_elements(allnewin) EQ 0 then allnewin=1
   IF n_elements(bookkeeping) EQ 0 then bookkeeping=3
   IF n_elements(warpoutput) EQ 0 then warpoutput=0
- 
+  IF ring_spacing LT 0.4 then ring_spacing = 0.4
+  
   IF bookkeeping EQ 5. then bookkeeping=4
 
   bookkeepingin=bookkeeping
@@ -1258,11 +1262,13 @@ noconfig:
         IF maxy[countmin] EQ 0 then maxy[countmin]=n_elements(mask[0,*,0])-1
         xhandle=MAX(maxx-minx)
         yhandle=MAX(maxy-miny)
-        
-        maxrings=round(SQRT((xhandle/2.)^2+(yhandle/2.)^2)/(catmajbeam[i]/(ABS(sxpar(header,'cdelt1'))*3600.))+3)
+        ringbuffer=fix(3./ring_spacing)
+        if ringbuffer GT 6 then ringbuffer=6
+        if ringbuffer LT 2 then ringbuffer=2
+        maxrings=round(SQRT((xhandle/2.)^2+(yhandle/2.)^2)/((catmajbeam[i]*ring_spacing)/(ABS(sxpar(header,'cdelt1'))*3600.))+ringbuffer)
      
         IF NOT smallexists then begin
-           newsize=fix((2.*(maxrings+1.)*catmajbeam[i])/(ABS(sxpar(header,'cdelt1'))*3600.))
+           newsize=fix((2.*(maxrings+1.)*(catmajbeam[i]*ring_spacing))/(ABS(sxpar(header,'cdelt1'))*3600.))
            IF floor(RApix[0]-newsize/2.) GE 0. AND floor(RApix[0]+newsize/2.) LT  sxpar(header,'NAXIS1') AND $
               floor(DECpix[0]-newsize/2.) GE 0. AND floor(DECpix[0]+newsize/2.) LT sxpar(header,'NAXIS2') AND $
               not smallexists then begin
@@ -1362,7 +1368,7 @@ noconfig:
      tmp=WHERE(mask EQ 1.)
      maxbright=MAX(dummy[tmp])
      maxSN=maxbright/catnoise[i]
-     IF maxSN LT 2. then begin
+     IF maxSN LT 2.5 then begin
         openu,1,outputcatalogue,/APPEND
         printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,' The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit.'
         close,1    
@@ -1389,7 +1395,7 @@ noconfig:
      pixperbeam=beamarea/(ABS(pixelsizeRA*3600.)*ABS(pixelsizeDEC*3600.))
                                 ;Obtain the cutoff values without
                                 ;inclination corrections.
-     rad=[0.,((findgen(maxrings+2.))*catmajbeam[i]+catmajbeam[i]/5.)]
+     rad=[0.,((findgen(maxrings+2.))*catmajbeam[i]*ring_spacing+catmajbeam[i]/5.)]
      calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i],channelwidth],cutoffor,vsys=catVSYS[i]
                                 ;And print the values
    
@@ -1410,10 +1416,11 @@ noconfig:
                                 ;image. But let's reduce it by 1 rings
                                 ;as to not run into edge problems 
                                 ;Initial size guess is
-     norings=fix(round((imagesize)/(catmajbeam[i]))-2)
+     norings=fix(round((imagesize)/(catmajbeam[i]*ring_spacing))-2)
+   
                                 ; If there is lt 1.5 beams in the cube we can stop here                     
     
-     IF norings LT 1.5 OR maxrings LE 4 then begin
+     IF norings LT 1.5/ring_spacing OR maxrings LE 4/ring_spacing then begin
         openu,1,outputcatalogue,/APPEND
         printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,"This Cube is too small"
         close,1
@@ -1429,7 +1436,19 @@ noconfig:
                                 ;Now let's obtain a initial pa
                                 ;and inclination for the galaxy
      obtain_pa_incl,moment0map,newPA,newinclination,[RApix[0],DECpix[0]],NOISE=momnoise,BEAM=catmajbeam[i]/(pixelsize*3600.),gdlidl=gdlidl,extent=noringspix
-
+     IF TOTAL([newPA,newinclination]) EQ 0. then begin
+        openu,1,outputcatalogue,/APPEND
+        printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,"No initial estimates. Likely the source is too faint."
+        close,1
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"We are aborting this fit as we cannot establish proper initial estimates."
+           close,66
+        ENDIF
+        print,linenumber()+"We are aborting this fit as we cannot establish proper initial estimates."
+        bookkeeping=5
+        goto,finishthisgalaxy
+     ENDIF
                                 ;Let's check wether the PA
                                 ;lines up with the kinematical
                                 ;or needs a 180  degree shift
@@ -1584,13 +1603,13 @@ noconfig:
                                 ;should take this inclination into
                                 ;account
      case 1 of
-        cutoffcorrection GT 1.03 :norings=maxrings-4-floor(ringcorrection/2.)
-        newinclination[0] GT 80:norings=maxrings-2          
-        else:norings=maxrings-4
+        cutoffcorrection GT 1.03 :norings=maxrings-round((4+floor(ringcorrection/2.))/ring_spacing)
+        newinclination[0] GT 80:norings=maxrings-round(2/ring_spacing)          
+        else:norings=maxrings-round(4/ring_spacing)
      endcase
+     IF newinclination[0] LT 60 then norings=norings[0]-round(1./ring_spacing)
      IF norings LT 3 then norings=3
-     IF newinclination[0] LT 60 then norings=norings[0]-1.
-     noringspix=norings[0]*catmajbeam[i]/(ABS(sxpar(headermap,'cdelt1'))*3600.)
+     noringspix=norings[0]*(catmajbeam[i]*ring_spacing)/(ABS(sxpar(headermap,'cdelt1'))*3600.)
  
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
@@ -1614,27 +1633,54 @@ noconfig:
      setfinishafter=0.
                                 ; if the galaxy is too small we will
                                 ; only fit a flat disk
-     if norings[0] LE 3. then begin
-        norings[0]=(maxrings-3)*2.
-        noringspix=norings[0]*(catmajbeam[i]/2.)/(ABS(sxpar(headermap,'cdelt1'))*3600.)
-        rad=[0.,((findgen(maxrings*2.))*(catmajbeam[i]/2)+catmajbeam[i]/10.)]
-        calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i],channelwidth],cutoffor,vsys=catVSYS[i]
- 
-        cutoffor=cutoffor/SQRT(norings[0])
-        cutoff=cutoffor*cutoffcorrection
-        IF norings LT 3. then begin
+     if norings[0] LE 3./ring_spacing then begin
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"With a ring size of "+strtrim(string(ring_spacing),2)+" we get "+strtrim(string(norings[0]),2)+"number of rings."
+           printf,66,linenumber()+"Therefore we will half the ring size."
+           close,66
+        ENDIF
+        ring_spacing_new = ring_spacing/2.
+        IF ring_spacing_new LT 0.4 then ring_spacing_new=0.4
+        norings[0]=round(norings[0]*ring_spacing/ring_spacing_new)
+        ;we always want at least 3 beams in the model
+        WHILE ring_spacing_new GT 0.8 AND norings[0] LT 3. do begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"This should never happen."
+              printf,66,linenumber()+"With a ring size of "+strtrim(string(ring_spacing_new),2)+" we get "+strtrim(string(norings[0]),2)+"number of rings."
+              printf,66,linenumber()+"Therefore we will half the ring size."
               close,66
            ENDIF
-           print,maxrings,norings[0]
-           print,linenumber()+"This should never happen."
-           stop
-        ENDIF ELSE begin
-                                ;we don't want to do individual ring fits on this cube
+           ring_spacing_new = ring_spacing_new/2.
+           norings[0]=round(norings[0]*ring_spacing/ring_spacing_new)
+        ENDWHILE
+        
+        IF norings[0] LT 3. then begin
+           openu,1,outputcatalogue,/APPEND
+           printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,"This Cube is too small"
+           close,1
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"We are aborting this fit as the located source is too small"
+              close,66
+           ENDIF
+           print,linenumber()+"We are aborting this fit as the located source is too small"
+           bookkeeping=5
+           goto,finishthisgalaxy
+        ENDIF
+        maxrings=maxrings*ring_spacing/ring_spacing_new
+        noringspix=norings[0]*(catmajbeam[i]*ring_spacing_new)/(ABS(sxpar(headermap,'cdelt1'))*3600.)
+        rad=[0.,((findgen(round(maxrings)))*(catmajbeam[i]*ring_spacing_new)+catmajbeam[i]/5)]
+        calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i],channelwidth],cutoffor,vsys=catVSYS[i]
+ 
+        
+        ;if the model is less than 6 beams across we will not fit a warp
+        if norings[0]*ring_spacing LT 3. then begin
+                                ;we don't want to do individual
+                                ;ring fits on this cube
+           cutoffor=cutoffor/SQRT(norings[0])
            IF finishafter GT 1. then finishafter=1.1
-           maxrings=maxrings*2.-1
+           maxrings=maxrings-1
                                 ;we also want to make sure that we are in the cube    
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
@@ -1645,82 +1691,73 @@ noconfig:
                  printf,66,rad[j],cutoff[j]
               endfor
               close,66
-           ENDIF   
-        ENDELSE
+           ENDIF
+        
+        ENDIF
+        ring_spacing = ring_spacing_new
+        cutoff=cutoffor*cutoffcorrection 
      ENDIF ELSE BEGIN
         if norings[0] GT maxrings then begin
            norings[0]=maxrings
-           noringspix=norings[0]*catmajbeam[i]/(ABS(sxpar(headermap,'cdelt1'))*3600.)
+           noringspix=norings[0]*catmajbeam[i]*ring_spacing/(ABS(sxpar(headermap,'cdelt1'))*3600.)
         ENDIF
        
            
      ENDELSE
      
-     IF finishafter EQ 1.1 then begin
-        rings=(findgen(norings[0]))*(catmajbeam[i]/2.)+(catmajbeam[i]/10.)
+   
+     IF maxrings GT 25 AND norings[0] GT 20 then begin
+        doubled=1
+        tmpring=norings[0]-10.
+        IF newinclination[0] LT 40 then tmpring=tmpring+2
+        norings=10.+fix(tmpring/2.)
+        rings=dblarr(norings[0])
+        rings[0:9]=(findgen(10))*catmajbeam[i]*ring_spacing+catmajbeam[i]/5.
+        rings[10:norings[0]-1]=(findgen(fix(tmpring/2.)))*catmajbeam[i]*ring_spacing*2+catmajbeam[i]/5.+11.*catmajbeam[i]*ring_spacing
+        norings[0]=norings[0]+1.
+        rad=[0.,rings[0:9],(findgen(fix((maxrings-10.)/2.)))*catmajbeam[i]*ring_spacing*2+catmajbeam[i]/5.+11.*catmajbeam[i]]*ring_spacing
+        IF finishafter GT 1 then finishafter=2.1
+        maxrings=10.+fix((maxrings-10.)/2.)
+           
+        calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i],channelwidth],cutoffor,vsys=catVSYS[i]
+ 
+        cutoff=cutoffor*cutoffcorrection
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"Being a large galaxy we have doubled the outer the ring sizes "+catDirname[i]+"in galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
+           printf,66,linenumber()+"The new cutoff values are: "
+           printf,66,linenumber()+"Radius           Minimum SBR"
+           for j=0,n_elements(rad)-1 do begin
+              printf,66,rad[j],cutoffor[j]
+           endfor
+           printf,66,linenumber()+"These are corrected with "+strtrim(string(cutoffcorrection),2)
+           close,66
+        ENDIF   
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"The number of rings for the fitting = "+strtrim(string(fix(norings[0])),2)
+           printf,66,linenumber()+"Fitting with "+strtrim(string(ring_spacing*2),2)+" times the beam major axis FWHM beyond ring 10."
+           close,66
+        ENDIF ELSE BEGIN
+           print,linenumber()+"The number of rings for the fitting = "+strtrim(string(fix(norings[0])),2)
+           print,linenumber()+"Fitting with "+strtrim(string(ring_spacing*2),2)+" times the beam major axis FWHM beyond ring 10."
+        Endelse  
+
+
+     ENDIF ELSE BEGIN
+        rings=(findgen(norings[0]))*catmajbeam[i]*ring_spacing+catmajbeam[i]/5.
         norings[0]=norings[0]+1.
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+"The number of rings for the fitting = "+strtrim(string(fix(norings[0])),2)
-           printf,66,linenumber()+"Fitting with half the beam major axis FWHM as ringsize."
+           printf,66,linenumber()+"Fitting with "+strtrim(string(ring_spacing),2)+" times the beam major axis FWHM as ringsize."
            close,66
         ENDIF ELSE BEGIN
            print,linenumber()+"The number of rings for the fitting = "+strtrim(string(fix(norings[0])),2)
-           print,linenumber()+"Fitting with half the beam major axis FWHM as ringsize."
+           print,linenumber()+"Fitting with "+strtrim(string(ring_spacing),2)+"times the beam major axis FWHM as ringsize."
         Endelse  
-     ENDIF ELSE BEGIN
-        IF maxrings GT 25 AND norings[0] GT 20 then begin
-           doubled=1
-           tmpring=norings[0]-10.
-           IF newinclination[0] LT 40 then tmpring=tmpring+2
-           norings=10.+fix(tmpring/2.)
-           rings=dblarr(norings[0])
-           rings[0:9]=(findgen(10))*catmajbeam[i]+catmajbeam[i]/5.
-           rings[10:norings[0]-1]=(findgen(fix(tmpring/2.)))*catmajbeam[i]*2+catmajbeam[i]/5.+11.*catmajbeam[i]
-           norings[0]=norings[0]+1.
-           rad=[0.,rings[0:9],(findgen(fix((maxrings-10.)/2.)))*catmajbeam[i]*2+catmajbeam[i]/5.+11.*catmajbeam[i]]
-           IF finishafter GT 1 then finishafter=2.1
-           maxrings=10.+fix((maxrings-10.)/2.)
-           
-           calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i],channelwidth],cutoffor,vsys=catVSYS[i]
- 
-           cutoff=cutoffor*cutoffcorrection
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+"Being a large galaxy we have doubled the outer the ring sizes "+catDirname[i]+"in galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
-              printf,66,linenumber()+"The new cutoff values are: "
-              printf,66,linenumber()+"Radius           Minimum SBR"
-              for j=0,n_elements(rad)-1 do begin
-                 printf,66,rad[j],cutoffor[j]
-              endfor
-              printf,66,linenumber()+"These are corrected with "+strtrim(string(cutoffcorrection),2)
-              close,66
-           ENDIF   
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+"The number of rings for the fitting = "+strtrim(string(fix(norings[0])),2)
-              printf,66,linenumber()+"Fitting with the twice the beam major axis FWHM beyond ring 10."
-              close,66
-           ENDIF ELSE BEGIN
-              print,linenumber()+"The number of rings for the fitting = "+strtrim(string(fix(norings[0])),2)
-              print,linenumber()+"Fitting with the twice the beam major axis FWHM beyond ring 10."
-           Endelse  
-
-
-        ENDIF ELSE BEGIN
-           rings=(findgen(norings[0]))*catmajbeam[i]+catmajbeam[i]/5.
-           norings[0]=norings[0]+1.
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+"The number of rings for the fitting = "+strtrim(string(fix(norings[0])),2)
-              printf,66,linenumber()+"Fitting with the beam major axis FWHM as ringsize."
-              close,66
-           ENDIF ELSE BEGIN
-              print,linenumber()+"The number of rings for the fitting = "+strtrim(string(fix(norings[0])),2)
-              print,linenumber()+"Fitting with the beam major axis FWHM as ringsize."
-           Endelse  
-        ENDELSE
      ENDELSE
+     
                                 ;print the inclination and PA we found to the output log
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
@@ -1972,7 +2009,7 @@ noconfig:
                                 ;than 1/4th of the beam we want to
                                 ;make it a quarter of the beam at high inclinations
      If catdistance[i] EQ 1. then begin
-        IF catinc[i] GT 80. then inpzval=MAX([(catmajbeam[i]*norings[0])/150.,catmajbeam[i]/4.]) else  inpzval=(catmajbeam[i]*norings[0])/150.
+        IF catinc[i] GT 80. then inpzval=MAX([(catmajbeam[i]*ring_spacing*norings[0])/150.,catmajbeam[i]/4.]) else  inpzval=(catmajbeam[i]*ring_spacing*norings[0])/150.
         tmppos=where('Z0' EQ tirificfirstvars)
         tirificfirst[tmppos]='Z0='+strtrim(strcompress(string((inpzval))))
         tmppos=where('Z0_2' EQ tirificfirstvars)
@@ -1998,14 +2035,13 @@ noconfig:
                                 ;If we change the amount of rings we need to come back here
      sbrshift:
      case finishafter of
-        1.1:rings=(findgen(norings[0]))*(catmajbeam[i]/2.)+(catmajbeam[i]/10.)
         2.1:begin
            tmpring=norings[0]-10.
            rings=dblarr(norings[0])
-           rings[0:9]=(findgen(10))*catmajbeam[i]+catmajbeam[i]/5.
-           rings[10:norings[0]-1]=(findgen(fix(tmpring)))*catmajbeam[i]*2+catmajbeam[i]/5.+11.*catmajbeam[i]
+           rings[0:9]=(findgen(10))*catmajbeam[i]*ring_spacing+catmajbeam[i]/5.
+           rings[10:norings[0]-1]=(findgen(fix(tmpring)))*catmajbeam[i]*ring_spacing*2+catmajbeam[i]/5.+11.*catmajbeam[i]*ring_spacing
         end
-       else:rings=(findgen(norings[0]))*catmajbeam[i]+catmajbeam[i]/5.   
+       else:rings=(findgen(norings[0]))*catmajbeam[i]*ring_spacing+catmajbeam[i]/5.   
      endcase
      
      
@@ -2132,13 +2168,13 @@ noconfig:
                                 ;30 kpc which means that
                                 ;0.5=norings[0]/60. and so on
         IF catinc[i] GT 80 then begin
-           Z0input1[1]=string(MAX([catmajbeam[i]*norings[0]/66.,catmajbeam[i]/2.]))
-        ENDIF ELSE  Z0input1[1]=string(catmajbeam[i]*norings[0]/66.)
+           Z0input1[1]=string(MAX([catmajbeam[i]*norings[0]*ring_spacing/66.,catmajbeam[i]/2.]))
+        ENDIF ELSE  Z0input1[1]=string(catmajbeam[i]*ring_spacing*norings[0]/66.)
         Z0input1[2]='0.'
-        Z0input1[3]=string(-1*catmajbeam[i]*norings[0]/1.5E5)
-        Z0input1[4]=string(catmajbeam[i]*norings[0]/1.5E6)
-        Z0input1[5]=string(catmajbeam[i]*norings[0]/1500)
-        Z0input1[6]=string(catmajbeam[i]*norings[0]/1.5E6)
+        Z0input1[3]=string(-1*catmajbeam[i]*ring_spacing*norings[0]/1.5E5)
+        Z0input1[4]=string(catmajbeam[i]*ring_spacing*norings[0]/1.5E6)
+        Z0input1[5]=string(catmajbeam[i]*ring_spacing*norings[0]/1500)
+        Z0input1[6]=string(catmajbeam[i]*ring_spacing*norings[0]/1.5E6)
      ENDIF
                              
   
@@ -2953,7 +2989,7 @@ noconfig:
         ENDELSE
      ENDIF ELSE Begin
         ; Otherwise we will adjust the boundaries if they are insecure
-        IF ceil(norings[0]*COS(firstfitvalues[0,0]*!DtoR)) GT 4 OR (norings[0] GT 6. AND catinc[i] GT 80.) then begin
+        IF ceil(norings[0]*ring_spacing*COS(firstfitvalues[0,0]*!DtoR)) GT 4 OR (norings[0]*ring_spacing GT 6. AND catinc[i] GT 80.) then begin
                                 ;If we are on the boundary we reject
                                 ;the new value unless we are in very
                                 ;uncertain conditions
@@ -2966,7 +3002,7 @@ noconfig:
            ENDELSE
                                 ;However if this is due to high
                                 ;inclination we still want to reset vrot
-           IF  (norings[0] GT 6. AND catinc[i] GT 80.) then begin
+           IF  (norings[0]*ring_spacing GT 6. AND catinc[i] GT 80.) then begin
               catmaxrot[i]=W50/2./SIN(catinc[i]*!pi/180.) 
               catmaxrotdev[i]=(VSYSdiff/2.)/SIN(catinc[i]*!pi/180.)
               tmppos=where('VROT' EQ tirificfirstvars)
@@ -3172,8 +3208,8 @@ noconfig:
                                 ;if the shift is more than two beams
                                 ;from the initial guess something went
                                 ;wrong
-           IF norings LE 25 then resetlimit=catmajbeam[i]/1800. else begin
-              resetlimit=catmajbeam[i]/3600.*norings[0]*0.08
+           IF norings*ring_spacing LE 25 then resetlimit=catmajbeam[i]/1800. else begin
+              resetlimit=catmajbeam[i]/3600.*norings[0]*ring_spacing*0.08
            ENDELSE
            IF    ABS(RADeg-newxpos) GT resetlimit OR ABS(DECDeg-newypos) GT resetlimit then begin
               IF size(log,/TYPE) EQ 7 then begin
@@ -3309,21 +3345,21 @@ noconfig:
                                 ;  improved version can allow
                                 ;  large estimates of the initial
                                 ;  version changed -2 to -3 (15-05-2015)
-           IF newrings GT sofiarings+2 OR newrings LT sofiarings-3 then begin        
+           IF newrings GT sofiarings+(2/ring_spacing) OR newrings LT sofiarings-(3./ring_spacing) then begin        
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"The new amount of rings ("+strtrim(string(fix(newrings)),2)+") deviates too much from the sofia estimate ("+string(sofiarings)+")."
+                 printf,66,linenumber()+"The new amount of rings ("+strtrim(string(fix(newrings*ring_spacing)),2)+") deviates too much from the sofia estimate ("+string(sofiarings)+")."
                  close,66
               ENDIF
               IF newrings LT norings[0] then begin
-                 IF norings[0] GT sofiarings-2 then newrings=norings[0]-1 else newrings=sofiarings-2
+                 IF norings[0] GT sofiarings-round(2/ring_spacing) then newrings=norings[0]-1 else newrings=sofiarings-round(2/ring_spacing) 
                  IF size(log,/TYPE) EQ 7 then begin
                     openu,66,log,/APPEND
                     printf,66,linenumber()+"We set the number of rings to "+strtrim(string(fix(newrings)),2)
                     close,66
                  ENDIF
               endif Else begin
-                 IF norings[0] LT sofiarings+2 then newrings=norings[0]+1 else newrings=sofiarings+2
+                 IF norings[0] LT sofiarings+round(2/ring_spacing) then newrings=norings[0]+1 else newrings=sofiarings+round(2/ring_spacing) 
                  IF size(log,/TYPE) EQ 7 then begin
                     openu,66,log,/APPEND
                     printf,66,linenumber()+"We set the number of rings to "+strtrim(string(fix(newrings)),2)
@@ -3708,14 +3744,40 @@ noconfig:
      PAang2=firstfitvalues[*,tmppos]    
      tmppos=where('NUR' EQ firstfitvaluesnames)
      norings=firstfitvalues[0,tmppos]
-     IF norings LE 4 then begin     
-        IF norings GE 3 and finishafter NE 1.1 then begin
-           finishafter=1.1 
-           norings[0]=(norings[0]-1)*2.
-           maxrings=maxrings*2.
-           noringspix=norings[0]*(catmajbeam[i]/2.)/(ABS(sxpar(headermap,'cdelt1'))*3600.)
-           rad=[0.,((findgen(maxrings))*(catmajbeam[i]/2.)+catmajbeam[i]/10.)]
+     IF norings*ring_spacing LE 4 then begin     
+        IF norings*ring_spacing GE 3 and finishafter NE 1.1 and ring_spacing GT 0.8 then begin
+           ring_spacing_new = ring_spacing/2.
+           norings[0]=round(norings[0]*ring_spacing/ring_spacing_new)
+        ;we always want at least 3 beams in the model
+           WHILE ring_spacing_new GT 0.8 AND norings[0] LT 3 do begin
+              ring_spacing_new = ring_spacing_new/2.
+              norings[0]=round(norings[0]*ring_spacing/ring_spacing_new)
+           ENDWHILE
+        
+           IF norings[0] LT 3. then begin
+              openu,1,outputcatalogue,/APPEND
+              printf,1,format='(A60,A12,A12,A80)',catDirname[i],AC1,0,'The first fit model is too small to fit variations.'
+              close,1
+              IF size(log,/TYPE) EQ 7 then begin
+                 openu,66,log,/APPEND
+                 printf,66,linenumber()+'The first fit model is too small to fit variations.'
+                 printf,66,linenumber()+"Finished "+catDirname[i]+" which is galaxy #  "+strtrim(string(fix(i)),2)+" at "+systime()
+                 close,66
+              ENDIF
+              IF optimized then begin
+                 currentfitcube = noptname[0]
+              ENDIF
+              bookkeeping=bookkeeping+0.5
+              goto,finishthisgalaxy             
+           ENDIF
+           maxrings=maxrings*ring_spacing/ring_spacing_new
+           noringspix=norings[0]*(catmajbeam[i]*ring_spacing_new)/(ABS(sxpar(headermap,'cdelt1'))*3600.)
+           rad=[0.,((findgen(round(maxrings)))*(catmajbeam[i]*ring_spacing_new)+catmajbeam[i]/5)]
            calc_edge,catnoise[i],rad,[catmajbeam[i],catminbeam[i],channelwidth],cutoffor,vsys=catVSYS[i]
+ 
+   
+           ring_spacing = ring_spacing_new
+           finishafter=1.1 
            cutoff=cutoffor*cutoffcorrection
            tmp=rad[0:norings[0]-1]
            rad=tmp
@@ -3775,8 +3837,8 @@ noconfig:
      
 
 
-     lowring=norings[0]-3
-     highring=norings[0]+2
+     lowring=norings[0]-(3/ring_spacing)
+     highring=norings[0]+(2/ring_spacing)
 
      tmppos=where('VROT' EQ tirificsecondvars)
      tirificsecond[tmppos]='VROT= 0.'+STRJOIN(strtrim(strcompress(string(VROTarr[1:n_elements(VROTarr)-1]))),' ')
@@ -3841,7 +3903,7 @@ noconfig:
                                 ; See how much of the rotation curve we want to fit as a slope
      get_newringsv9,SBRarr,SBRarr2,2.5*cutoff,velconstused
      velconstused--
-     IF norings[0] GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
+     IF norings[0]*ring_spacing GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
      set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter
      set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,avinner=avinner,finish_after=finishafter
                                 ;set the surface brightness values
@@ -3867,13 +3929,13 @@ noconfig:
                                 ;30 kpc which means that
                                 ;0.5=norings[0]/60. and so on
         IF catinc[i] GT 80 then begin
-           Z0input1[1]=string(MAX([catmajbeam[i]*norings[0]/60.,catmajbeam[i]/2.]))
-        ENDIF ELSE  Z0input1[1]=string(catmajbeam[i]*norings[0]/60.)
+           Z0input1[1]=string(MAX([catmajbeam[i]*ring_spacing*norings[0]/60.,catmajbeam[i]/2.]))
+        ENDIF ELSE  Z0input1[1]=string(catmajbeam[i]*ring_spacing*norings[0]/60.)
         Z0input1[2]='0.'
-        Z0input1[3]=string(-1*catmajbeam[i]*norings[0]/6E4)
-        Z0input1[4]=string(catmajbeam[i]*norings[0]/6E5)
-        Z0input1[5]=string(catmajbeam[i]*norings[0]/60.)
-        Z0input1[6]=string(catmajbeam[i]*norings[0]/6E5)
+        Z0input1[3]=string(-1*catmajbeam[i]*ring_spacing*norings[0]/6E4)
+        Z0input1[4]=string(catmajbeam[i]*ring_spacing*norings[0]/6E5)
+        Z0input1[5]=string(catmajbeam[i]*ring_spacing*norings[0]/60.)
+        Z0input1[6]=string(catmajbeam[i]*ring_spacing*norings[0]/6E5)
      ENDIF
                                 ;And then make the other string input variables with the same
                                 ;parameters and an additional string
@@ -4285,7 +4347,7 @@ noconfig:
                                 ;want to fit a slope in the rotation curve
      get_newringsv9,SBRarr,SBRarr2,2.5*cutoff,velconstused
      velconstused--
-     IF norings[0] GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
+     IF norings[0]*ring_spacing GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
      xind=0
      IF (TOTAL(VROTarr[1:2])/2. GT 150 AND VROTarr[1] GT VROTarr[2] AND VROTarr[1] GT VROTarr[3]) OR $
         (MEAN(VROTarr[1:n_elements(vrotarr)-1]) GT 250.) then begin
@@ -4740,13 +4802,13 @@ noconfig:
                                 ;doesn't amplify every iteration
      IF finalsmooth EQ 1 then prefunc=0 else prefunc=1
      centralincl=(INCLang[0]+INCLang2[0])/2.
-     IF norings[0] GT 15 then accuracy=0.5+COS(centralincl*!DtoR)*0.5*15./norings[0] else accuracy=1
+     IF norings[0]*ring_spacing GT 15 then accuracy=0.5+COS(centralincl*!DtoR)*0.5*15./(norings[0]*ring_spacing) else accuracy=1
 
                                 ;Smoothing PA_1
      if finalsmooth LE 1 AND norings[0] GT 4 and finishafter NE 1.1 then begin
         comin=[[PAang],[INCLang]]
         errors=[[0.],[0.]]
-        padiv=1.5-(ATAN((norings[0]-5.)*2.))*5.25/!pi
+        padiv=1.5-(ATAN((norings[0]*ring_spacing-5.)*2.))*5.25/!pi
         IF padiv LT 1.0 then padiv=1.0
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
@@ -4771,7 +4833,7 @@ noconfig:
      if finalsmooth LE 1 AND norings[0] GT 4 and finishafter NE 1.1 then begin
         comin=[[PAang2],[INCLang2]]
         errors=[[0.],[0.]]
-        padiv=1.5-(ATAN((norings[0]-5.)*2.))*5.25/!pi
+        padiv=1.5-(ATAN((norings[0]*ring_spacing-5.)*2.))*5.25/!pi
         IF padiv LT 1.0 then padiv=1.0
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
@@ -4848,8 +4910,8 @@ noconfig:
      SBRav=(SBRarr+SBRarr2)/2.
      get_newringsv9,SBRav,SBRav,2.5*cutoff,velconstused
      velconstused--
-     IF double(norings[0]) GT 15. then begin
-        IF double(norings[0]) LT 25. then fact = 10 else fact= 20-(norings[0]/2.5)
+     IF double(norings[0])*ring_spacing GT 15. then begin
+        IF double(norings[0])*ring_spacing LT 25. then fact = 10 else fact= 20-(norings[0]*ring_spacing/2.5)
         if fact LT 6 then fact=6
         
         IF velconstused GT norings[0]-ceil(norings[0]/fact) then velconstused=norings[0]-ceil(norings[0]/fact)
@@ -4857,7 +4919,7 @@ noconfig:
      ENDIF
      prefunc=0. 
      IF norings[0]-velconstused LT 2 then velconstused=norings[0]-1
-     IF norings[0] GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
+     IF norings[0]*ring_spacing GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
      
    
      if finalsmooth LE 1 then begin
@@ -4899,9 +4961,9 @@ noconfig:
            slope=1
            IF velfixrings GT 1 then VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1]=TOTAL(VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1])/n_elements(VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1])
         ENDIF
-        IF finalsmooth EQ 1 AND velconstused LT norings[0] AND (norings[0] LT 15 OR (polorder1[1] LT 4. AND polorder2[1] LT 4)) then begin
+        IF finalsmooth EQ 1 AND velconstused LT norings[0] AND (norings[0]*ring_spacing LT 15 OR (polorder1[1] LT 4. AND polorder2[1] LT 4)) then begin
            vrotslopinput=strarr(10)
-           start=3.+fix((norings[0]-3.)/5.)
+           start=3.+fix((norings[0]-3./ring_spacing)/5.)
            set_vrotv6,vrotslopinput,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,start=start,centralexclude=centralexclude,finish_after=finishafter,slope=slope 
            INCLinputall=['INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' '+$
                     'INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
@@ -5111,21 +5173,21 @@ noconfig:
            close,66
         ENDIF
       ;  IF NOT sofiafail then begin
-        IF newrings GT sofiarings+3 OR newrings LT sofiarings-3 then begin        
+        IF newrings GT sofiarings+(3/ring_spacing) OR newrings LT sofiarings-(3/ring_spacing) then begin        
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
               printf,66,linenumber()+"The new amount of rings ("+strtrim(string(fix(newrings)),2)+") deviates too much from the sofia estimate ("+string(sofiarings)+")."
               close,66
            ENDIF
            IF newrings LT norings[0] then begin
-              IF norings[0] GT sofiarings-3 then newrings=norings[0]-1 else newrings=sofiarings-3
+              IF norings[0] GT sofiarings-round(3/ring_spacing) then newrings=norings[0]-1 else newrings=sofiarings-round(3/ring_spacing)
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
                  printf,66,linenumber()+"We set the number of rings to "+strtrim(string(fix(newrings)),2)
                  close,66
               ENDIF
            endif Else begin
-              IF norings[0] LT sofiarings+3 then newrings=norings[0]+1 else newrings=sofiarings+3
+              IF norings[0]*ring_spacing LT sofiarings+round(3/ring_spacing) then newrings=norings[0]+1 else newrings=sofiarings+round(3/ring_spacing)
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
                  printf,66,linenumber()+"We set the number of rings to "+strtrim(string(fix(newrings)),2)
@@ -5603,13 +5665,13 @@ noconfig:
                                 ;30 kpc which means that
                                 ;0.5=norings[0]/60. and so on
            IF catinc[i] GT 80 then begin
-              Z0input1[1]=string(MAX([catmajbeam[i]*norings[0]/60.,catmajbeam[i]/2.]))
-           ENDIF ELSE  Z0input1[1]=string(catmajbeam[i]*norings[0]/60.)
+              Z0input1[1]=string(MAX([catmajbeam[i]*ring_spacing*norings[0]/60.,catmajbeam[i]/2.]))
+           ENDIF ELSE  Z0input1[1]=string(catmajbeam[i]*ring_spacing*norings[0]/60.)
            Z0input1[2]='0.'
-           Z0input1[3]=string(-1*catmajbeam[i]*norings[0]/6E4)
-           Z0input1[4]=string(catmajbeam[i]*norings[0]/6E5)
-           Z0input1[5]=string(catmajbeam[i]*norings[0]/60.)
-           Z0input1[6]=string(catmajbeam[i]*norings[0]/6E5)    
+           Z0input1[3]=string(-1*catmajbeam[i]*ring_spacing*norings[0]/6E4)
+           Z0input1[4]=string(catmajbeam[i]*ring_spacing*norings[0]/6E5)
+           Z0input1[5]=string(catmajbeam[i]*ring_spacing*norings[0]/60.)
+           Z0input1[6]=string(catmajbeam[i]*ring_spacing*norings[0]/6E5)    
         ENDIF
      ENDIF ELSE BEGIN
         VROTinput1=['VROT 2:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' VROT_2 2:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)$
@@ -5871,7 +5933,7 @@ noconfig:
                                 ;the inclination is below 20 the fit
                                 ;is failed
         case 1 of
-           norings[0] LE 5:begin
+           norings[0]*ring_spacing LE 5:begin
               openu,1,outputcatalogue,/APPEND
               printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,' The finalmodel is less than 8 beams in diameter. FAT is not necessarily reliable in this range.'
               close,1
@@ -5895,7 +5957,7 @@ noconfig:
                                 ;the inclination is below 20 the fit
                                 ;is failed
            case 1 of
-              norings[0] LE 9:begin
+              norings[0]*ring_spacing LE 5:begin
                  openu,1,outputcatalogue,/APPEND
                  printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,'The finalmodel is less than 8 beams in diameter. FAT is not necessarily reliable in this range.'
                  close,1

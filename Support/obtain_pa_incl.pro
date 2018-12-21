@@ -48,6 +48,8 @@ Pro obtain_pa_incl,map,PA,incl,center,EXTENT=extent,NOISE=noise,BEAM=beam,DEBUG=
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       21-12-2018 P.Kamphuis; Added a condition where if the Final
+;                              products are non-finite we set the output to 0.  
 ;       05-10-2018 P.Kamphuis; Starts from obtain_inclinationv8  
 ;       09-05-2017 P.Kamphuis; If no values could be found the code
 ;                              would add random values to the errors.
@@ -114,11 +116,12 @@ use_corrected:
   IF tmp[0] NE -1 then pamax[tmp]=pamax[tmp]+180.
   IF keyword_set(debug) then print,pamax,angles[indexmin]
   pa=MEAN([pamax,angles[indexmin]])
+  inipa=pa
   IF keyword_set(debug) then begin
      print,'Initial PA'
      print,pa
   ENDIF
-
+  miss=1
 wrongpa:
 
 
@@ -128,16 +131,30 @@ wrongpa:
   IF keyword_set(debug) then begin
      print,'We check these angles'
      print,angles
+     print,'done angles'
   ENDIF
   ratios=obtain_ratios(angles,map,center=center,MAJ_AXIS=tmpwidth,gdlidl=gdlidl,noise=noise,beam=beam)
-
   tmp=WHERE(ratios GT 0.)
+  IF keyword_set(debug) then begin
+     print,'We check these ratios'
+     print,ratios,tmp,miss
+  ENDIF
+  IF tmp[0] EQ -1  then begin
+     if miss EQ 0 then begin
+        pa = inipa
+        miss = 1
+       
+        goto,wrongpa
+     endif 
+        
+  ENDIF
+  
   maxrat=MAX(ratios[tmp],min=minrat)
   indexmax=WHERE(ratios EQ maxrat)
   indexmin=where(ratios EQ minrat)
 
   IF keyword_set(debug) then print,ratios
-  if indexmin[0] LT 2 then begin
+  if indexmin[0] LT 2 and miss NE 1 then begin
      IF keyword_set(debug) then begin
         print,indexmin[0]
         print,pa
@@ -354,6 +371,11 @@ wrongpa:
      
   endif
 
+
+  IF FINITE(TOTAL([PA,incl])) EQ 0 then begin
+     pa=[0.,0.]
+     incl=[0.,0.]
+  ENDIF
 end
 
 
