@@ -94,3 +94,4 @@ writeCat.parameters	=	['id','x_geo','y_geo','z_geo','x','y','z','x_min','x_max',
 writeCat.writeASCII	=	true
 writeCat.writeSQL	=	false
 writeCat.writeXML	=	false
+pipeline.pedantic = false
