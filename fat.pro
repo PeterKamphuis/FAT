@@ -1639,16 +1639,16 @@ noconfig:
      setfinishafter=0.
                                 ; if the galaxy is too small we will
                                 ; only fit a flat disk
+     IF size(log,/TYPE) EQ 7 then begin
+        openu,66,log,/APPEND
+        printf,66,linenumber()+"With a ring size of "+strtrim(string(ring_spacing),2)+" we get "+strtrim(string(norings[0]),2)+" number of rings."
+        printf,66,linenumber()+"Therefore we will reduce the ring size."
+        close,66
+     ENDIF
      if norings[0] LE 3. then begin
-        IF size(log,/TYPE) EQ 7 then begin
-           openu,66,log,/APPEND
-           printf,66,linenumber()+"With a ring size of "+strtrim(string(ring_spacing),2)+" we get "+strtrim(string(norings[0]),2)+"number of rings."
-           printf,66,linenumber()+"Therefore we will reduce the ring size."
-           close,66
-        ENDIF
         ring_spacing_new = ring_spacing
         ;we always want at least 3 beams in the model
-        WHILE ring_spacing_new GT 0.75 AND norings[0] LT 3. do begin
+        WHILE ring_spacing_new GT 0.75 AND norings[0] LE 3. do begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
               printf,66,linenumber()+"With a ring size of "+strtrim(string(ring_spacing_new),2)+" we get "+strtrim(string(norings[0]),2)+"number of rings."
@@ -1680,7 +1680,7 @@ noconfig:
  
         
         ;if the model is less than 6 beams across we will not fit a warp
-        if norings[0]*ring_spacing LT 3. then begin
+        if norings[0]*ring_spacing LE 3. then begin
                                 ;we don't want to do individual
                                 ;ring fits on this cube
            cutoffor=cutoffor/SQRT(norings[0])
