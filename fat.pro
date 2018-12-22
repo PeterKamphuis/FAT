@@ -766,6 +766,7 @@ noconfig:
      bookkeeping=bookkeepingin
      ring_spacing = ring_spacing_in
      doubled=0
+     ini_mode_factor=25.
      currentfitcube=catcubename[i]
      noisemapname=currentfitcube+'_noisemap'
      close,1
@@ -793,10 +794,10 @@ noconfig:
      
                                 ;Read the template for the first
                                 ;tirific fit 
-     read_template,supportdir+'/1stfit_unclean.def', tirificfirst, tirificfirstvars
+     read_template,supportdir+'/1stfit.def', tirificfirst, tirificfirstvars
                                 ;Read the template for the second
                                 ;tirific fit 
-     read_template,supportdir+'/2ndfit_unclean.def', tirificsecond, tirificsecondvars
+     read_template,supportdir+'/2ndfit.def', tirificsecond, tirificsecondvars
                                 ;Read the template sofia input file
                                 ;print which galaxy we are at
      print,linenumber()+"We're at galaxy number "+strtrim(string(i,format='(I10)'),2)+". Which is catalogue id number "+catnumber[i]
@@ -2349,6 +2350,7 @@ noconfig:
                           string(channelwidth),string(0.1*channelwidth),string(0.5*channelwidth),string(0.01*channelwidth),'3','70','70',fixstring]
         
            Writefittingvariables,tirificfirst,inclinput1,VROTinputINCL,painput1,sbrinput1,sbrinput2
+          
            againINCLestimate:
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
@@ -2360,6 +2362,9 @@ noconfig:
               printf,1,tirificfirst[index]
            endfor
            close,1
+          
+
+           
            gipsyfirst=strarr(1)
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
@@ -2405,6 +2410,8 @@ noconfig:
                           ' INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
                           '90.',string(catinc[i]-catincdev[i]-20),string(10),string(1),string(0.1),string(0.01),'3','70','70']  
               Writefittingvariables,tirificfirst,painput1,inclinput1,vrotinputINCL
+            
+        
               INCLest=INCLest+1.
               goto,againINCLestimate
            ENDIF ELSE BEGIN
@@ -2458,7 +2465,8 @@ noconfig:
                      ,string(VROTmax),string(0.),$
                      string(channelwidth),string(0.01*channelwidth),string(channelwidth),string(0.01*channelwidth),'3','70','70',fixstring]
         Writefittingvariables,tirificfirst,painput1,sbrinput1,sbrinput2,VROTinputPA
-        
+       
+   
         againPAestimate:
 
         openw,1,maindir+'/'+catdirname[i]+'/tirific.def'
@@ -2511,6 +2519,8 @@ noconfig:
                close,66
             ENDIF 
            Writefittingvariables,tirificfirst,painput1,vrotinputPA
+            
+   
            PAest=PAest+1.
            goto,againPAestimate
         ENDIF
@@ -2629,6 +2639,8 @@ noconfig:
                                 ;crude we want to adapt that by itself first
      IF counter EQ 0 then begin  
         Writefittingvariables,tirificfirst,sbrinput1,sbrinput2,painput1,vrotinput1
+           
+   
         openw,1,maindir+'/'+catdirname[i]+'/tirific.def'
         for index=0,n_elements(tirificfirst)-1 do begin
            printf,1,tirificfirst[index]
@@ -2840,7 +2852,7 @@ noconfig:
            catinc[i] GT 75:Writefittingvariables,tirificfirst,xposinput1,yposinput1,vsysinput1,painput1,vrotinput1,sbrinput1,sbrinput2,inclinput1,z0input1
            else:Writefittingvariables,tirificfirst,xposinput1,yposinput1,vsysinput1,painput1,inclinput1,vrotinput1,sbrinput1,sbrinput2
         endcase
-     ENDIF ELSE BEGIN
+    ENDIF ELSE BEGIN
         case 1 of
            catinc[i] LT 30:Writefittingvariables,tirificfirst,painput1,vrotinput1,sbrinput1,sbrinput2,inclinput1
            catinc[i] LT 50:Writefittingvariables,tirificfirst,painput1,vrotinput1,inclinput1,sbrinput1,sbrinput2
@@ -4044,6 +4056,15 @@ noconfig:
            Writefittingvariables,tirificsecond,xposinput1,yposinput1,vsysinput1,$
                                  inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,$
                                  sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1
+                                ; and we need to set th inialitation
+                                ; mode which should be 0 for small
+                                ; galaxies with a few variable and 3
+                                ; for large with many variables
+           varychange=16
+           req_ini_mode=ABS(varychange*norings[0]-ini_mode_factor)/ini_mode_factor
+           if req_ini_mode GT 3. then req_ini_mode=3
+           tmppos=where('INIMODE' EQ tirificfirstvars)
+           tirificfirst[tmppos]='INIMODE= '+strtrim(strcompress(string(fix(floor(req_ini_mode)))))
         ENDELSE
      endelse
                                 ;Setting a bunch of fit tracking variables
@@ -4991,6 +5012,7 @@ noconfig:
                          '90','5',string(0.5),string(0.1),string(0.5),string(0.1),'3','70','70']
            
            Writefittingvariables,tirificsecond,INCLinputall,vrotslopinput
+
            openw,1,maindir+'/'+catdirname[i]+'/tirific.def'
            for index=0,n_elements(tirificsecond)-1 do begin
               printf,1,tirificsecond[index]
@@ -5309,7 +5331,7 @@ noconfig:
                             ' VSYS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
               Writefittingvariables,tirificsecond,inclinput1,painput1,$
                                     vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
-                                    xposinput1,yposinput1,vsysinput1              
+                                    xposinput1,yposinput1,vsysinput1             
            ENDIF ELSE BEGIN
                                 ;Need to update the arrays otherwise might use
                                 ;them later with wrong ring numbers

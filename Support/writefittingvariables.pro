@@ -130,7 +130,8 @@ Pro writefittingvariables,inputarray,v1,v2,v3,v4,v5,v6,v7,v8,v9,v10,v11,v12,v13,
   endfor
   strings[0]=STRMID(strings[0], 0 , STRLEN(strings[0])-1)
 
-
+  ini_mode_factor=25
+  req_ini_mode=0
 
   for i=0,n_elements(inputarray)-1 do begin
      tmp=str_sep(strtrim(strcompress(inputarray[i]),2),'=')
@@ -168,10 +169,20 @@ Pro writefittingvariables,inputarray,v1,v2,v3,v4,v5,v6,v7,v8,v9,v10,v11,v12,v13,
         'VARINDX':begin  
            inputarray[i]=strings[7]
         end
-
-        else:begin
+        'NUR':begin
+                                ; and we need to set th inialitation
+                                ; mode which should be 0 for small
+                                ; galaxies with a few variable and 3
+                                ; for large with many variables
+           noring=double(tmp[1])
+           req_ini_mode=ABS(nvar*noring-ini_mode_factor)/ini_mode_factor
+           if req_ini_mode GT 3. then req_ini_mode=3
         end
-
+        'INIMODE':begin
+           inputarray[i]='INIMODE= '+strtrim(strcompress(string(fix(floor(req_ini_mode)))))
+        end
+       else:begin
+       end
      endcase
   endfor
 
