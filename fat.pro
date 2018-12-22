@@ -2668,9 +2668,11 @@ noconfig:
         
         tmppos=where('SBR_2' EQ VariablesWanted)
         SBRarr2=firstfitvalues[*,tmppos]
-                                ;We always want to smooth the surface brightnes. Added 16-06-2017
-        SBRarr=fat_hanning(SBRarr,rad)
-        SBRarr2=fat_hanning(SBRarr2,rad)
+                                ;We always want to smooth the surface
+                                ;brightnes. Added 16-06-2017
+        tmppos=where('RADI' EQ VariablesWanted)
+        SBRarr=fat_hanning(SBRarr,firstfitvalues[*,tmppos])
+        SBRarr2=fat_hanning(SBRarr2,firstfitvalues[*,tmppos])
         
       
 
@@ -2940,9 +2942,11 @@ noconfig:
      SBRarr=firstfitvalues[*,tmppos]
      tmppos=where('SBR_2' EQ VariablesWanted)
      SBRarr2=firstfitvalues[*,tmppos]
-                                ;We always want to smooth the surface brightnes. Added 16-06-2017
-     SBRarr=fat_hanning(SBRarr,rad)
-     SBRarr2=fat_hanning(SBRarr2,rad)
+                                ;We always want to smooth the surface
+                                ;brightnes. Added 16-06-2017
+     tmppos=where('RADI' EQ VariablesWanted)
+     SBRarr=fat_hanning(SBRarr,firstfitvalues[*,tmppos])
+     SBRarr2=fat_hanning(SBRarr2,firstfitvalues[*,tmppos])
      
      tmppos=where('VROT' EQ VariablesWanted)
      VROTarr=firstfitvalues[*,tmppos]
@@ -3543,7 +3547,7 @@ noconfig:
         VROTarr=firstfitvalues[*,7]
         SBRarr=(firstfitvalues[*,2]+firstfitvalues[*,8])/2.
           ;We always want to smooth the surface brightnes. Added 16-06-2017
-        SBRarr=fat_hanning(SBRarr,rad)
+        SBRarr=fat_hanning(SBRarr,firstfitvalues[*,9])
         VROTarr[0]=0.
         vmaxdev=MAX([30,7.5*channelwidth*(1.+vresolution)])
         verror=MAX([5.,channelwidth/2.*(1.+vresolution)/SQRT(sin(catinc[i]*!DtoR))])
