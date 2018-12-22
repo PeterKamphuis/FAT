@@ -93,7 +93,12 @@ Function fat_hanning,SBRin,Radin,rings=rings
   
   SBRout=dblarr(n_elements(SBR))
   case 1 of
-     n_elements(SBR) LE 3:return,SBR
+     n_elements(SBR) LE 3:begin
+        rad=radin[1:n_elements(SBRin)-1]
+        tmp=1
+        interpolate,SBR,RAD,newradii=radin,output=tmp
+        return,tmp
+     end
      n_elements(SBR) LT 15:points=5
      else:points=7
   endcase
