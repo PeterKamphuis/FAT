@@ -53,6 +53,11 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      30-11-2018 P.Kamphuis; Added the ring size parameter such that
+;                             now the ring sizes in beams  can be give
+;                             in input file. The default  is 1 and it
+;                             is given in the input file as ring_size
+;                             = . AGC should be tested at 1.1 beam rings.   
 ;      30-10-2018 P.Kamphuis: Cleaned up the boudary adjustment parameters. 
 ;      25-10-2018 P.Kamphuis; Fixed a bug where VROT[0] was not kept
 ;                             at 0 before regularisation.  
@@ -454,7 +459,7 @@ tryconfigagain:
                                 ;IF set to one the program finishes after this loop (The first 1 it encounters)
            'finishafter':finishafter=double(tmp[1])
            ;Parameter to set the size of the rings (the default is 1)
-           'ring_size': ring_spacing = double(tmp[1])
+           'ring_size': ring_spacing_in = double(tmp[1])
                                 ;Input catalogue for the pipeline
            'catalogue':catalogue=tmp[1]
                                 ;Directory with all the directories of the galaxies to be fitted
@@ -580,12 +585,12 @@ noconfig:
   IF size(newlog,/TYPE) EQ 0 then newlog='y'
   IF size(newresult,/TYPE) EQ 0 then newresult='y'
   IF n_elements(vresolution) EQ 0 then vresolution=1.
-  IF n_elements(ring_spacing) EQ 0. then ring_spacing = 1.
+  IF n_elements(ring_spacing_in) EQ 0. then ring_spacing_in = 1.
   IF n_elements(optpixelbeam) EQ 0 then optpixelbeam=4.
   IF n_elements(allnewin) EQ 0 then allnewin=1
   IF n_elements(bookkeeping) EQ 0 then bookkeeping=3
   IF n_elements(warpoutput) EQ 0 then warpoutput=0
-  IF ring_spacing LT 0.4 then ring_spacing = 0.4
+  IF ring_spacing_in LT 0.5 then ring_spacing_in = 0.5
   
   IF bookkeeping EQ 5. then bookkeeping=4
 
@@ -759,6 +764,7 @@ noconfig:
      finishafter=finishafterold
      allnew=allnewin
      bookkeeping=bookkeepingin
+     ring_spacing = ring_spacing_in
      doubled=0
      currentfitcube=catcubename[i]
      noisemapname=currentfitcube+'_noisemap'
@@ -1633,28 +1639,27 @@ noconfig:
      setfinishafter=0.
                                 ; if the galaxy is too small we will
                                 ; only fit a flat disk
-     if norings[0] LE 3./ring_spacing then begin
+     if norings[0] LE 3. then begin
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+"With a ring size of "+strtrim(string(ring_spacing),2)+" we get "+strtrim(string(norings[0]),2)+"number of rings."
-           printf,66,linenumber()+"Therefore we will half the ring size."
+           printf,66,linenumber()+"Therefore we will reduce the ring size."
            close,66
         ENDIF
-        ring_spacing_new = ring_spacing/2.
-        IF ring_spacing_new LT 0.4 then ring_spacing_new=0.4
-        norings[0]=round(norings[0]*ring_spacing/ring_spacing_new)
+        ring_spacing_new = ring_spacing
         ;we always want at least 3 beams in the model
-        WHILE ring_spacing_new GT 0.8 AND norings[0] LT 3. do begin
+        WHILE ring_spacing_new GT 0.75 AND norings[0] LT 3. do begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
               printf,66,linenumber()+"With a ring size of "+strtrim(string(ring_spacing_new),2)+" we get "+strtrim(string(norings[0]),2)+"number of rings."
-              printf,66,linenumber()+"Therefore we will half the ring size."
+              printf,66,linenumber()+"Therefore we will reduce the ring size."
               close,66
            ENDIF
-           ring_spacing_new = ring_spacing_new/2.
+           ring_spacing_new = ring_spacing_new/1.5
+           IF ring_spacing_new LT 0.5 then ring_spacing_new=0.5
            norings[0]=round(norings[0]*ring_spacing/ring_spacing_new)
         ENDWHILE
-        
+     
         IF norings[0] LT 3. then begin
            openu,1,outputcatalogue,/APPEND
            printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,"This Cube is too small"
@@ -1681,18 +1686,23 @@ noconfig:
            cutoffor=cutoffor/SQRT(norings[0])
            IF finishafter GT 1. then finishafter=1.1
            maxrings=maxrings-1
-                                ;we also want to make sure that we are in the cube    
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"Being a small galaxy we have halved the rings sizes "+catDirname[i]+"in galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
-              printf,66,linenumber()+"The new cutoff values are: "
-              printf,66,linenumber()+"Radius           Minimum SBR"
-              for j=0,n_elements(rad)-1 do begin
-                 printf,66,rad[j],cutoff[j]
-              endfor
+              printf,66,linenumber()+"This galaxy is smaller than 6 beams across hence we fit only a flat disc."
               close,66
            ENDIF
+                                ;we also want to make sure that we are in the cube    
         
+        ENDIF
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"Having not enough rings across the major axis we reduced the rings sizes "+catDirname[i]+"in galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
+           printf,66,linenumber()+"The new cutoff values are: "
+           printf,66,linenumber()+"Radius           Minimum SBR"
+           for j=0,n_elements(rad)-1 do begin
+              printf,66,rad[j],cutoffor[j]
+           endfor
+           close,66
         ENDIF
         ring_spacing = ring_spacing_new
         cutoff=cutoffor*cutoffcorrection 
@@ -2659,8 +2669,8 @@ noconfig:
         tmppos=where('SBR_2' EQ VariablesWanted)
         SBRarr2=firstfitvalues[*,tmppos]
                                 ;We always want to smooth the surface brightnes. Added 16-06-2017
-        SBRarr=fat_hanning(SBRarr)
-        SBRarr2=fat_hanning(SBRarr2)
+        SBRarr=fat_hanning(SBRarr,rad)
+        SBRarr2=fat_hanning(SBRarr2,rad)
         
       
 
@@ -2931,8 +2941,8 @@ noconfig:
      tmppos=where('SBR_2' EQ VariablesWanted)
      SBRarr2=firstfitvalues[*,tmppos]
                                 ;We always want to smooth the surface brightnes. Added 16-06-2017
-     SBRarr=fat_hanning(SBRarr)
-     SBRarr2=fat_hanning(SBRarr2)
+     SBRarr=fat_hanning(SBRarr,rad)
+     SBRarr2=fat_hanning(SBRarr2,rad)
      
      tmppos=where('VROT' EQ VariablesWanted)
      VROTarr=firstfitvalues[*,tmppos]
@@ -3533,7 +3543,7 @@ noconfig:
         VROTarr=firstfitvalues[*,7]
         SBRarr=(firstfitvalues[*,2]+firstfitvalues[*,8])/2.
           ;We always want to smooth the surface brightnes. Added 16-06-2017
-        SBRarr=fat_hanning(SBRarr)
+        SBRarr=fat_hanning(SBRarr,rad)
         VROTarr[0]=0.
         vmaxdev=MAX([30,7.5*channelwidth*(1.+vresolution)])
         verror=MAX([5.,channelwidth/2.*(1.+vresolution)/SQRT(sin(catinc[i]*!DtoR))])
@@ -3730,8 +3740,8 @@ noconfig:
      SBRarr2=firstfitvalues[*,tmppos]
                                 ;We always want to smooth the surface brightnes. Added 16-06-2017
      get_newringsv9,SBRarr,SBRarr2,cutoff,newindrings,/individual
-     SBRarr=fat_hanning(SBRarr,rings=newindrings[0])
-     SBRarr2=fat_hanning(SBRarr2,rings=newindrings[1])
+     SBRarr=fat_hanning(SBRarr,RADarr,rings=newindrings[0])
+     SBRarr2=fat_hanning(SBRarr2,RADarr,rings=newindrings[1])
 
      
      tmppos=where('INCL_2' EQ firstfitvaluesnames)
@@ -3814,6 +3824,7 @@ noconfig:
            IF optimized then begin
               currentfitcube = noptname[0]
            ENDIF
+           IF finishafter GT 1.75 then finishafter=finishafter-1
            bookkeeping=bookkeeping+0.5
            goto,finishthisgalaxy
         ENDELSE
@@ -4153,7 +4164,7 @@ noconfig:
      SBRarr=secondfitvalues[*,tmppos]
                                 ;We always want to smooth the surface brightnes. Added 16-06-2017
      get_newringsv9,SBRarr,SBRarr2,cutoff,newindrings,/individual
-     SBRarr=fat_hanning(SBRarr,rings=newindrings[0])
+     SBRarr=fat_hanning(SBRarr,RADarr,rings=newindrings[0])
                                 ;and take the central point as the
                                 ;extension of the previous two. Added 18-10-2018
      inSBR=SBRarr[1:2]
@@ -4193,7 +4204,7 @@ noconfig:
      SBRarr2=secondfitvalues[*,tmppos]
                                 ;We always want to smooth the surface brightnes. Added 16-06-2017
      get_newringsv9,SBRarr,SBRarr2,cutoff,newindrings,/individual
-     SBRarr2=fat_hanning(SBRarr2,rings=newindrings[1])
+     SBRarr2=fat_hanning(SBRarr2,RADarr,rings=newindrings[1])
      inSBR=SBRarr2[1:2]
      inRad=RADarr[1:2]
      newSBR=1.
@@ -5738,8 +5749,8 @@ noconfig:
         tmp=WHERE(firstfitvaluesnames EQ 'SBR_2')
         SBRarr2=firstfitvalues[*,tmp]
 ;                                ;We always want to smooth the surface brightnes. Added 16-06-2017
-        SBRarr=fat_hanning(SBRarr)
-        SBRarr2=fat_hanning(SBRarr2)
+        SBRarr=fat_hanning(SBRarr,RADarr)
+        SBRarr2=fat_hanning(SBRarr2,RADarr)
                                 ;In this case we want to add them back
                                 ;in
         tmppos=WHERE(tirificsecondvars EQ 'SBR')

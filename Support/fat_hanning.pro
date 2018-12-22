@@ -1,4 +1,4 @@
-Function fat_hanning,SBRin,rings=rings
+Function fat_hanning,SBRin,Radin,rings=rings
 
 ;+
 ; NAME:
@@ -35,6 +35,9 @@ Function fat_hanning,SBRin,rings=rings
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       21-12-2018 P. Kamphuis ; Excluded the central point from
+;                                smoothing but extrapolate it from the
+;                                rest of profile.   
 ;       Written 16-06-2017 by P.Kamphuis, S. Kurapati
 ;
 ; NOTE:
@@ -79,7 +82,8 @@ Function fat_hanning,SBRin,rings=rings
      stop
   ENDIF
   skipcatch:
-  SBR=SBRin
+  ;We will initially ignore the central point.
+  SBR=SBRin[1:n_elements(SBRin)-1]
                                 ;If we provide a number of valid rings
                                 ;then we want to set all rings outside
                                 ;that to 0.
@@ -114,6 +118,15 @@ Function fat_hanning,SBRin,rings=rings
   ENDIF
   tmp=WHERE(SBRout LT 1e-8)
   if tmp[0] NE -1 then SBRout[tmp]=1e-16
-  
+
+                                ;Finally we need to add the central
+                                ;point again which we will merely
+                                ;extrapolate from the profile
+ 
+  rad=radin[1:n_elements(SBRin)-1]
+  tmp=1
+  interpolate,SBRout,RAD,newradii=radin,output=tmp
+  SBRout=tmp
+    
   return,SBRout
 end
