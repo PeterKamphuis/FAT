@@ -793,10 +793,10 @@ noconfig:
      
                                 ;Read the template for the first
                                 ;tirific fit 
-     read_template,supportdir+'/1stfit.def', tirificfirst, tirificfirstvars
+     read_template,supportdir+'/1stfit_unclean.def', tirificfirst, tirificfirstvars
                                 ;Read the template for the second
                                 ;tirific fit 
-     read_template,supportdir+'/2ndfit.def', tirificsecond, tirificsecondvars
+     read_template,supportdir+'/2ndfit_unclean.def', tirificsecond, tirificsecondvars
                                 ;Read the template sofia input file
                                 ;print which galaxy we are at
      print,linenumber()+"We're at galaxy number "+strtrim(string(i,format='(I10)'),2)+". Which is catalogue id number "+catnumber[i]
