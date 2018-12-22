@@ -108,17 +108,6 @@ Pro writefittingvariables,inputarray,v1,v2,v3,v4,v5,v6,v7,v8,v9,v10,v11,v12,v13,
         strings[7]=strings[7]+strtrim(strcompress(string(limits[10])))+' '
      ENDIF
      ;New writing start here  strings=strarr(8)
-  strings[0]='VARY= '    
-  strings[1]='PARMAX= '
-  strings[2]='PARMIN= '
-  strings[3]='MODERATE= '
-  strings[4]='DELSTART= '
-  strings[5]='DELEND= '
-  ;strings[6]='ITESTART= '
-  ;strings[7]='ITEEND= '
-  ;strings[8]='SATDELT= '
-  strings[6]='MINDELTA= '             
-  strings[7]='VARINDX= '
      IF n_elements(limits) EQ 7 then begin order= [Vary, Parmax,parmin,delstart,delend,mindelt,moderate,VARINDX]
         strings[0]=strings[0]+strtrim(strcompress(string(limits[0])))+','
         strings[1]=strings[1]+strtrim(strcompress(string(limits[1])))+' '

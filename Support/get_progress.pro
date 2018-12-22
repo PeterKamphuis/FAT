@@ -58,14 +58,19 @@ Pro get_progress,name,AC,nopoints,loops,models
   close,1
    ;AC is the ninth item (In my modified Tirific)
   for i=0,n_elements(tmp)-1 do begin
-   tmp1=str_sep(strtrim(strcompress(tmp[i]),2),':')
-   IF STRUPCASE(tmp1[0]) EQ 'NP' then begin
-      tmp2=str_sep(strtrim(strcompress(tmp1[1]),2),'/')
-      nopoints=dblarr(n_elements(tmp2))
-      nopoints=double(tmp2)
-   ENDIF
-   IF STRUPCASE(tmp1[0]) EQ 'AC' then AC=double(tmp1[1])
-   IF STRUPCASE(tmp1[0]) EQ 'BL' then loops=double(tmp1[1])
-   IF STRUPCASE(tmp1[0]) EQ 'TM' then models=double(tmp1[1])
+     tmp1=str_sep(strtrim(strcompress(tmp[i]),2),':')
+     IF STRUPCASE(tmp1[0]) EQ 'N' then begin
+        tmp2=str_sep(strtrim(strcompress(tmp1[1]),2),'/')
+        nopoints=dblarr(n_elements(tmp2))
+        nopoints=double(tmp2)
+     ENDIF
+     IF STRUPCASE(tmp1[0]) EQ 'AC' then AC=double(tmp1[1])
+     IF STRUPCASE(tmp1[0]) EQ 'BL' then loops=double(tmp1[1])
+     IF STRUPCASE(tmp1[0]) EQ 'TM' then models=double(tmp1[1])
   endfor
+                                ;fitmode two does not give all this output so for now
+  AC= 1
+  loops=10.
+  models=1000.
+  
 end
