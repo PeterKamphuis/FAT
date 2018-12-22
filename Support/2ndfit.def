@@ -4,17 +4,15 @@ NCORES= 4
 INSET= recentered-s30cl.fits
 BOX= 
 OUTSET=  2ndfit.fits
-OUTCUBUP=  10000000
-
-OKAY= 
-TEXTLOG= 
+OUTCUBUP=  10000000.0
 PROGRESSLOG=progress2.txt
-
 
 BMIN= 16.100000
 BMAJ= 37.900000
 BPA= 0.0
 RMS= 0.00060999999
+
+NDISKS= 2
 
 NUR= 8
     RADI= +0.00000E+00 +1.00000E+00 +1.89500E+01 +3.79000E+01 +5.68500E+01 +7.58000E+01 +9.47500E+01 +1.13700E+02 
@@ -39,49 +37,37 @@ NUR= 8
     AZ1P_2= +1.80000E+02	 
     AZ1W_2= +1.80000E+02
     SDIS_2= 7.
- CONDISP= +8.00000E+00 
-LTYPE= 3
-LTYPE_2= 3
+CONDISP= +8.00000E+00
+ 
+LTYPE= 2
+LTYPE_2= 2
 
 CFLUX= 1e-5
 CFLUX_2=1e-5
 
-PENALTY= 0
+PENALTY= 1
 WEIGHT= 0
 RADSEP= 0.1
-MEMMODE= 3
-INIMODE= 0
-ISEED2= 
+ISEED= 8981
+INIMODE= 3
 
-FITMODE= 1
+FITMODE= 2
 LOOPS= 10
 MAXITER= 
+CALLITE=
+SIZE=10
 
-ANSTART= 1
-ANEND= 1
-ANSTEPS= 1
-ISEED= 8981
-REGPARA= 
-REGNUME= 9, 9
-REGAMPD= 0 0
-REGDENO= 0:5, 0:5
-REGTHRE= 0.2 0.2
-REGWIDT= 0.2 0.2
-REGAMPL= 50000 50000
-REGASTE= 10000 10000
-
-
-VARY= INCL 1:5 INCL 1:5, !INCL 6:8, !INCL_2 6:8, PA 1:5 PA_2 1:5, !PA 6:8, !PA_2 6:8, !VROT 2:8, !VROT_2 2:8, !SBR 2:8, !SBR_2 2:8,  Z0 1:8  Z0_2 1:8 
-VARINDX=    	  
+VARINDX= 
+VARY= INCL 1:5 INCL 1:5, !INCL 6:8, !INCL_2 6:8, PA 1:5 PA_2 1:5, !PA 6:8, !PA_2 6:8, !VROT 2:8, !VROT_2 2:8, !SBR 2:8, !SBR_2 2:8,  Z0 1:8  Z0_2 1:8    	  
 PARMAX=     	    90          90           90              360      360        360        500          500         1           1                30
 PARMIN=      	     0           0            0		    -360     -360	-360 	     20		  20	     0 		 0  		   0
 MODERATE=     	     3           3            3                3        3          3          3            3         3           3         	   3
 DELSTART=    	   0.5         	 2 	      2 	     0.5      	2 	   2	     16		  16	  1E-5        1E-5       	   1
 DELEND=     	   0.1         0.5          0.5       	     0.1      0.5        0.5          8  	   8  	  1E-6	      1E-6  		 0.1
-ITESTART=    	    70          70           70        	      70       70         70         70        	  70        70          70		  70
-ITEEND=      	    70          70           70        	      70       70         70         70        	  70        70          70		  70
-SATDELT=      	     2           4 	      4                2       	4	   4	     10		  10	  5E-6	      5E-6		   1
 MINDELTA=   	   0.1         0.5          0.5       	     0.1      0.5        0.5          8       	   8      5E-7	      5E-7 		 0.1
+
+REGPARA=
+
 TABLE= 
 DISTANCE= 
 REFRING= 5
@@ -91,29 +77,10 @@ FRACTION=
 TIRDEF= 2ndfit.def
 TIRSMO= 
 TIRACC= 5
-TIRLEN= 3
-
-HISNAME= 
-HISTARTROW= 
-HISTENDROW= 
-HISKEY1= 
-HISRING1= 
-HISMIN1= 
-HISMAX1= 
-HISBINS1= 
-HISDELTA1= 
-HISKEY2= 
-HISRING2= 
-HISMIN2= 
-HISMAX2= 
-HISBINS2= 
-HISDELTA2= 
+TIRLEN= 
 
 COOLGAL= 
-COOLBEAM= 
-
-RECT= 
-BIGRECT= 
+COOLBEAM=  
 
 TILT= 
 BIGTILT= 
@@ -122,91 +89,32 @@ INCLINO=
 IN_REFINE= 5
 
 GR_DEVICE= 2ndfit.ps/vcps
+GR_PARMS= RADI VROT SDIS INCL INCL_2 PA PA_2 SBR SBR_2
 GR_MR= 3
 GR_ML= 4.5
 GR_TXHT= 1.0
 GR_SBHT= 0.3
 GR_LGND= 1
 GR_SBRP= 1
-GR_PARMS= RADI VROT SDIS INCL INCL_2 PA PA_2 SBR SBR_2
-GR_XMIN= 
-GR_XMAX= 
 
+GR_SYMB_1= -1
+GR_SIZE_1= 1
 GR_COL_1= 1
 GR_LINES_1= 1
-GR_ERRB_1= 0
-GR_YMIN_1= 
-GR_YMAX_1= 
-GR_NPAD_1= 
-GR_XPAD_1= 
-GR_YPAD_1= 
-GR_ERAD_1= 0
-GR_EBAD_1= 0
-GR_COAD_1= 
-GR_LIAD_1= 
 
-GR_COL_2= 
-GR_LINES_2= 
-GR_ERRB_2= 
-GR_YMIN_2= 
-GR_YMAX_2= 
-GR_NPAD_2= 
-GR_XPAD_2= 
-GR_YPAD_2= 
-GR_ERAD_2= 
-GR_EBAD_2= 
-GR_COAD_2= 
-GR_LIAD_2= 
+GR_SYMB_2= -1
+GR_SIZE_2= 1
+GR_COL_2= 1
+GR_LINES_2= 1
 
-GR_COL_3= 
-GR_LINES_3= 
-GR_ERRB_3= 
-GR_YMIN_3= 
-GR_YMAX_3= 
-GR_NPAD_3= 
-GR_XPAD_3= 
-GR_YPAD_3= 
-GR_ERAD_3= 
-GR_EBAD_3= 
-GR_COAD_3= 
-GR_LIAD_3= 
+GR_SYMB_3= -1
+GR_SIZE_3= 1
+GR_COL_3= 1
+GR_LINES_3= 1
 
-GR_COL_4= 
-GR_LINES_4= 
-GR_ERRB_4= 
-GR_YMIN_4= 
-GR_YMAX_4= 
-GR_NPAD_4= 
-GR_XPAD_4= 
-GR_YPAD_4= 
-GR_ERAD_4= 
-GR_EBAD_4= 
-GR_COAD_4= 
-GR_LIAD_4= 
+GR_SYMB_4= -1
+GR_SIZE_4= 1
+GR_COL_4= 1
+GR_LINES_4= 1
 
-GR_COL_5= 
-GR_LINES_5= 
-GR_ERRB_5= 
-GR_YMIN_5= 
-GR_YMAX_5= 
-GR_NPAD_5= 
-GR_XPAD_5= 
-GR_YPAD_5= 
-GR_ERAD_5= 
-GR_EBAD_5= 
-GR_COAD_5= 
-GR_LIAD_5= 
-
-GR_COL_6= 
-GR_LINES_6= 
-GR_ERRB_6= 
-GR_YMIN_6= 
-GR_YMAX_6= 
-GR_NPAD_6= 
-GR_XPAD_6= 
-GR_YPAD_6= 
-GR_ERAD_6= 
-GR_EBAD_6= 
-GR_COAD_6= 
-GR_LIAD_6= 
 GR_CONT=
