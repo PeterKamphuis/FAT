@@ -3615,6 +3615,8 @@ noconfig:
            writenewtotemplate,tirificfirst,maindir+'/'+catdirname[i]+'/1stfit.def'
            tmppos=where('LOOPS' EQ tirificfirstvars)
            tirificfirst[tmppos]='LOOPS=  0'
+           tmppos=where('INIMODE' EQ tirificfirstvars)
+           tirificfirst[tmppos]='INIMODE=  0'
            openw,1,maindir+'/'+catdirname[i]+'/tirific.def'
            for index=0,n_elements(tirificfirst)-1 do begin
               printf,1,tirificfirst[index]
@@ -5794,6 +5796,8 @@ noconfig:
         ENDELSE
         tmppos=where('LOOPS' EQ tirificsecondvars)
         tirificsecond[tmppos]='LOOPS=  0'
+        tmppos=where('INIMODE' EQ tirificsecondvars)
+        tirificsecond[tmppos]='INIMODE=  0'
         errorsadd=['VROT','VROT_2','PA','PA_2','INCL','INCL_2','SDIS','SDIS_2']
         tmpfile=strarr(n_elements(tirificsecond)+8)
         added=0
