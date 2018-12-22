@@ -127,6 +127,9 @@ Function fat_hanning,SBRin,Radin,rings=rings
   tmp=1
   interpolate,SBRout,RAD,newradii=radin,output=tmp
   SBRout=tmp
-    
+  WHILE n_elements(SBRout) NE n_elements(SBRin) do begin
+     IF n_elements(SBRout) LT n_elements(SBRin) then SBROut=[SBRout[0],SBRout]
+     IF n_elements(SBRout) GT n_elements(SBRin) then SBROut=SBRout[1:n_elements(SBRin)-1]
+  ENDWHILE
   return,SBRout
 end
