@@ -41,10 +41,14 @@ Pro writefittingvariables,inputarray,v1,v2,v3,v4,v5,v6,v7,v8,v9,v10,v11,v12,v13,
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       21-10-2018 P.Kamphuis; Modified to work with Fitmode 2 in tirific  
 ;       Written 01-01-2015 P.Kamphuis v1.0
 ;
 ; NOTE:
-;      Fitting VARIABLE input order= [Vary, Parmax,parmin, delstart,delend,satdelt,mindelt,moderate,ITESTART,ITEEND,VARINDX]
+;      Fitting VARIABLE input
+;  order= [Vary, Parmax,parmin,delstart,delend,satdelt,mindelt,moderate,ITESTART,ITEEND,VARINDX]
+;      or
+;  order= [Vary, Parmax,parmin,delstart,delend,mindelt,moderate,VARINDX]
 ;-
   COMPILE_OPT IDL2 
   On_error,2                    ;Return to caller
@@ -58,23 +62,26 @@ Pro writefittingvariables,inputarray,v1,v2,v3,v4,v5,v6,v7,v8,v9,v10,v11,v12,v13,
 ;Let's check wether the amount of limits and variables match
 
 ;let's build  some arrays from the input
-  strings=strarr(11)
+  strings=strarr(8)
   strings[0]='VARY= '    
   strings[1]='PARMAX= '
   strings[2]='PARMIN= '
   strings[3]='MODERATE= '
   strings[4]='DELSTART= '
   strings[5]='DELEND= '
-  strings[6]='ITESTART= '
-  strings[7]='ITEEND= '
-  strings[8]='SATDELT= '
-  strings[9]='MINDELTA= '             
-  strings[10]='VARINDX= '
+  ;strings[6]='ITESTART= '
+  ;strings[7]='ITEEND= '
+  ;strings[8]='SATDELT= '
+  strings[6]='MINDELTA= '             
+  strings[7]='VARINDX= '
   vv = 'v' + strtrim( indgen(nvar)+1, 2)
 
 
   for i=0,nvar-1 do begin
      limits=SCOPE_VARFETCH(vv[i],LEVEL=0)
+                                ;Allow for old writing still into
+                                ;proper new mode such that not all
+                                ;fitting arrays need to be modfied immediately
      IF n_elements(limits) EQ 10 then begin
         strings[0]=strings[0]+strtrim(strcompress(string(limits[0])))+','
         strings[1]=strings[1]+strtrim(strcompress(string(limits[1])))+' '
@@ -82,10 +89,10 @@ Pro writefittingvariables,inputarray,v1,v2,v3,v4,v5,v6,v7,v8,v9,v10,v11,v12,v13,
         strings[3]=strings[3]+strtrim(strcompress(string(limits[7])))+' '
         strings[4]=strings[4]+strtrim(strcompress(string(limits[3])))+' '
         strings[5]=strings[5]+strtrim(strcompress(string(limits[4])))+' '
-        strings[6]=strings[6]+strtrim(strcompress(string(limits[8])))+' '
-        strings[7]=strings[7]+strtrim(strcompress(string(limits[9])))+' '
-        strings[8]=strings[8]+strtrim(strcompress(string(limits[5])))+' '
-        strings[9]=strings[9]+strtrim(strcompress(string(limits[6])))+' '
+        ;strings[6]=strings[6]+strtrim(strcompress(string(limits[8])))+' '
+        ;strings[7]=strings[7]+strtrim(strcompress(string(limits[9])))+' '
+        ;strings[8]=strings[8]+strtrim(strcompress(string(limits[5])))+' '
+        strings[6]=strings[6]+strtrim(strcompress(string(limits[6])))+' '
      ENDIF
      IF n_elements(limits) EQ 11 then begin
         strings[0]=strings[0]+strtrim(strcompress(string(limits[0])))+','
@@ -94,13 +101,43 @@ Pro writefittingvariables,inputarray,v1,v2,v3,v4,v5,v6,v7,v8,v9,v10,v11,v12,v13,
         strings[3]=strings[3]+strtrim(strcompress(string(limits[7])))+' '
         strings[4]=strings[4]+strtrim(strcompress(string(limits[3])))+' '
         strings[5]=strings[5]+strtrim(strcompress(string(limits[4])))+' '
-        strings[6]=strings[6]+strtrim(strcompress(string(limits[8])))+' '
-        strings[7]=strings[7]+strtrim(strcompress(string(limits[9])))+' '
-        strings[8]=strings[8]+strtrim(strcompress(string(limits[5])))+' '
-        strings[9]=strings[9]+strtrim(strcompress(string(limits[6])))+' '
-        strings[10]=strings[10]+strtrim(strcompress(string(limits[10])))+' '
+        ;strings[6]=strings[6]+strtrim(strcompress(string(limits[8])))+' '
+        ;strings[7]=strings[7]+strtrim(strcompress(string(limits[9])))+' '
+        ;strings[8]=strings[8]+strtrim(strcompress(string(limits[5])))+' '
+        strings[6]=strings[6]+strtrim(strcompress(string(limits[6])))+' '
+        strings[7]=strings[7]+strtrim(strcompress(string(limits[10])))+' '
      ENDIF
-
+     ;New writing start here  strings=strarr(8)
+  strings[0]='VARY= '    
+  strings[1]='PARMAX= '
+  strings[2]='PARMIN= '
+  strings[3]='MODERATE= '
+  strings[4]='DELSTART= '
+  strings[5]='DELEND= '
+  ;strings[6]='ITESTART= '
+  ;strings[7]='ITEEND= '
+  ;strings[8]='SATDELT= '
+  strings[6]='MINDELTA= '             
+  strings[7]='VARINDX= '
+     IF n_elements(limits) EQ 7 then begin order= [Vary, Parmax,parmin,delstart,delend,mindelt,moderate,VARINDX]
+        strings[0]=strings[0]+strtrim(strcompress(string(limits[0])))+','
+        strings[1]=strings[1]+strtrim(strcompress(string(limits[1])))+' '
+        strings[2]=strings[2]+strtrim(strcompress(string(limits[2])))+' '
+        strings[3]=strings[3]+strtrim(strcompress(string(limits[6])))+' '
+        strings[4]=strings[4]+strtrim(strcompress(string(limits[3])))+' '
+        strings[5]=strings[5]+strtrim(strcompress(string(limits[4])))+' '
+        strings[6]=strings[6]+strtrim(strcompress(string(limits[5])))+' '
+     ENDIF
+     IF n_elements(limits) EQ 8 then begin
+        strings[0]=strings[0]+strtrim(strcompress(string(limits[0])))+','
+        strings[1]=strings[1]+strtrim(strcompress(string(limits[1])))+' '
+        strings[2]=strings[2]+strtrim(strcompress(string(limits[2])))+' '
+        strings[3]=strings[3]+strtrim(strcompress(string(limits[6])))+' '
+        strings[4]=strings[4]+strtrim(strcompress(string(limits[3])))+' '
+        strings[5]=strings[5]+strtrim(strcompress(string(limits[4])))+' '
+        strings[6]=strings[6]+strtrim(strcompress(string(limits[5])))+' '
+        strings[7]=strings[7]+strtrim(strcompress(string(limits[7])))+' '  
+     ENDIF
   endfor
   strings[0]=STRMID(strings[0], 0 , STRLEN(strings[0])-1)
 
@@ -127,20 +164,20 @@ Pro writefittingvariables,inputarray,v1,v2,v3,v4,v5,v6,v7,v8,v9,v10,v11,v12,v13,
         'DELEND':begin  
            inputarray[i]=strings[5]
         end
-        'ITESTART':begin  
+;        'ITESTART':begin  
+;           inputarray[i]=strings[6]
+;        end
+;        'ITEEND':begin  
+;           inputarray[i]=strings[7]
+;        end
+;        'SATDELT':begin  
+;           inputarray[i]=strings[8]
+;        end
+        'MINDELTA':begin  
            inputarray[i]=strings[6]
         end
-        'ITEEND':begin  
-           inputarray[i]=strings[7]
-        end
-        'SATDELT':begin  
-           inputarray[i]=strings[8]
-        end
-        'MINDELTA':begin  
-           inputarray[i]=strings[9]
-        end
         'VARINDX':begin  
-           inputarray[i]=strings[10]
+           inputarray[i]=strings[7]
         end
 
         else:begin
