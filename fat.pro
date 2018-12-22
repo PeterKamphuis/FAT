@@ -793,10 +793,10 @@ noconfig:
      
                                 ;Read the template for the first
                                 ;tirific fit 
-     read_template,supportdir+'/1stfit.def', tirificfirst, tirificfirstvars
+     read_template,supportdir+'/1stfit_unclean.def', tirificfirst, tirificfirstvars
                                 ;Read the template for the second
                                 ;tirific fit 
-     read_template,supportdir+'/2ndfit.def', tirificsecond, tirificsecondvars
+     read_template,supportdir+'/2ndfit_unclean.def', tirificsecond, tirificsecondvars
                                 ;Read the template sofia input file
                                 ;print which galaxy we are at
      print,linenumber()+"We're at galaxy number "+strtrim(string(i,format='(I10)'),2)+". Which is catalogue id number "+catnumber[i]
@@ -1649,15 +1649,16 @@ noconfig:
         ring_spacing_new = ring_spacing
         ;we always want at least 3 beams in the model
         WHILE ring_spacing_new GT 0.75 AND norings[0] LE 3. do begin
+ 
+           ring_spacing_new = ring_spacing_new/1.5
+           IF ring_spacing_new LT 0.5 then ring_spacing_new=0.5
+           norings[0]=round(norings[0]*ring_spacing/ring_spacing_new)
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
               printf,66,linenumber()+"With a ring size of "+strtrim(string(ring_spacing_new),2)+" we get "+strtrim(string(norings[0]),2)+"number of rings."
               printf,66,linenumber()+"Therefore we will reduce the ring size."
               close,66
            ENDIF
-           ring_spacing_new = ring_spacing_new/1.5
-           IF ring_spacing_new LT 0.5 then ring_spacing_new=0.5
-           norings[0]=round(norings[0]*ring_spacing/ring_spacing_new)
         ENDWHILE
      
         IF norings[0] LT 3. then begin
@@ -2945,7 +2946,9 @@ noconfig:
                                 ;We always want to smooth the surface
                                 ;brightnes. Added 16-06-2017
      tmppos=where('RADI' EQ VariablesWanted)
+     print,n_elements(SBRarr)
      SBRarr=fat_hanning(SBRarr,firstfitvalues[*,tmppos])
+     print,n_elements(SBRarr)
      SBRarr2=fat_hanning(SBRarr2,firstfitvalues[*,tmppos])
      
      tmppos=where('VROT' EQ VariablesWanted)
@@ -2957,6 +2960,7 @@ noconfig:
         printf,66,SBRarr,SBRarr2
         close,66
      endif
+     print,n_elements(SBRarr)
      sbr_check,tirificfirst, tirificfirstvars,sbrarr,sbrarr2,cutoff
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
@@ -3323,7 +3327,7 @@ noconfig:
 
                                 ;let's see if the model has the right size           
            IF secondtime OR doubled then norings=newrings else get_newringsv9,SBRarr,SBRarr2,cutoff,newrings
-                                ;cannot have newsize smaller than 3
+                                ;cannot have newsize smaller than 4
            if newrings LT 3 then begin
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
