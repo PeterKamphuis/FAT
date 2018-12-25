@@ -83,7 +83,7 @@ Function fat_hanning,SBRin,Radin,rings=rings
   ENDIF
   skipcatch:
   ;We will initially ignore the central point.
-  SBR=SBRin[1:n_elements(SBRin)-1]
+ 
                                 ;If we provide a number of valid rings
                                 ;then we want to set all rings outside
                                 ;that to 0.
@@ -91,17 +91,34 @@ Function fat_hanning,SBRin,Radin,rings=rings
 ;     IF rings[0] LT n_elements(SBR) then SBR[rings[0]-1:n_elements(SBR)-1]=0.
 ;  ENDIF
   
-  SBRout=dblarr(n_elements(SBR))
+
   case 1 of
-     n_elements(SBR) LE 3:begin
-        rad=radin[1:n_elements(SBRin)-1]
-        tmp=1
-        interpolate,SBR,RAD,newradii=radin,output=tmp
-        return,tmp
+     n_elements(SBRin) LE 4:begin
+        SBR = SBRin
+        SBR[0]=(SBRin[0]+SBRin[1]*2)/3.
+        
+        case  n_elements(SBRin) of
+           2:begin
+              SBR[1]=SBRin[1]
+           end
+           3:begin
+              SBR[1]=(SBRin[0]+SBRin[1]*2+SBRin[2]*2.)/5.
+              SBR[2]=(SBRin[1]+SBRin[2]*2)/3.
+           end
+           4:begin
+              SBR[1]=(SBRin[0]+SBRin[1]*2+SBRin[2]*2.)/5.
+              SBR[2]=(SBRin[1]+SBRin[2]+SBRin[3])/3.
+              SBR[3]=(SBRin[2]+SBRin[3]*2.)/3.
+           end
+           else:print,'This should never happen'
+        endcase
+        return,SBR
      end
-     n_elements(SBR) LT 15:points=5
+     n_elements(SBRin) LT 15:points=5
      else:points=7
   endcase
+  SBR=SBRin[1:n_elements(SBRin)-1]
+  SBRout=dblarr(n_elements(SBR))
   window=dblarr(points)
   xaxis=findgen(points)
   window=0.5*(1-Cos(!pi*2.*xaxis[*]/(points-1)))
