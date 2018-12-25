@@ -2862,7 +2862,7 @@ noconfig:
            string7=string7+' 3 3'
         endfor
      ENDELSE
-
+     string1 = STRMID(string1,1,STRLEN(string1)-1)
      
      SBRinput1=[string1,string2,string3,string4,string5,string6,string7]
                                 ;The inner rings should be fitted as one
