@@ -1,4 +1,4 @@
-Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATION_CHECK=installation_check,LVHIS_TEST=lvhistest,PAPER_TEST=papertest,RES_TEST=restest,AGC=agctest
+Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATION_CHECK=installation_check,LVHIS_TEST=lvhistest,PAPER_TEST=papertest,RES_TEST=restest,AGC=agctest,SMALL_AGC=smallagctest
 
 ;+
 ; NAME:
@@ -344,6 +344,10 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   if keyword_set(agctest) then begin
      spawn,'printenv FAT_TEST_DIR',fatmaintest
      configfile=fatmaintest+'/Better_Base/FAT_INPUT.config'
+  endif
+  if keyword_set(smallagctest) then begin
+     spawn,'printenv FAT_TEST_DIR',fatmaintest
+     configfile=fatmaintest+'/Small_Base/FAT_INPUT.config'
   endif
   IF n_elements(configfile) EQ 0 then begin
      configfile='FAT_INPUT.config'
@@ -774,6 +778,8 @@ noconfig:
      IF size(olog,/TYPE) EQ 7 then begin
         if catdirname[i] EQ './' then log=maindir+'/'+olog else $
            log=maindir+'/'+catdirname[i]+'/'+olog
+        prevlog=maindir+'/'+catdirname[i]+'/Prev_Log.txt'
+        spawn,'mv '+log+' '+prevlog
         IF not FILE_TEST(log) OR strupcase(newlog) EQ 'Y' then begin
            openw,66,log
            printf,66,linenumber()+"This file is a log of the fitting process run at "+systime()
@@ -1643,7 +1649,6 @@ noconfig:
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         printf,66,linenumber()+"With a ring size of "+strtrim(string(ring_spacing),2)+" we get "+strtrim(string(norings[0]),2)+" number of rings."
-        printf,66,linenumber()+"Therefore we will reduce the ring size."
         close,66
      ENDIF
      if norings[0] LE 3. then begin
@@ -1656,8 +1661,8 @@ noconfig:
            norings[0]=round(norings[0]*ring_spacing/ring_spacing_new)
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"With a ring size of "+strtrim(string(ring_spacing_new),2)+" we get "+strtrim(string(norings[0]),2)+"number of rings."
               printf,66,linenumber()+"Therefore we will reduce the ring size."
+              printf,66,linenumber()+"With a ring size of "+strtrim(string(ring_spacing_new),2)+" we get "+strtrim(string(norings[0]),2)+"number of rings."
               close,66
            ENDIF
         ENDWHILE
@@ -2958,9 +2963,7 @@ noconfig:
                                 ;We always want to smooth the surface
                                 ;brightnes. Added 16-06-2017
      tmppos=where('RADI' EQ VariablesWanted)
-     print,n_elements(SBRarr)
      SBRarr=fat_hanning(SBRarr,firstfitvalues[*,tmppos])
-     print,n_elements(SBRarr)
      SBRarr2=fat_hanning(SBRarr2,firstfitvalues[*,tmppos])
      
      tmppos=where('VROT' EQ VariablesWanted)
@@ -2972,7 +2975,6 @@ noconfig:
         printf,66,SBRarr,SBRarr2
         close,66
      endif
-     print,n_elements(SBRarr)
      sbr_check,tirificfirst, tirificfirstvars,sbrarr,sbrarr2,cutoff
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
@@ -4055,16 +4057,7 @@ noconfig:
         ENDIF ELSE BEGIN
            Writefittingvariables,tirificsecond,xposinput1,yposinput1,vsysinput1,$
                                  inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,$
-                                 sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1
-                                ; and we need to set th inialitation
-                                ; mode which should be 0 for small
-                                ; galaxies with a few variable and 3
-                                ; for large with many variables
-           varychange=16
-           req_ini_mode=ABS(varychange*norings[0]-ini_mode_factor)/ini_mode_factor
-           if req_ini_mode GT 3. then req_ini_mode=3
-           tmppos=where('INIMODE' EQ tirificfirstvars)
-           tirificfirst[tmppos]='INIMODE= '+strtrim(strcompress(string(fix(floor(req_ini_mode)))))
+                                 sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1         
         ENDELSE
      endelse
                                 ;Setting a bunch of fit tracking variables
