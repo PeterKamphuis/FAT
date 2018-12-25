@@ -1968,31 +1968,41 @@ noconfig:
                                 ;but that does mean we'd like
                                 ;to change SBR a lot so we set quite
                                 ;large starting steps
-     string1='SBR '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+' SBR_2 '+strtrim(strcompress(string(norings[0],format='(I3)')),1)
-     string2='1'
-     string3=strtrim(strcompress(string(cutoff[fix(norings[0])/2.],format='(E12.5)')),1)
-     string4='7.5E-5'
-     string5='2E-6'
-     string6='5E-5'
-     string7='1E-6'
-     string8='3'
-     string9='70'
+     string1=''
+     string2=''
+     string3=''
+     string4=''
+     string5=''
+     string6=''
+     string7=''
+   
                                 ;The minimum is based on the cutoff
                                 ;values and therefore we need to set
                                 ;every ring in the tirific file
-     for j=norings[0]-1,2,-1 do begin
-        string1=string1+','+'SBR '+strtrim(strcompress(string(j,format='(I3)')),1)+' SBR_2 '+strtrim(strcompress(string(j,format='(I3)')),1)
-        string2=string2+' 1' 
-        string3=string3+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/2.,format='(E12.5)')),1)
-        string4=string4+' 7.5E-5'
-        string5=string5+' 2E-6'
-        string6=string6+' 5E-5'
-        string7=string7+' 1E-6'
-        string8=string8+' 3'
-        string9=string9+' 70'
-     endfor
-     SBRinput1=[string1,string2,string3,string4,string5,string6,string7,string8,string9,string9]
-     SBRinput2=[' SBR 1 SBR_2 1',$
+     IF norings[0]*ring_spacing LT 7 then begin
+        for j=norings[0],3,-1 do begin
+           string1=string1+','+'SBR '+strtrim(strcompress(string(j,format='(I3)')),1)+' SBR_2 '+strtrim(strcompress(string(j,format='(I3)')),1)
+           string2=string2+' 1' 
+           string3=string3+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/2.,format='(E12.5)')),1)
+           string4=string4+' 7.5E-5'
+           string5=string5+' 2E-6'
+           string6=string6+' 5E-6'
+           string7=string7+' 3'         
+        endfor
+     ENDIF else begin
+        for j=norings[0],3,-1 do begin
+           string1=string1+','+'SBR '+strtrim(strcompress(string(j,format='(I3)')),1)+', SBR_2 '+strtrim(strcompress(string(j,format='(I3)')),1)
+           string2=string2+' 1 1' 
+           string3=string3+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/2.,format='(E12.5)')),1)+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/2.,format='(E12.5)')),1)
+           string4=string4+' 7.5E-5 7.5E-5'
+           string5=string5+' 2E-6 2E-6'
+           string6=string6+' 5E-6 5E-6'
+           string7=string7+' 3 3'
+        endfor
+     ENDELSE
+     string1 = STRMID(string1,1,STRLEN(string1)-1)
+     SBRinput1=[string1,string2,string3,string4,string5,string6,string7]
+     SBRinput2=[' SBR 1 2 SBR_2 1 2',$
                 strtrim(strcompress(string(peaksbr,format='(E12.5)'))),'0','1E-5','1E-6','5E-5','1E-6','3','70','70']
                                 ;Now setting some general values
      tmppos=where('INSET' EQ tirificfirstvars)
@@ -2814,32 +2824,50 @@ noconfig:
         minstep=strtrim(strcompress(string(cutoff[norings[0]-1]/2.,format='(E8.1)')),1)
      ENDELSE
 
-     satlevel=strtrim(strcompress(string(5.*double(startstep),format='(E8.1)')),1)
-     string1='SBR '+strtrim(strcompress(string(fix(norings[0]),format='(I3)')),1)+' SBR_2 '+strtrim(strcompress(string(fix(norings[0]),format='(I3)')),1)
-     string2='1'
-     string3=strtrim(strcompress(string(cutoff[fix(norings[0])]/2.,format='(E12.5)')),1)
-     string4=startstep
-     string5=minstep
-     string6=strtrim(strcompress(string(5.*double(startstep),format='(E8.1)')),1)
-     string7=minstep
-     string8='3'
-     string9='70'
+     satlevel=strtrim(strcompress(string(5.*double(startstep)/10.,format='(E8.1)')),1)
+  
+     string1=''
+     string2=''
+     string3=''
+     string4=''
+     string5=''
+     string6=''
+     string7=''
+   
+                                ;The minimum is based on the cutoff
+                                ;values and therefore we need to set
+                                ;every ring in the tirific file
+     IF norings[0]*ring_spacing LT 7 then begin
+        for j=norings[0],3,-1 do begin
+           string1=string1+','+'SBR '+strtrim(strcompress(string(j,format='(I3)')),1)+' SBR_2 '+strtrim(strcompress(string(j,format='(I3)')),1)
+           string2=string2+' 1'
+           IF doubled then $
+              string3=string3+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/4.,format='(E12.5)')),1) $
+              else string3=string3+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/2.,format='(E12.5)')),1)
+           string4=string4+' '+startstep
+           string5=string5+' '+minstep
+           string6=string6+' '+strtrim(strcompress(string(satlevel,format='(E8.1)')),1)
+           string7=string7+' 3'       
+        endfor
+     ENDIF else begin
+        for j=norings[0],3,-1 do begin
+           string1=string1+','+'SBR '+strtrim(strcompress(string(j,format='(I3)')),1)+', SBR_2 '+strtrim(strcompress(string(j,format='(I3)')),1)
+           string2=string2+' 1 1' 
+           IF doubled then $
+              string3=string3+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/4.,format='(E12.5)')),1)+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/4.,format='(E12.5)')),1) $
+              else string3=string3+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/2.,format='(E12.5)')),1)+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/2.,format='(E12.5)')),1)
+           string4=string4+' '+startstep+' '+startstep
+           string5=string5+' '+minstep+' '+minstep
+           string6=string6+' '+strtrim(strcompress(string(satlevel,format='(E8.1)')),1)+' '+strtrim(strcompress(string(satlevel,format='(E8.1)')),1)
+           string7=string7+' 3 3'
+        endfor
+     ENDELSE
 
-     for j=norings[0]-1,2,-1 do begin
-        string1=string1+','+'SBR '+strtrim(strcompress(string(j,format='(I3)')),1)+' SBR_2 '+strtrim(strcompress(string(j,format='(I3)')),1)
-        string2=string2+' 1' 
-        IF doubled then string3=string3+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/4.,format='(E12.5)')),1) else string3=string3+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/2.,format='(E12.5)')),1)
-        string4=string4+' '+startstep
-        string5=string5+' '+minstep
-        string6=string6+' '+strtrim(strcompress(string(5.*double(startstep),format='(E8.1)')),1)
-        string7=string7+' '+minstep
-        string8=string8+' 3'
-        string9=string9+' 70'
-     endfor
-     SBRinput1=[string1,string2,string3,string4,string5,string6,string7,string8,string9,string9]
+     
+     SBRinput1=[string1,string2,string3,string4,string5,string6,string7]
                                 ;The inner rings should be fitted as one
-     SBRinput2=[' SBR 1 SBR_2 1',$
-                strtrim(strcompress(string(ABS(SBRarr[1]),format='(E12.5)'))) ,'0','1E-5','1E-6','5E-5','1E-6','3','70','70']
+     SBRinput2=[' SBR 1 2 SBR_2 1 2',$
+                strtrim(strcompress(string(ABS(SBRarr[2])*2.,format='(E12.5)'))) ,'0','1E-5','1E-6','5E-6','3']
      smoothrotation=0.
      keepcenter=0.
      fixedcenter=0.

@@ -108,7 +108,7 @@ Pro writefittingvariables,inputarray,v1,v2,v3,v4,v5,v6,v7,v8,v9,v10,v11,v12,v13,
         strings[7]=strings[7]+strtrim(strcompress(string(limits[10])))+' '
      ENDIF
      ;New writing start here  strings=strarr(8)
-     IF n_elements(limits) EQ 7 then begin order= [Vary, Parmax,parmin,delstart,delend,mindelt,moderate,VARINDX]
+     IF n_elements(limits) EQ 7 then begin ;order= [Vary, Parmax,parmin,delstart,delend,mindelt,moderate,VARINDX]
         strings[0]=strings[0]+strtrim(strcompress(string(limits[0])))+','
         strings[1]=strings[1]+strtrim(strcompress(string(limits[1])))+' '
         strings[2]=strings[2]+strtrim(strcompress(string(limits[2])))+' '
