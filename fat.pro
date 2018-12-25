@@ -1433,13 +1433,15 @@ noconfig:
    
                                 ; If there is lt 1.5 beams in the cube we can stop here                     
     
-     IF norings LT 1.5/ring_spacing OR maxrings LE 4/ring_spacing then begin
+     IF norings LT 1.5/ring_spacing then begin
+     ;OR maxrings LE 2/ring_spacing then begin
         openu,1,outputcatalogue,/APPEND
         printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,"This Cube is too small"
         close,1
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+"We are aborting this fit as the located source is too small"
+           printf,66,linenumber()+"We have"+strtrim(string(norings[0]/ring_spacing))+" rings."
            close,66
         ENDIF
         print,linenumber()+"We are aborting this fit as the located source is too small"
@@ -3591,9 +3593,9 @@ noconfig:
      IF NOT smoothrotation then begin 
         smoothrotation=1
         VROTarr=firstfitvalues[*,7]
-        SBRarr=(firstfitvalues[*,2]+firstfitvalues[*,8])/2.
+        SBRarrcom=(firstfitvalues[*,2]+firstfitvalues[*,8])/2.
           ;We always want to smooth the surface brightnes. Added 16-06-2017
-        SBRarr=fat_hanning(SBRarr,firstfitvalues[*,9])
+        SBRarrcom=fat_hanning(SBRarrcom,firstfitvalues[*,9])
         VROTarr[0]=0.
         vmaxdev=MAX([30,7.5*channelwidth*(1.+vresolution)])
         verror=MAX([5.,channelwidth/2.*(1.+vresolution)/SQRT(sin(catinc[i]*!DtoR))])
@@ -3605,9 +3607,9 @@ noconfig:
            print,linenumber()+"We shall now smooth the rotation curve."
         ENDELSE
         IF VROTarr[1] LT 120. AND VROTarr[2] LT 120. then begin
-           revised_regularisation_rot,VROTarr,SBRarr, firstfitvalues[*,9],/REVERSE,fixedrings=norings[0]-fix(norings[0]*3./4.),difference=verror,cutoff=cutoff,arctan=0.,order=polorder,max_par=VROTmax,min_par=channelwidth,log=log 
+           revised_regularisation_rot,VROTarr,SBRarrcom, firstfitvalues[*,9],/REVERSE,fixedrings=norings[0]-fix(norings[0]*3./4.),difference=verror,cutoff=cutoff,arctan=0.,order=polorder,max_par=VROTmax,min_par=channelwidth,log=log 
         ENDIF ELSE Begin
-           revised_regularisation_rot,VROTarr,SBRarr, firstfitvalues[*,9],/REVERSE,fixedrings=norings[0]-fix(norings[0]*3./4.),difference=verror,cutoff=cutoff,arctan=0.,order=polorder,max_par=VROTmax,min_par=channelwidth,/NOCENTRAL,log=log 
+           revised_regularisation_rot,VROTarr,SBRarrcom, firstfitvalues[*,9],/REVERSE,fixedrings=norings[0]-fix(norings[0]*3./4.),difference=verror,cutoff=cutoff,arctan=0.,order=polorder,max_par=VROTmax,min_par=channelwidth,/NOCENTRAL,log=log 
         ENDELSE
         tmp0check=WHERE(VROTarr LT 0)
         IF tmp0check[0] NE -1 then VROTarr[tmp0check]=3.*channelwidth
@@ -3615,6 +3617,10 @@ noconfig:
         tirificfirst[tmppos]='VROT= 0. '+STRJOIN(strtrim(string(VROTarr[1:n_elements(VROTarr[*])-1]),2),' ')
         tmppos=where('VROT_2' EQ tirificfirstvars)
         tirificfirst[tmppos]='VROT_2= 0. '+STRJOIN(strtrim(string(VROTarr[1:n_elements(VROTarr[*])-1]),2),' ')
+        tmppos=where('SBR' EQ tirificfirstvars)
+        tirificfirst[tmppos]='SBR= '+STRJOIN(strtrim(string(SBRarr[1:n_elements(SBRarr[*])-1]),2),' ')
+        tmppos=where('SBR_2' EQ tirificfirstvars)
+        tirificfirst[tmppos]='SBR_2= '+STRJOIN(strtrim(string(SBRarr2[1:n_elements(SBRarr2[*])-1]),2),' ')
         vrotinputoriginal=vrotinput1
         VROTinput1=['VROT 2:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                     ' VROT_2 2:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
