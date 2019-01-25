@@ -3787,7 +3787,7 @@ noconfig:
      VROTarr[*]=firstfitvalues[*,tmppos]
      tmppos=where('SDIS' EQ firstfitvaluesnames)
      SDISarr=dblarr(n_elements(firstfitvalues[*,tmppos]))
-     tmppos=where('SDIS_2' EQ firstfitvaluesnames)
+     tmppos=where('SBR' EQ firstfitvaluesnames)
      SBRarr=firstfitvalues[*,tmppos]
      tmppos=where('INCL' EQ firstfitvaluesnames)
      INCLang=firstfitvalues[*,tmppos]
