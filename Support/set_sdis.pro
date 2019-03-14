@@ -72,7 +72,9 @@ Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidt
         IF velconstused GT norings[0]-ceil(norings[0]/5.) then velconstused=norings[0]-ceil(norings[0]/5.)
      Endelse
   ENDIF
-  if n_elements(start) EQ 0 then start=3
+  if n_elements(start) EQ 0 then begin
+     start=floor(norings[0]/4.)
+  endif
   IF start LT 4 then start=4
   IF n_elements(centralexclude) EQ 0 then centralexclude=0 
                                 ;If we want to fit everything as slope
@@ -81,6 +83,7 @@ Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidt
   IF velconstused LT 5 then velconstused=5
   IF velconstused LT start+1 then velconstused=start+1
   avinner=0.
+ 
                                 ;set the fitting parameters for the rotation curve
   case (1) of
                                 ;If a small galaxy we fit the
@@ -113,14 +116,14 @@ Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidt
            else:begin
            end
         endcase
-        string1='!SDIS '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+$
+        string1='SDIS '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+$
                 ':'+strtrim(strcompress(string(norings[0]-2,format='(I3)')),1)+$
                 ' SDIS_2 '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+$
                 ':'+strtrim(strcompress(string(norings[0]-2,format='(I3)')),1)+$
                 ',!SDIS '+strtrim(strcompress(string(norings[0]-3,format='(I3)')),1)+':'$
-                +strtrim(strcompress(string(start,format='(I3)')),1)+' SDIS_2 '+$
+                +strtrim(strcompress(string(start+1,format='(I3)')),1)+' SDIS_2 '+$
                 strtrim(strcompress(string(norings[0]-3,format='(I3)')),1)+$
-                ':'+strtrim(strcompress(string(start,format='(I3)')),1)+', SDIS 1:3 SDIS_2 1:3'
+                ':'+strtrim(strcompress(string(start+1,format='(I3)')),1)+', SDIS 1:'+strtrim(strcompress(string(start,format='(I3)')),1)+' SDIS_2 1:'+strtrim(strcompress(string(start,format='(I3)')),1)
         string2=string(SDISmax)+' '+string(SDISmax)+' '+string(SDISmax)
         string3=string(SDISmin)+' '+string(SDISmin)+' '+string(avinner)
         string4=string(1.5*channelwidth)+' '+string(1.5*channelwidth)+' '+string(1.5*channelwidth)
@@ -147,14 +150,14 @@ Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidt
            end
         endcase
      
-        string1='!SDIS '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+':'+$
+        string1='SDIS '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+':'+$
                 strtrim(strcompress(string(velconstused,format='(I3)')),1)+' SDIS_2 '$
                 +strtrim(strcompress(string(norings[0],format='(I3)')),1)+':'$
                 +strtrim(strcompress(string(velconstused,format='(I3)')),1)+$
                 ', !SDIS '+strtrim(strcompress(string(velconstused-1,format='(I3)')),1)+$
-                ':'+strtrim(strcompress(string(start,format='(I3)')),1)+' SDIS_2 '$
+                ':'+strtrim(strcompress(string(start+1,format='(I3)')),1)+' SDIS_2 '$
                 +strtrim(strcompress(string(velconstused-1,format='(I3)')),1)+$
-                ':'+strtrim(strcompress(string(start,format='(I3)')),1)+', SDIS 1:3 SDIS_2 1:3'
+                ':'+strtrim(strcompress(string(start+1,format='(I3)')),1)+', SDIS 1:'+strtrim(strcompress(string(start,format='(I3)')),1)+' SDIS_2 1:'+strtrim(strcompress(string(start,format='(I3)')),1)
         string2=string(SDISmax)+' '+string(SDISmax)+' '+string(SDISmax)
         string3=string(avinner)+' '+string(SDISmin)+' '+string(SDISmin)
         string4=string(1.5*channelwidth)+' '+string(1.5*channelwidth)+' '+string(1.5*channelwidth)
@@ -170,5 +173,5 @@ Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidt
      end
   endcase
                                 ;make an array
-  SDISinput1=[string1,string2,string3,string4,string5,string6,string7,string8,string9,string9,string10]   
+  SDISinput1=[string1,string2,string3,string4,string5,string6,string7,string8,string9,string9]   
 end

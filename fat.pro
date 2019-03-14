@@ -464,6 +464,12 @@ tryconfigagain:
            'finishafter':finishafter=double(tmp[1])
            ;Parameter to set the size of the rings (the default is 1)
            'ring_size': ring_spacing_in = double(tmp[1])
+                                ;Parameter to fix the inclination to
+                                ;being flat (the default is 1, not fixed)
+           'fix_incl': fix_incl = double(tmp[1])
+                                ;Parameter to fix the PA to
+                                ;being flat (the default is 1, not fixed)
+           'fix_pa': fix_pa = double(tmp[1])
                                 ;Input catalogue for the pipeline
            'catalogue':catalogue=tmp[1]
                                 ;Directory with all the directories of the galaxies to be fitted
@@ -590,6 +596,8 @@ noconfig:
   IF size(newresult,/TYPE) EQ 0 then newresult='y'
   IF n_elements(vresolution) EQ 0 then vresolution=1.
   IF n_elements(ring_spacing_in) EQ 0. then ring_spacing_in = 1.
+  IF n_elements(fix_incl) EQ 0. then fix_incl = 1.
+  IF n_elements(fix_pa) EQ 0. then fix_pa = 1.
   IF n_elements(optpixelbeam) EQ 0 then optpixelbeam=4.
   IF n_elements(allnewin) EQ 0 then allnewin=1
   IF n_elements(bookkeeping) EQ 0 then bookkeeping=3
@@ -1653,10 +1661,10 @@ noconfig:
         printf,66,linenumber()+"With a ring size of "+strtrim(string(ring_spacing),2)+" we get "+strtrim(string(norings[0]),2)+" number of rings."
         close,66
      ENDIF
-     if norings[0] LE 3. then begin
+     if norings[0] LE 4. then begin
         ring_spacing_new = ring_spacing
         ;we always want at least 3 beams in the model
-        WHILE ring_spacing_new GT 0.75 AND norings[0] LE 3. do begin
+        WHILE ring_spacing_new GT 0.75 AND norings[0] LE 4. do begin
  
            ring_spacing_new = ring_spacing_new/1.5
            IF ring_spacing_new LT 0.5 then ring_spacing_new=0.5
@@ -4028,7 +4036,8 @@ noconfig:
                                 ;with half beams than we let the rings
                                 ;beyond 4 free                          
      IF norings[0] GT 4 AND finishafter NE 1.1 then begin
-                                ;And some different fitting parameters for the free rings
+                                ;And some different fitting parameters
+                                ;for the free rings
         INCLinput2[5]='0.5'
         INCLinput2[3]='1.0'
         INCLinput3[5]='0.5'
@@ -4039,6 +4048,10 @@ noconfig:
         PAinput3[3]='0.5'
                                                           ;update INCL and PA
         set_warp_slopev3,SBRarr,SBRarr2,cutoff,INCLinput2,PAinput2,INCLinput3,PAinput3,norings,log=log,innerfix=innerfix
+        if fix_incl EQ 0. then INCLinput1[0]='INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+                                             ' INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
+        if fix_pa EQ 0. then PAinput1[0]='PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+                                         ' PA_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
      endif else begin
                                 ;Otherwise we just fit  a single flat disk
         INCLinput1[0]='INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
@@ -4064,17 +4077,31 @@ noconfig:
         vsysinput1=[ ' VSYS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                      ' VSYS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),strtrim(strcompress(string(catvsys[i]+100.)),1),$
                      strtrim(strcompress(string(catvsys[i]-100.)),1),'0.5','0.01','2','0.5','3','70','70']
-        IF norings[0] LE 4 OR finishafter EQ 1.1 then begin
-           Writefittingvariables,tirificsecond,inclinput1,painput1,vrotinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
-                                 xposinput1,yposinput1,vsysinput1,sdisinput1
-        ENDIF ELSE BEGIN
-           Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+        case 1 of
+           norings[0] LE 4 OR finishafter EQ 1.1 OR (fix_incl EQ 0. and fix_pa EQ 0.): begin
+              Writefittingvariables,tirificsecond,inclinput1,painput1,vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                    xposinput1,yposinput1,vsysinput1
+           end
+           fix_incl EQ 0. and fix_pa EQ 1.: begin
+              Writefittingvariables,tirificsecond,inclinput1,painput1,painput2,painput3,$
+                                    vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                    xposinput1,yposinput1,vsysinput1
+           end
+           fix_incl EQ 1. and fix_pa EQ 0.: begin
+              Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,$
                                  vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
-                                 xposinput1,yposinput1,vsysinput1
-        ENDELSE
+                                    xposinput1,yposinput1,vsysinput1
+           end
+           else: begin
+              Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                    vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                    xposinput1,yposinput1,vsysinput1
+           end
+        endcase
+       
      endif else begin
                                 ;Else we allow more variation in the
-                                ;center
+                                ;center and fit them first
         xposinput1=[ ' XPOS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                       ' XPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),'360','0', +$
                       strtrim(string(pixelsizeRA*3.)),strtrim(string(pixelsizeRA/10.)),+$
@@ -4085,14 +4112,24 @@ noconfig:
                      strtrim(string(pixelsizeDEC)),strtrim(string(pixelsizeDEC/10.)),'3','70','70']
         vsysinput1=[ ' VSYS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                      ' VSYS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),strtrim(strcompress(string(catvsys[i]+100.)),1),strtrim(strcompress(string(catvsys[i]-100.)),1),'2','0.5','2','0.5','3','70','70']
-        IF norings[0] LE 4 or finishafter EQ 1.1 then begin
-           Writefittingvariables,tirificsecond,xposinput1,yposinput1,vsysinput1,inclinput1,painput1,vrotinput1,$
-                                 sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,sdisinput1
-        ENDIF ELSE BEGIN
-           Writefittingvariables,tirificsecond,xposinput1,yposinput1,vsysinput1,$
-                                 inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,$
-                                 sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1         
-        ENDELSE
+        case 1 of
+           norings[0] LE 4 OR finishafter EQ 1.1 OR (fix_incl EQ 0. and fix_pa EQ 0.): begin
+              Writefittingvariables,tirificsecond, xposinput1,yposinput1,vsysinput1,inclinput1,painput1,vrotinput1,sdisinput1,$
+              sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1
+           end
+           fix_incl EQ 0. and fix_pa EQ 1.: begin
+              Writefittingvariables,tirificsecond, xposinput1,yposinput1,vsysinput1,inclinput1,painput1,painput2,painput3,$
+                                    vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1
+           end
+           fix_incl EQ 1. and fix_pa EQ 0.: begin
+              Writefittingvariables,tirificsecond, xposinput1,yposinput1,vsysinput1,inclinput1,inclinput2,inclinput3,painput1,$
+                                    vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1
+           end
+           else: begin
+              Writefittingvariables,tirificsecond, xposinput1,yposinput1,vsysinput1,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                    vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1
+           end
+        endcase
      endelse
                                 ;Setting a bunch of fit tracking variables
      forcedring=0.
@@ -4512,6 +4549,10 @@ noconfig:
         PAinput1[0]='PA 1:'+strtrim(strcompress(string(innerfix,format='(F7.4)')),1)+' PA_2 1:'+strtrim(strcompress(string(innerfix,format='(F7.4)')),1)
                                 ;update INCL and PA
         set_warp_slopev3,SBRarr,SBRarr2,cutoff,INCLinput2,PAinput2,INCLinput3,PAinput3,norings,log=log,innerfix=innerfix,sloped=slopedrings
+        if fix_incl EQ 0. then   INCLinput1[0]='INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+                                               ' INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
+        if fix_pa EQ 0. then   PAinput1[0]='PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+                                           ' PA_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
      ENDELSE
 
                                 ;additionallly we should updat the min
@@ -4530,7 +4571,7 @@ noconfig:
      IF double(INCLinput1[1]) LT 90. OR double(INCLinput2[1]) LT 90. OR  double(INCLinput3[1]) LT 90.  AND norings[0] GT 4 then begin
         ;tmp=WHERE(INCLang GE (double(INCLinput2[1])-double(INCLinput2[3])))
         ;tmp2=WHERE(INCLang2 GE (double(INCLinput3[1])-double(INCLinput3[3])))
-        IF norings[0] LE 4 or finishafter EQ 1.1 then begin
+        IF finishafter EQ 1.1 or fix_incl EQ 0. then begin
            tmp=WHERE(INCLang GE (double(INCLinput1[1])-double(INCLinput1[3])))
            tmp2=WHERE(INCLang2 GE (double(INCLinput1[1])-double(INCLinput1[3])))
         ENDIF ELSE BEGIN
@@ -4540,9 +4581,11 @@ noconfig:
         IF tmp[0] EQ n_elements(INCLang)-2 then tmp=[-1]
         IF tmp2[0] EQ n_elements(INCLang2)-2 then tmp2=[-1]
         case 1 of
-           (n_elements(tmp) GE 2 OR n_elements(tmp) GE 2) AND  (norings[0] LE 4 or finishafter EQ 1.1): begin
+           (n_elements(tmp) GE 2 OR n_elements(tmp) GE 2) AND  (finishafter EQ 1.1 or fix_incl EQ 0.): begin
               IF INCLinput1[1] LT 90. then begin
                  INCLinput1[1]=strtrim(strcompress(string(double(INCLinput1[1]+5.))),2)
+                 INCLinput2[1]=INCLinput1[1]
+                 INCLinput3[1]=INCLinput1[1]
                  boundaryadjustment=1
               ENDIF else  boundaryadjustment=0
            end
@@ -4560,13 +4603,6 @@ noconfig:
            end
            else:boundaryadjustment =0
         endcase     
-;        IF n_elements(tmp) GE 2 OR n_elements(tmp2) GE 2 then begin
- ;          boundaryadjustment=1
-  ;         IF double(INCLinput1[1]+5.) LT 90 then INCLinput1[1]=strtrim(strcompress(string(double(INCLinput1[1]+5.))),2) else INCLinput1[1]='90.'
-   ;        IF double(INCLinput2[1]+5.) LT 90. then INCLinput2[1]=strtrim(strcompress(string(double(INCLinput2[1]+5.))),2) else INCLinput2[1]='90.'
-                                ;       IF double(INCLinput3[1]+5.) LT
-                                ;       90. then
-                                ;       INCLinput3[1]=strtrim(strcompress(string(double(INCLinput3[1]+5.))),2) else INCLinput3[1]='90.'
 
         IF boundaryadjustment EQ 1 then begin
            IF tmp[0] EQ -1 then tmp[0]=n_elements(INCLang)
@@ -4575,8 +4611,8 @@ noconfig:
            INCLrings++
         ENDIF
      ENDIF
-     IF double(INCLinput1[2]) GT 5 OR double(INCLinput2[2]) GT 5 OR double(INCLinput3[2]) GT 5 then begin
-        IF norings[0] LE 4 or finishafter EQ 1.1 then begin
+     IF double(INCLinput1[2]) GT 5 OR double(INCLinput2[2]) GT 5 OR double(INCLinput3[2]) GT 5 AND norings[0] GT 4 then begin
+        IF finishafter EQ 1.1 or fix_incl EQ 0. then begin
            tmp=WHERE(INCLang LE (double(INCLinput1[2])+double(INCLinput1[3])))
            tmp2=WHERE(INCLang2 LE (double(INCLinput1[2])+double(INCLinput1[3])))
         ENDIF ELSE BEGIN
@@ -4587,9 +4623,11 @@ noconfig:
         IF tmp[0] EQ n_elements(INCLang)-2 then tmp=[-1]
         IF tmp2[0] EQ n_elements(INCLang2)-2 then tmp2=[-1]
         case 1 of
-           (n_elements(tmp) GE 2 OR n_elements(tmp) GE 2) AND  (norings[0] LE 4 or finishafter EQ 1.1): begin
+           (n_elements(tmp) GE 2 OR n_elements(tmp) GE 2) AND  (finishafter EQ 1.1 or fix_incl EQ 0.): begin
               IF INCLinput1[2] GT 5. then begin
                  INCLinput1[2]=strtrim(strcompress(string(double(INCLinput1[2]-5.))),2)
+                 INCLinput2[2]=INCLinput1[2]
+                 INCLinput3[2]=INCLinput1[2]
                  boundaryadjustment=1
               ENDIF else  boundaryadjustment=0
            end
@@ -4608,13 +4646,7 @@ noconfig:
            else:boundaryadjustment =0
         endcase    
         
-       ; IF n_elements(tmp) GE 2 OR n_elements(tmp2) GE 2 then begin
-       ;    boundaryadjustment=1
-       ;    IF double(INCLinput1[2]-5.) GT 5. then INCLinput1[2]=strtrim(strcompress(string(double(INCLinput1[2]-5.))),2) else INCLinput1[2]='5.'
-       ;    IF double(INCLinput2[2]-5.) GT 5. then INCLinput2[2]=strtrim(strcompress(string(double(INCLinput2[2]-5.))),2) else INCLinput2[2]='5.'
-                                ;    IF double(INCLinput3[2]-5.) GT
-                                ;    5. then
-                                ;    INCLinput3[2]=strtrim(strcompress(string(double(INCLinput3[2]-5.))),2) else INCLinput3[2]='5.'
+   
         IF boundaryadjustment EQ 1 then begin
            IF tmp[0] EQ -1 then tmp[0]=n_elements(INCLang)
            IF tmp2[0] EQ -1 then tmp2[0]=n_elements(INCLang)
@@ -4623,7 +4655,7 @@ noconfig:
         ENDIF
      ENDIF
      IF ABS(double(PAinput1[1])-double(PAinput1[2])) LT 400 OR ABS(double(PAinput2[1])-double(PAinput2[2])) LT 400 OR  ABS(double(PAinput3[1])-double(PAinput3[2])) LT 400 AND norings[0] GT 4 then begin
-        IF norings[0] LE 4 or finishafter EQ 1.1 then begin
+        IF finishafter EQ 1.1 or fix_pa EQ 0. then begin
            tmp=WHERE(PAang LE (double(PAinput1[2])-double(PAinput1[3])))
            tmp2=WHERE(PAang2 LE (double(PAinput1[2])-double(PAinput1[3])))
         ENDIF ELSE BEGIN
@@ -4634,9 +4666,11 @@ noconfig:
         IF tmp[0] EQ n_elements(PAang)-2 then tmp=[-1]
         IF tmp2[0] EQ n_elements(PAang2)-2 then tmp2=[-1]
         case 1 of
-           (n_elements(tmp) GE 2 OR n_elements(tmp) GE 2) AND  (norings[0] LE 4 or finishafter EQ 1.1): begin
+           (n_elements(tmp) GE 2 OR n_elements(tmp) GE 2) AND  (finishafter EQ 1.1 or fix_pa EQ 0.): begin
               IF PAinput1[1] LT 400 then begin
                  PAinput1[1]=strtrim(strcompress(string(double(PAinput1[1]+10.))),2)
+                 PAinput2[1]=PAinput1[1]
+                 PAinput3[1]=PAinput1[1]
                  boundaryadjustment=1
               ENDIF else  boundaryadjustment=0
            end
@@ -4654,15 +4688,8 @@ noconfig:
            end
            else:boundaryadjustment =0
         endcase
-     ;      OR n_elements(tmp2) GE 2 then begin
-        
-     ;      boundaryadjustment=1
-     ;      IF PAinput1[1] LT 400 then PAinput1[1]=strtrim(strcompress(string(double(PAinput1[1]+10.))),2) else  boundaryadjustment=0
-     ;      IF PAinput2[1] LT 400 then PAinput2[1]=strtrim(strcompress(string(double(PAinput2[1]+10.))),2) else  boundaryadjustment=0
-     ;      IF PAinput3[1] LT 400 then PAinput3[1]=strtrim(strcompress(string(double(PAinput3[1]+10.))),2) else  boundaryadjustment=0
-      ;     PArings++
-        ;ENDIF
-        IF norings[0] LE 4 or finishafter EQ 1.1 then begin
+
+        IF finishafter EQ 1.1 or fix_pa EQ 0. then begin
            tmp=WHERE(PAang LE (double(PAinput1[2])+double(PAinput1[3])))
            tmp2=WHERE(PAang2 LE (double(PAinput1[2])+double(PAinput1[3])))
         ENDIF ELSE BEGIN
@@ -4672,9 +4699,11 @@ noconfig:
         IF tmp[0] EQ n_elements(PAang)-2 then tmp=[-1]
         IF tmp2[0] EQ n_elements(PAang2)-2 then tmp2=[-1]
         case 1 of
-           (n_elements(tmp) GE 2 OR n_elements(tmp) GE 2) AND  (norings[0] LE 4 or finishafter EQ 1.1): begin
+           (n_elements(tmp) GE 2 OR n_elements(tmp) GE 2) AND  (finishafter EQ 1.1 or fix_pa EQ 0.): begin
               IF PAinput1[2] GT -40 then begin
                  PAinput1[2]=strtrim(strcompress(string(double(PAinput1[2]-10.))),2)
+                 PAinput2[2]=PAinput1[2]
+                 PAinput3[2]=PAinput1[2]
                  boundaryadjustment=1
               ENDIF else  boundaryadjustment=0
            end
@@ -4692,16 +4721,6 @@ noconfig:
            end
            else:boundaryadjustment =0
         endcase
-;        IF n_elements(tmp) GE 2 OR n_elements(tmp2) GE 2 then begin
-;           boundaryadjustment=1
-;           IF PAinput1[2] GT -40 then PAinput1[2]=strtrim(strcompress(string(double(PAinput1[2]-10.))),2) else  boundaryadjustment=0
-;           IF PAinput2[1] GT -40 then PAinput2[2]=strtrim(strcompress(string(double(PAinput2[2]-10.))),2) else  boundaryadjustment=0
-;           IF PAinput3[1] GT -40 then PAinput3[2]=strtrim(strcompress(string(double(PAinput3[2]-10.))),2) else  boundaryadjustment=0
-;           IF tmp[0] EQ -1 then tmp[0]=n_elements(INCLang)
-;           IF tmp2[0] EQ -1 then tmp2[0]=n_elements(INCLang)
-;           tmp=MAX([tmp,tmp2,lastreliablerings],min=lastreliablerings)
-;           PArings++
-;        ENDIF
         if boundaryadjustment EQ 1 then PArings++
      ENDIF
                                 ;If we determined that the boundaries should be updated than we need
@@ -4762,7 +4781,7 @@ noconfig:
            ENDELSE
             comin=[[PAang2],[INCLang2]]
            errors=[[0.],[0.]]
-           revised_regularisation_com,comin,SBRarr2or,RADarr,fixedrings=3,difference=[1.,4.*exp(-catinc[i]^2.5/10^3.5)+1.5],cutoff=cutoff,arctan=1,order=polorder,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[1./4.,1.],error=errors ,gdlidl=gdlidl,log=log 
+           revised_regularisation_com,comin,SBRarr2or,RADarr,fixedrings=3,difference=[1.,4.*exp(-catinc[i]^2.5/10^3.5)+1.5],cutoff=cutoff,arctan=1,order=polorder,max_par=[PAinput3[1],INCLinput3[1]],min_par=[PAinput3[2],INCLinput3[2]],accuracy=[1./4.,1.],error=errors ,gdlidl=gdlidl,log=log 
            PAang2=comin[*,0]
            INCLang2=comin[*,1]
            sigmapa2=errors[*,0]
@@ -4813,20 +4832,37 @@ noconfig:
         tmppos=where('SBR_2' EQ tirificsecondvars)
         tirificsecond[tmppos]=stringSBR
                                 ;Write the fitting variables to files
-        IF norings[0] LE 4 or finishafter EQ 1.1 then begin
-           Writefittingvariables,tirificsecond,inclinput1,painput1,vrotinput1,$
-                                 sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,sdisinput1
-        ENDIF ELSE BEGIN
-           Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,$
-                                 sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1
-        ENDELSE
+        case 1 of
+           norings[0] LE 4 OR finishafter EQ 1.1 OR (fix_incl EQ 0. and fix_pa EQ 0.): begin
+              Writefittingvariables,tirificsecond,inclinput1,painput1,vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                    xposinput1,yposinput1,vsysinput1
+           end
+           fix_incl EQ 0. and fix_pa EQ 1.: begin
+              Writefittingvariables,tirificsecond,inclinput1,painput1,painput2,painput3,$
+                                    vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                    xposinput1,yposinput1,vsysinput1
+           end
+           fix_incl EQ 1. and fix_pa EQ 0.: begin
+              Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,$
+                                 vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                    xposinput1,yposinput1,vsysinput1
+           end
+           else: begin
+              Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                    vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                    xposinput1,yposinput1,vsysinput1
+           end
+        endcase
+       
+    
+       
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+"We changed the boundaries. These are the new boundaries: "
-           printf,66,linenumber()+"PA upper limits="+PAinput1[1]+" "+PAinput2[1]+" "+PAinput2[1]+" "
-           printf,66,linenumber()+"PA lower limits="+PAinput1[2]+" "+PAinput2[2]+" "+PAinput2[2]+" "
-           printf,66,linenumber()+"INCL upper limits="+INCLinput1[1]+" "+INCLinput2[1]+" "+INCLinput2[1]+" "
-           printf,66,linenumber()+"INCL lower limits="+INCLinput1[2]+" "+INCLinput2[2]+" "+INCLinput2[2]+" "
+           printf,66,linenumber()+"PA upper limits="+PAinput1[1]+" "+PAinput2[1]+" "+PAinput3[1]+" "
+           printf,66,linenumber()+"PA lower limits="+PAinput1[2]+" "+PAinput2[2]+" "+PAinput3[2]+" "
+           printf,66,linenumber()+"INCL upper limits="+INCLinput1[1]+" "+INCLinput2[1]+" "+INCLinput3[1]+" "
+           printf,66,linenumber()+"INCL lower limits="+INCLinput1[2]+" "+INCLinput2[2]+" "+INCLinput3[2]+" "
            
            Close,66
         ENDIF
@@ -4887,12 +4923,13 @@ noconfig:
            printf,66,linenumber()+"The inner" +string(fixedrings)+" rings are fixed."
            Close,66
         ENDIF
-        IF keyword_set(debug) then print,linenumber()+'making sure it is here before' 
-        revised_regularisation_com,comin,SBRarror,RADarr,fixedrings=fixedrings,difference=[padiv,4.*exp(-catinc[i]^2.5/10^3.5)+1.5],cutoff=cutoff,arctan=prefunc,order=polorder1,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[accuracy/4.,accuracy],error=errors ,gdlidl=gdlidl,log=log,sloped=prevslopedrings[0]
-           
+        IF keyword_set(debug) then print,linenumber()+'making sure it is here before'
+        if fix_pa EQ 1 or fix_incl EQ 1 then begin
+           revised_regularisation_com,comin,SBRarror,RADarr,fixedrings=fixedrings,difference=[padiv,4.*exp(-catinc[i]^2.5/10^3.5)+1.5],cutoff=cutoff,arctan=prefunc,order=polorder1,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],accuracy=[accuracy/4.,accuracy],error=errors ,gdlidl=gdlidl,log=log,sloped=prevslopedrings[0]
+        ENDIF
         IF keyword_set(debug) then print,linenumber()+'making sure it is here after'                    
-        PAang=comin[*,0]
-        INCLang=comin[*,1]
+        IF fix_pa EQ 1 then PAang=comin[*,0]
+        IF fix_incl EQ 1 then INCLang=comin[*,1]
         sigmapa1=errors[*,0]
         sigmaincl1=errors[*,1]
         
@@ -4912,10 +4949,11 @@ noconfig:
            printf,66,linenumber()+"The inner" +string(fixedrings)+" rings are fixed."
            Close,66
         ENDIF
-        revised_regularisation_com,comin,SBRarr2or,RADarr,fixedrings=fixedrings,difference=[padiv,4.*exp(-catinc[i]^2.5/10^3.5)+1.5],cutoff=cutoff,arctan=prefunc,order=polorder2,max_par=[PAinput3[1],INCLinput3[1]],min_par=[PAinput3[2],INCLinput3[2]],accuracy=[accuracy/4.,accuracy],error=errors ,gdlidl=gdlidl,log=log,sloped=prevslopedrings[1] 
-                            
-        PAang2=comin[*,0]
-        INCLang2=comin[*,1]
+        if fix_pa EQ 1 or fix_incl EQ 1 then begin
+           revised_regularisation_com,comin,SBRarr2or,RADarr,fixedrings=fixedrings,difference=[padiv,4.*exp(-catinc[i]^2.5/10^3.5)+1.5],cutoff=cutoff,arctan=prefunc,order=polorder2,max_par=[PAinput3[1],INCLinput3[1]],min_par=[PAinput3[2],INCLinput3[2]],accuracy=[accuracy/4.,accuracy],error=errors ,gdlidl=gdlidl,log=log,sloped=prevslopedrings[1] 
+        endif                 
+        if fix_pa EQ 1 then PAang2=comin[*,0]
+        if fix_incl EQ 1 then INCLang2=comin[*,1]
         sigmapa2=errors[*,0]
         sigmaincl2=errors[*,1]
      
@@ -4937,13 +4975,7 @@ noconfig:
      stringPA='PA_2= '+STRJOIN(string(PAang2),' ')
      tmppos=where('PA_2' EQ tirificsecondvars)
      tirificsecond[tmppos]=stringPA
-                                ;inclination
-                                ;Smoothing INCL_1
-   ;  polorder1=0.
   
-                                ;Smoothing INCL_2
-   ;  polorder2=0.
-    
                                 ;making sure that the rings that are
                                 ;fixed are the average of both sides
                                 ;and the same  
@@ -5356,9 +5388,7 @@ noconfig:
                             ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
               vsysinput1[0]=' VSYS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                             ' VSYS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
-              Writefittingvariables,tirificsecond,inclinput1,painput1,$
-                                    vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
-                                    xposinput1,yposinput1,vsysinput1             
+                 
            ENDIF ELSE BEGIN
                                 ;Need to update the arrays otherwise might use
                                 ;them later with wrong ring numbers
@@ -5366,6 +5396,10 @@ noconfig:
               PAinput1[0]='PA 1:'+strtrim(strcompress(string(innerfix,format='(F7.4)')),1)+' PA_2 1:'+strtrim(strcompress(string(innerfix,format='(F7.4)')),1)
                                 ;update INCL and PA
               set_warp_slopev3,SBRarr,SBRarr2,cutoff,INCLinput2,PAinput2,INCLinput3,PAinput3,norings,log=log,innerfix=innerfix,sloped=slopedrings
+              if fix_pa EQ 0. then   PAinput1[0]='PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+                                                 ' PA_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
+              if fix_incl EQ 0. then INCLinput1[0]='INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
+                                                   ' INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
                                 ;And the central parameters
               z0input1[0]='Z0 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                           ' Z0_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
@@ -5375,16 +5409,54 @@ noconfig:
                             ' YPOS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
               vsysinput1[0]=' VSYS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                             ' VSYS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
-             IF norings[0] LE 6 then begin
-                 Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
-                                       vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
-                                       xposinput1,yposinput1,vsysinput1
-              ENDIF ELSE BEGIN
-                 Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
-                                       vrotinput1,sdisinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1,$
-                                       xposinput1,yposinput1,vsysinput1
-              ENDELSE              
+             
            ENDELSE
+           case 1 of
+              norings[0] LE 4 OR finishafter EQ 1.1 OR (fix_incl EQ 0. and fix_pa EQ 0.): begin
+                 Writefittingvariables,tirificsecond,inclinput1,painput1,$
+                                       vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                       xposinput1,yposinput1,vsysinput1        
+                 
+              end
+              fix_incl EQ 0. and fix_pa EQ 1.: begin
+                 IF norings[0] LE 6 then begin
+                    Writefittingvariables,tirificsecond,inclinput1,painput1,painput2,painput3,$
+                                          vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                          xposinput1,yposinput1,vsysinput1
+                 ENDIF ELSE BEGIN
+                    Writefittingvariables,tirificsecond,inclinput1,painput1,painput2,painput3,$
+                                          vrotinput1,sdisinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                          xposinput1,yposinput1,vsysinput1
+                 ENDELSE
+              end
+              fix_incl EQ 1. and fix_pa EQ 0.: begin
+                 IF norings[0] LE 6 then begin
+                    Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                          vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                          xposinput1,yposinput1,vsysinput1
+                 ENDIF ELSE BEGIN
+                    Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                          vrotinput1,sdisinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                          xposinput1,yposinput1,vsysinput1
+                 ENDELSE    
+           
+              end
+              else: begin
+                 IF norings[0] LE 6 then begin
+                    Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                          vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                          xposinput1,yposinput1,vsysinput1
+                 ENDIF ELSE BEGIN
+                    Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                          vrotinput1,sdisinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                          xposinput1,yposinput1,vsysinput1
+                 ENDELSE 
+              
+              end
+           endcase
+       
+
+           
                                 ;Update counters and go to a new
                                 ;iteration of the model.
            sbrmodify++
@@ -5445,16 +5517,18 @@ noconfig:
               printf,66,linenumber()+"The inner" +string(fixedrings)+" rings are fixed."
               Close,66
            ENDIF
-           revised_regularisation_com,comin,tmpsbr,RADarr,fixedrings=fixedrings,difference=[2.,6.*exp(-catinc[i]^2.5/10^3.5)+4.],cutoff=cutoff,arctan=prefunc,order=polorder,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],gdlidl=gdlidl,log=log,/extending  
-        
+           if fix_pa eq 1 or fix_incl EQ 1 then begin
+              revised_regularisation_com,comin,tmpsbr,RADarr,fixedrings=fixedrings,difference=[2.,6.*exp(-catinc[i]^2.5/10^3.5)+4.],cutoff=cutoff,arctan=prefunc,order=polorder,max_par=[PAinput2[1],INCLinput2[1]],min_par=[PAinput2[2],INCLinput2[2]],gdlidl=gdlidl,log=log,/extending  
+           endif
            tmp2=PAang
            PAang=dblarr(n_elements(RADarr))
            PAang[0:n_elements(PAang)-2]=tmp2
-           PAang[n_elements(PAang)-1]=comin[n_elements(comin[*,0])-1,0]
+           IF fix_pa EQ 1 then PAang[n_elements(PAang)-1]=comin[n_elements(comin[*,0])-1,0] else  PAang[n_elements(PAang)-1]=PAang[0]
+           
            tmp2=INCLang
            INCLang=dblarr(n_elements(RADarr))
            INCLang[0:n_elements(INCLang)-2]=tmp2
-           INCLang[n_elements(INCLang)-1]=comin[n_elements(comin[*,1])-1,1]
+           IF fix_incl EQ 1 then INCLang[n_elements(INCLang)-1]=comin[n_elements(comin[*,1])-1,1] else  INCLang[n_elements(INCLang)-1]=INCLang[0]
                                 ;PA_2
            
            tmpsbr2=[SBRarr2or,cutoff[n_elements(SBRarr2)]]
@@ -5466,16 +5540,17 @@ noconfig:
               printf,66,linenumber()+"The inner" +string(fixedrings)+" rings are fixed."
               Close,66
            ENDIF
-           revised_regularisation_com,comin,tmpsbr2,RADarr,fixedrings=fixedrings,difference=[2.,6.*exp(-catinc[i]^2.5/10^3.5)+4.],cutoff=cutoff,arctan=prefunc,order=polorder2,max_par=[PAinput3[1],INCLinput3[1]],min_par=[PAinput3[2],INCLinput3[2]],gdlidl=gdlidl,log=log,/extending  
-          
+           if fix_pa eq 1 or fix_incl EQ 1 then begin
+              revised_regularisation_com,comin,tmpsbr2,RADarr,fixedrings=fixedrings,difference=[2.,6.*exp(-catinc[i]^2.5/10^3.5)+4.],cutoff=cutoff,arctan=prefunc,order=polorder2,max_par=[PAinput3[1],INCLinput3[1]],min_par=[PAinput3[2],INCLinput3[2]],gdlidl=gdlidl,log=log,/extending  
+           endif
            tmp2=PAang2
            PAang2=dblarr(n_elements(RADarr))
            PAang2[0:n_elements(PAang2)-2]=tmp2
-           PAang2[n_elements(PAang2)-1]=comin[n_elements(comin[*,0])-1,0]
+           IF fix_pa EQ 1 then PAang2[n_elements(PAang2)-1]=comin[n_elements(comin[*,0])-1,0] else  PAang2[n_elements(PAang)-1]=PAang2[0]
            tmp2=INCLang2
            INCLang2=dblarr(n_elements(RADarr))
            INCLang2[0:n_elements(INCLang2)-2]=tmp2
-           INCLang2[n_elements(INCLang2)-1]=comin[n_elements(comin[*,1])-1,1]
+           IF fix_incl EQ 1 then INCLang2[n_elements(INCLang2)-1]=comin[n_elements(comin[*,1])-1,1] else INCLang2[n_elements(INCLang)-1]=INCLang2[0]
            
            PAang[0:fixedrings]=(PAang[0]+PAang2[0])/2.
            PAang2[0:fixedrings]=(PAang[0]+PAang2[0])/2.
@@ -5536,7 +5611,9 @@ noconfig:
               PAinput1[0]='PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' PA_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)              
            ENDIF ELSE BEGIN
                                 ;update INCL and PA
-              set_warp_slopev3,SBRarr,SBRarr2,cutoff,INCLinput2,PAinput2,INCLinput3,PAinput3,norings,log=log,innerfix=innerfix,sloped=slopedrings           
+              set_warp_slopev3,SBRarr,SBRarr2,cutoff,INCLinput2,PAinput2,INCLinput3,PAinput3,norings,log=log,innerfix=innerfix,sloped=slopedrings
+              if fix_pa eq 0 then PAinput1[0]='PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' PA_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
+              if fix_incl EQ 0. then INCLinput1[0]='INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' INCL_2 1:' +strtrim(strcompress(string(norings[0],format='(F7.4)')),1)   
            ENDELSE
                                 ;Updating surface brightness settings
            set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,log=log,doubled=doubled
@@ -5553,19 +5630,50 @@ noconfig:
            set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter
            set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,finish_after=finishafter,slope=slope
   
-                                ;Write the parameters to the tirific array
-           IF norings[0] LE 4 or finishafter EQ 1.1 then begin
-              Writefittingvariables,tirificsecond,inclinput1,painput1,vrotinput1,sdisinput1, $
-                                    sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,xposinput1,yposinput1,vsysinput1 
-           ENDIF ELSE BEGIN
-              IF norings[0] LE 6 then begin
-                 Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1, sdisinput1,$
+                                ;Write the parameters to the tirific
+                                ;array
+           case 1 of
+              norings[0] LE 4 OR finishafter EQ 1.1 OR (fix_incl EQ 0. and fix_pa EQ 0.): begin
+                 Writefittingvariables,tirificsecond,inclinput1,painput1,vrotinput1,sdisinput1, $
                                        sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,xposinput1,yposinput1,vsysinput1 
-              ENDIF else begin
-                 Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1, sdisinput1,$
-                                       sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1,xposinput1,yposinput1,vsysinput1 
-              ENDELSE
-           ENDELSE
+              end
+              fix_incl EQ 0. and fix_pa EQ 1.: begin
+                 IF norings[0] LE 6 then begin
+                    Writefittingvariables,tirificsecond,inclinput1,painput1,painput2,painput3,$
+                                          vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                          xposinput1,yposinput1,vsysinput1
+                 ENDIF ELSE BEGIN
+                    Writefittingvariables,tirificsecond,inclinput1,painput1,painput2,painput3,$
+                                          vrotinput1,sdisinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                          xposinput1,yposinput1,vsysinput1
+                 ENDELSE
+              end
+              fix_incl EQ 1. and fix_pa EQ 0.: begin
+                 IF norings[0] LE 6 then begin
+                    Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                          vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                          xposinput1,yposinput1,vsysinput1
+                 ENDIF ELSE BEGIN
+                    Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                          vrotinput1,sdisinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                          xposinput1,yposinput1,vsysinput1
+                 ENDELSE    
+           
+              end
+              else: begin
+                 IF norings[0] LE 6 then begin
+                    Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                          vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                          xposinput1,yposinput1,vsysinput1
+                 ENDIF ELSE BEGIN
+                    Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                          vrotinput1,sdisinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                          xposinput1,yposinput1,vsysinput1
+                 ENDELSE 
+              
+              end
+           endcase
+       
                                 ;Update counters and go back to the fitting proces
            sbrmodify++
            finalsmooth=0.
@@ -5597,6 +5705,8 @@ noconfig:
         ENDIF ELSE BEGIN
                                 ;update INCL and PA
            set_warp_slopev3,SBRarr,SBRarr2,cutoff,INCLinput2,PAinput2,INCLinput3,PAinput3,norings,log=log,innerfix=innerfix,sloped=slopedrings
+           if fix_pa eq 0 then PAinput1[0]='PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' PA_2 1:'+strtrim(strcompress(string(norings[0]-1,format='(F7.4)')),1) 
+           if fix_incl eq 0. then INCLinput1[0]='INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' INCL_2 1:' +strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
         ENDELSE
                                 ;set the SBR fitting parameters
         set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,log=log,doubled=doubled
@@ -5618,18 +5728,50 @@ noconfig:
         IF trytwo LT 2. then begin
            IF AC1 NE 1 then begin
               ;If the first estimate is not accepted either 
-              IF norings[0] LE 4 OR finishafter EQ 1.1  then begin
-                 Writefittingvariables,tirificsecond,inclinput1,painput1,z0input1,xposinput1,yposinput1,$
-                                       vsysinput1,vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3 
-              ENDIF ELSE BEGIN
-                 IF norings[0] LE 6 then begin
-                    Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,z0input1,xposinput1,yposinput1,$
-                                          vsysinput1,vrotinput1, sdisinput1 ,sbrinput1,sbrinput2,sbrinput4,sbrinput3 
-                 ENDIF else begin
-                    Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,z0input1,xposinput1,yposinput1,$
-                                          vsysinput1,vrotinput1, sdisinput1 ,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3
-                 ENDELSE
-              ENDELSE
+             
+              case 1 of
+                 norings[0] LE 4 OR finishafter EQ 1.1 OR (fix_incl EQ 0. and fix_pa EQ 0.): begin
+                    Writefittingvariables,tirificsecond,inclinput1,painput1,$
+                                          vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                          xposinput1,yposinput1,vsysinput1        
+                    
+                 end
+                 fix_incl EQ 0. and fix_pa EQ 1.: begin
+                    IF norings[0] LE 6 then begin
+                       Writefittingvariables,tirificsecond,inclinput1,painput1,painput2,painput3,$
+                                             vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                             xposinput1,yposinput1,vsysinput1
+                    ENDIF ELSE BEGIN
+                       Writefittingvariables,tirificsecond,inclinput1,painput1,painput2,painput3,$
+                                             vrotinput1,sdisinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                             xposinput1,yposinput1,vsysinput1
+                    ENDELSE
+                 end
+                 fix_incl EQ 1. and fix_pa EQ 0.: begin
+                    IF norings[0] LE 6 then begin
+                       Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                             vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                             xposinput1,yposinput1,vsysinput1
+                    ENDIF ELSE BEGIN
+                       Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                             vrotinput1,sdisinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                             xposinput1,yposinput1,vsysinput1
+                    ENDELSE    
+                    
+                 end
+                 else: begin
+                    IF norings[0] LE 6 then begin
+                       Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                             vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                             xposinput1,yposinput1,vsysinput1
+                    ENDIF ELSE BEGIN
+                       Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                             vrotinput1,sdisinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1,$
+                                             xposinput1,yposinput1,vsysinput1
+                    ENDELSE 
+                    
+                 end
+              endcase
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
                  printf,66,linenumber()+"Both the first and the second estimate weren't accepted, retrying."
@@ -5638,15 +5780,42 @@ noconfig:
            endif else begin
                                 ;IF only the second model is not
                                 ;accepted try without fitting the center
-              IF norings[0] LE 4  OR finishafter EQ 1.1  then begin
-                 Writefittingvariables,tirificsecond,inclinput1,painput1,vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3 
-              ENDIF ELSE BEGIN
-                 IF norings[0] LE 6 then begin
-                    Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,sdisinput1 ,sbrinput1,sbrinput2,sbrinput4,sbrinput3
-                 ENDIF ELSE begin
-                    Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,vrotinput1,sdisinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3
-                 ENDELSE
-              ENDELSE
+              
+              case 1 of
+                 norings[0] LE 4 OR finishafter EQ 1.1 OR (fix_incl EQ 0. and fix_pa EQ 0.): begin
+                    Writefittingvariables,tirificsecond,inclinput1,painput1,$
+                                          vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1
+                 end
+                 fix_incl EQ 0. and fix_pa EQ 1.: begin
+                    IF norings[0] LE 6 then begin
+                       Writefittingvariables,tirificsecond,inclinput1,painput1,painput2,painput3,$
+                                             vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1
+                    ENDIF ELSE BEGIN
+                       Writefittingvariables,tirificsecond,inclinput1,painput1,painput2,painput3,$
+                                             vrotinput1,sdisinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1
+                    ENDELSE
+                 end
+                 fix_incl EQ 1. and fix_pa EQ 0.: begin
+                    IF norings[0] LE 6 then begin
+                       Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                             vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1
+                    ENDIF ELSE BEGIN
+                       Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                             vrotinput1,sdisinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1
+                    ENDELSE    
+                    
+                 end
+                 else: begin
+                    IF norings[0] LE 6 then begin
+                       Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                             vrotinput1,sdisinput1,sbrinput1,sbrinput2,sbrinput4,sbrinput3,z0input1
+                    ENDIF ELSE BEGIN
+                       Writefittingvariables,tirificsecond,inclinput1,inclinput2,inclinput3,painput1,painput2,painput3,$
+                                             vrotinput1,sdisinput1,sbrinput5,sbrinput1,sbrinput6,sbrinput2,sbrinput4,sbrinput3,z0input1
+                    ENDELSE 
+                    
+                 end
+              endcase
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND                
                  printf,66,linenumber()+"The second estimate wasn't accepted. Running with fixed center."
@@ -6128,9 +6297,12 @@ noconfig:
                                 ;Clearing up the direcory and
                                 ;organizing the output in proper names
                                 ;and such
-    
+     if finishafter EQ 1.1 then begin
+        fix_pa = 0
+        fix_incl = 0.
+     ENDIF
      names=[currentfitcube,catMom0name[i],catMom1name[i],catmaskname[i],noisemapname,catCatalogname[i],basicinfo]
-     book_keeping,names,bookkeeping,catdistance[i],gdlidl,log=log,noise=catnoise[i],finishafter=finishafter
+     book_keeping,names,bookkeeping,catdistance[i],gdlidl,log=log,noise=catnoise[i],finishafter=finishafter,fixedpars=[fix_pa,fix_incl]
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         printf,66,linenumber()+"Finished "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()

@@ -1,4 +1,4 @@
-Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filenames=filenames,splined=splined,version=version
+Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filenames=filenames,splined=splined,version=version,fixedpars=fixedpars
 
 ;+
 ; NAME:
@@ -135,7 +135,6 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   scrdim = [8.27*300.,11.69*300]
   A = FIndGen(16) * (!PI*2/16.) 
   UserSym, cos(A), sin(A), /fill
-  ssize=2.5
   spawn,'mv Overview.png Overview_Prev.png'
   IF gdlidl then begin
 
@@ -152,8 +151,12 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
      charthick=0.7
      ssize=0.3
      DEVICE,xsize=scrdim[0]/200.,ysize=scrdim[1]/200,FILENAME='Overview.ps',/color,/PORTRAIT,/DECOMPOSED,/ENCAPSULATED
-  endif else  $
+  endif else begin
+     !p.charsize=3.7
+     charthick=2.15569
+     ssize=2.5
      DEVICE,SET_FONT='Times',/TT_FONT,SET_RESOLUTION=[scrdim[0],scrdim[1]],/DECOMPOSED,SET_PIXEL_DEPTH=24
+  endelse
   plotradii=Arrays[*,0]
   tmp=WHERE(Arrays[*,1] GT 1.1E-16)
   tmp2=WHERE(Arrays[*,2] GT 1.1E-16)
@@ -165,6 +168,8 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         
         plotvariable=Arrays[tmp,1]
         loadct,0,/silent
+        xerr=dblarr(n_elements(plotVariable))
+       
         plot,plotradii,plotVariable,position=[0.15,0.95-5.*ysize,0.55,0.95-4.*ysize],xtitle='Radius (arcmin)',$
              xrange=[0.,maxradii],yrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]],ytickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],xticklayout=1,background='ffffff'x,color='ffffff'x,/nodata
         if keyword_set(splined) then begin
@@ -177,7 +182,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
            oplot,newrad,newvar,color='000000'x,linestyle=0,symsize=ssize
         ENDIF ELSE oplot,plotradii,plotVariable,color='000000'x,linestyle=0,symsize=ssize      
         levelsrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]]*1000.
-        oplot,plotradii,plotVariable,psym=8,color='000000'x,linestyle=2,symsize=ssize
+        fat_ploterror,plotradii,plotVariable,xerr,xerr,thick=lthick,color='000000'x,linestyle=2,ERRCOLOR = '000000'x, ERRTHICK=!p.thick*0.4,/over_plot,psym=8,symsize=ssize
         columndensity,levelsrange,Arrays[0,14],[1.,1.],vwidth=1.,/arcsquare
         levelsranges=levelsrange/1e20
         reset=1e20
@@ -210,7 +215,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
            newvar=spline(plotradii,Arrays[tmp2,2],newrad)
            oplot,newrad,newvar,color='0000FF'x,linestyle=2,symsize=ssize
         ENDIF ELSE oplot,plotradii,Arrays[tmp2,2],thick=lthick,color='0000FF'x,linestyle=2
-        oplot,plotradii,Arrays[tmp2,2],psym=8,color='0000FF'x,linestyle=2,symsize=ssize
+        fat_ploterror,plotradii,Arrays[tmp2,2],xerr,xerr,thick=lthick,color='0000FF'x,linestyle=2,ERRCOLOR = '0000FF'x, ERRTHICK=!p.thick*0.4,/over_plot,psym=8,symsize=ssize
         XYOUTs,0.05,0.9-4.5*ysize,plotpara[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,charsize=!p.charsize*1.25,color='000000'x,charthick=charthick
         XYOUTs,0.08,0.9-4.5*ysize,varunits[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,color='000000'x,charthick=charthick
         
