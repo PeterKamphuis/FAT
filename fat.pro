@@ -2004,7 +2004,7 @@ noconfig:
            string7=string7+' 3'         
         endfor
      ENDIF else begin
-        for j=norings[0],3,-1 do begin
+        for j=norings[0],4,-1 do begin
            string1=string1+','+'SBR '+strtrim(strcompress(string(j,format='(I3)')),1)+', SBR_2 '+strtrim(strcompress(string(j,format='(I3)')),1)
            string2=string2+' 1 1' 
            string3=string3+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/2.,format='(E12.5)')),1)+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/2.,format='(E12.5)')),1)
@@ -2016,7 +2016,7 @@ noconfig:
      ENDELSE
      string1 = STRMID(string1,1,STRLEN(string1)-1)
      SBRinput1=[string1,string2,string3,string4,string5,string6,string7]
-     SBRinput2=[' SBR 1 2 SBR_2 1 2',$
+     SBRinput2=[' SBR 1 2 3 SBR_2 1 2 3',$
                 strtrim(strcompress(string(peaksbr,format='(E12.5)'))),'0','1E-5','1E-6','5E-5','1E-6','3','70','70']
                                 ;Now setting some general values
      tmppos=where('INSET' EQ tirificfirstvars)
@@ -2715,10 +2715,6 @@ noconfig:
         tmppos=where('RADI' EQ VariablesWanted)
         SBRarr=fat_hanning(SBRarr,firstfitvalues[*,tmppos])
         SBRarr2=fat_hanning(SBRarr2,firstfitvalues[*,tmppos])
-        
-      
-
-        
                                 ;checking the surface brightness
         sbr_check,tirificfirst, tirificfirstvars,sbrarr,sbrarr2,cutoff
         IF newinclination[0] LT 40 then newrot=W50/2./SIN(ABS(newinclination[0]+5)*!pi/180.) else newrot=W50/2./SIN(newinclination[0]*!pi/180.)
@@ -2864,7 +2860,7 @@ noconfig:
            string7=string7+' 3'       
         endfor
      ENDIF else begin
-        for j=norings[0],3,-1 do begin
+        for j=norings[0],4,-1 do begin
            string1=string1+','+'SBR '+strtrim(strcompress(string(j,format='(I3)')),1)+', SBR_2 '+strtrim(strcompress(string(j,format='(I3)')),1)
            string2=string2+' 1 1' 
            IF doubled then $
@@ -2880,7 +2876,7 @@ noconfig:
      
      SBRinput1=[string1,string2,string3,string4,string5,string6,string7]
                                 ;The inner rings should be fitted as one
-     SBRinput2=[' SBR 1 2 SBR_2 1 2',$
+     SBRinput2=[' SBR 1 2 3 SBR_2 1 2 3',$
                 strtrim(strcompress(string(ABS(SBRarr[2])*2.,format='(E12.5)'))) ,'0','1E-5','1E-6','5E-6','3']
      smoothrotation=0.
      keepcenter=0.
@@ -3007,7 +3003,7 @@ noconfig:
      tmppos=where('RADI' EQ VariablesWanted)
      SBRarr=fat_hanning(SBRarr,firstfitvalues[*,tmppos])
      SBRarr2=fat_hanning(SBRarr2,firstfitvalues[*,tmppos])
-     
+   
      tmppos=where('VROT' EQ VariablesWanted)
      VROTarr=firstfitvalues[*,tmppos]
      stringvelocities='VROT= 0. '+STRJOIN(VROTarr[1:n_elements(VROTarr)-1],' ')
@@ -3503,11 +3499,8 @@ noconfig:
                  print,linenumber()+"We cut a ring! lastcut"+string(lastcutrings)+" lastadd "+string(lastaddrings)+" new "+strtrim(string(fix(newrings)),2)+" old "+string(oldrings)
               ENDELSE
               lastcutrings=norings[0]
-              fluxadjust=0.             
-              tmppos=where('SBR' EQ tirificfirstvars)
-              tirificfirst[tmppos]='SBR='+STRJOIN(SBRarr[0:norings-1],' ')
-              tmppos=where('SBR_2' EQ tirificfirstvars)
-              tirificfirst[tmppos]='SBR_2='+STRJOIN(SBRarr2[0:norings-1],' ')
+              fluxadjust=0.
+              sbr_check,tirificfirst, tirificfirstvars,sbrarr,sbrarr2,cutoff           
               countsbr++
               overwrite=0.
               prevmodification=-1
@@ -3629,10 +3622,7 @@ noconfig:
         tirificfirst[tmppos]='VROT= 0. '+STRJOIN(strtrim(string(VROTarr[1:n_elements(VROTarr[*])-1]),2),' ')
         tmppos=where('VROT_2' EQ tirificfirstvars)
         tirificfirst[tmppos]='VROT_2= 0. '+STRJOIN(strtrim(string(VROTarr[1:n_elements(VROTarr[*])-1]),2),' ')
-        tmppos=where('SBR' EQ tirificfirstvars)
-        tirificfirst[tmppos]='SBR= '+STRJOIN(strtrim(string(SBRarr[1:n_elements(SBRarr[*])-1]),2),' ')
-        tmppos=where('SBR_2' EQ tirificfirstvars)
-        tirificfirst[tmppos]='SBR_2= '+STRJOIN(strtrim(string(SBRarr2[1:n_elements(SBRarr2[*])-1]),2),' ')
+        sbr_check,tirificfirst, tirificfirstvars,sbrarr,sbrarr2,cutoff    
         vrotinputoriginal=vrotinput1
         VROTinput1=['VROT 2:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                     ' VROT_2 2:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
@@ -3812,8 +3802,12 @@ noconfig:
      get_newringsv9,SBRarr,SBRarr2,cutoff,newindrings,/individual
      SBRarr=fat_hanning(SBRarr,RADarr,rings=newindrings[0])
      SBRarr2=fat_hanning(SBRarr2,RADarr,rings=newindrings[1])
-
-     
+     SBRarr[0:2]=(SBRarr[0:2]+SBRarr2[0:2])/2.  
+     SBRarr2[0:2]=SBRarr[0:2]
+     tmppos=where('SBR' EQ tirificsecondvars)
+     tirificsecond[tmppos]='SBR= '+STRJOIN(SBRarr[0:n_elements(SBRarr)-1],' ')
+     tmppos=where('SBR_2' EQ tirificsecondvars)
+     tirificsecond[tmppos]='SBR_2= '+STRJOIN(SBRarr2[0:n_elements(SBRarr2)-1],' ')
      tmppos=where('INCL_2' EQ firstfitvaluesnames)
      INCLang2=firstfitvalues[*,tmppos]
      IF catinc[i] GT 80. then begin
@@ -3871,6 +3865,8 @@ noconfig:
            tmp=1
            interpolate,SBRarr2,RADarr,newradii=rad,output=tmp
            SBRarr2=tmp
+           SBRarr[0:2]=(SBRarr[0:2]+SBRarr2[0:2])/2.  
+           SBRarr2[0:2]=SBRarr[0:2]
            RADarr=rad
            tmppos=where('RADI' EQ tirificsecondvars)
            tirificsecond[tmppos]='RADI= '+STRJOIN(strtrim(strcompress(string(RADarr))),' ')
@@ -3880,7 +3876,8 @@ noconfig:
            tirificsecond[tmppos]='SBR_2= '+STRJOIN(strtrim(strcompress(string(SBRarr2))),' ')
            tmppos=where('NUR' EQ tirificsecondvars)
            tirificsecond[tmppos]='NUR= '+STRJOIN(strtrim(strcompress(string(norings[0]))),' ')
-          
+
+           
         endif else begin
            openu,1,outputcatalogue,/APPEND
            printf,1,format='(A60,A12,A12,A80)',catDirname[i],AC1,0,'The first fit model is too small to fit variations.'
@@ -4310,6 +4307,12 @@ noconfig:
      interpolate,inSBR,inRad,newradii=newRAD,output=newSBR
      SBRarr2[0]=(newSBR[0]+SBRarr[0])/2.
      SBRarr[0]=(newSBR[0]+SBRarr[0])/2.
+     SBRarr[0:2]=(SBRarr[0:2]+SBRarr2[0:2])/2.  
+     SBRarr2[0:2]=SBRarr[0:2]
+     tmppos=where('SBR' EQ tirificsecondvars)
+     tirificsecond[tmppos]='SBR= '+STRJOIN(SBRarr[0:n_elements(SBRarr)-1],' ')
+     tmppos=where('SBR_2' EQ tirificsecondvars)
+     tirificsecond[tmppos]='SBR_2= '+STRJOIN(SBRarr2[0:n_elements(SBRarr2)-1],' ')
      SBRarror=SBRarr
      SBRarr2or=SBRarr2
      
@@ -4394,7 +4397,7 @@ noconfig:
         tirificsecond[tmppos]=' YPOS= '+string(prevYPOS)
         tmppos=where('YPOS_2' EQ tirificsecondvars)
         tirificsecond[tmppos]=' YPOS_2= '+string(prevYPOS)
-        for j=0,n_elements(SBRarr)-1 do begin
+        for j=2,n_elements(SBRarr)-1 do begin
            IF SBRarr[j] LT cutoff[j] then SBRarr[j]=cutoff[j]*3.
            IF SBRarr2[j] LT cutoff[j] then SBRarr2[j]=cutoff[j]*3.
         endfor
@@ -4732,7 +4735,7 @@ noconfig:
                                 ;well as smooth the INCL, PAand VROT
      IF boundaryadjustment then begin
         IF lastreliablerings EQ 0 then lastreliablerings=1
-        for j=n_elements(SBRarr)-1,0,-1 do begin
+        for j=n_elements(SBRarr)-1,2,-1 do begin
            IF SBRarr[j] LE cutoff[j] then begin
               SBRarr[j]=cutoff[j]*2.
            ENDIF else break
@@ -4765,7 +4768,7 @@ noconfig:
            tmppos=where('PA' EQ tirificsecondvars)
            tirificsecond[tmppos]=stringINCL
         ENDIF
-        for j=n_elements(SBRarr2)-1,0,-1 do begin
+        for j=n_elements(SBRarr2)-1,2,-1 do begin
            IF SBRarr2[j] LE cutoff[j] then begin
               SBRarr2[j]=cutoff[j]*2.
            ENDIF else break
@@ -4828,7 +4831,10 @@ noconfig:
         stringSDIS='SDIS_2= '+STRJOIN(string(SDISarr[0:n_elements(SDISarr)-1]),' ') 
         tmppos=where('SDIS_2' EQ tirificsecondvars)
         tirificsecond[tmppos]=stringSDIS
-         
+        SBRarr[0]=(SBRarr[0]+SBRarr2[0])/2.
+        SBRarr[1]=(SBRarr[1]+SBRarr2[1])/2.
+        SBRarr2[0]=(SBRarr[0]+SBRarr2[0])/2.
+        SBRarr2[1]=(SBRarr[1]+SBRarr2[1])/2.
         stringSBR='SBR= '+STRJOIN(string(SBRarr),' ') 
         tmppos=where('SBR' EQ tirificsecondvars)
         tirificsecond[tmppos]=stringSBR
@@ -4879,14 +4885,14 @@ noconfig:
                                 ;sbr is actually of some value for the
                                 ;weighing in the smoothing.
      IF finalsmooth EQ 1 then begin
-        for j=n_elements(SBRarr)-1,0,-1 do begin
+        for j=n_elements(SBRarr)-1,2,-1 do begin
            IF SBRarr[j] LE cutoff[j] then begin
               SBRarr[j]=cutoff[j]*0.5
            ENDIF else break
         endfor      
         tmp=WHERE(SBRarr LT 0.)
         IF tmp[0] NE -1 then SBRarr[tmp]=cutoff[tmp]*0.95
-        for j=n_elements(SBRarr2)-1,0,-1 do begin
+        for j=n_elements(SBRarr2)-1,2,-1 do begin
            IF SBRarr2[j] LE cutoff[j] then begin
               SBRarr2[j]=cutoff[j]*0.5
            ENDIF else break
@@ -5203,13 +5209,17 @@ noconfig:
         IF newindrings[0] LT n_elements(SBRarr) then begin
            SBRarr[newindrings[0]-1:n_elements(SBRarr)-1]=1E-16
         ENDIF
-        stringSBR='SBR= '+STRJOIN(string(SBRarr),' ') 
-        tmppos=where('SBR' EQ tirificsecondvars)
-        tirificsecond[tmppos]=stringSBR
         IF newindrings[1] EQ n_elements(SBRarr2)-2 and SBRarr2[n_elements(SBRarr2)-1] GT cutoff[n_elements(SBRarr2)-1] then newindrings[1]=n_elements(SBRarr2)
         IF newindrings[1] LT n_elements(SBRarr2) then begin
            SBRarr2[newindrings[1]-1:n_elements(SBRarr2)-1]=1E-16
         ENDIF
+        SBRarr[0]=(SBRarr[0]+SBRarr2[0])/2.
+        SBRarr[1]=(SBRarr[1]+SBRarr2[1])/2.
+        SBRarr2[0]=(SBRarr[0]+SBRarr2[0])/2.
+        SBRarr2[1]=(SBRarr[1]+SBRarr2[1])/2.
+        stringSBR='SBR= '+STRJOIN(string(SBRarr),' ') 
+        tmppos=where('SBR' EQ tirificsecondvars)
+        tirificsecond[tmppos]=stringSBR
         stringSBR='SBR_2= '+STRJOIN(string(SBRarr2),' ') 
         tmppos=where('SBR_2' EQ tirificsecondvars)
         tirificsecond[tmppos]=stringSBR      
@@ -5871,9 +5881,9 @@ noconfig:
         close,66
      ENDIF
                                 ;set the parameters for single fitting
-     SBRinput1=['SBR '+strtrim(strcompress(string(newindrings[0],format='(F7.4)')),1)+':1','1',strtrim(strcompress(string(cutoff[n_elements(cutoff)-1]/2.,format='(E12.5)')),1),'1E-6','1E-7','1E-5','1E-7','3','70','70']
+     SBRinput1=['SBR '+strtrim(strcompress(string(newindrings[0],format='(F7.4)')),1)+':1','3',strtrim(strcompress(string(cutoff[n_elements(cutoff)-1]/2.,format='(E12.5)')),1),'1E-6','1E-7','1E-5','1E-7','3','70','70']
      SBRinput2=SBRinput1
-     SBRinput2[0]='SBR_2 '+strtrim(strcompress(string(newindrings[1],format='(F7.4)')),1)+':1'
+     SBRinput2[0]='SBR_2 '+strtrim(strcompress(string(newindrings[1],format='(F7.4)')),1)+':3'
      IF norings GT 4 and finishafter NE 1.1 then begin 
                                 ;PA
         PAinput1=['PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' '+$
@@ -5983,6 +5993,12 @@ noconfig:
 ;                                ;We always want to smooth the surface brightnes. Added 16-06-2017
         SBRarr=fat_hanning(SBRarr,RADarr)
         SBRarr2=fat_hanning(SBRarr2,RADarr)
+        SBRarr[0]=(SBRarr[0]+SBRarr2[0])/2.
+        SBRarr[1]=(SBRarr[1]+SBRarr2[1])/2.
+        SBRarr2[0]=(SBRarr[0]+SBRarr2[0])/2.
+        SBRarr2[1]=(SBRarr[1]+SBRarr2[1])/2.
+
+    
                                 ;In this case we want to add them back
                                 ;in
         tmppos=WHERE(tirificsecondvars EQ 'SBR')

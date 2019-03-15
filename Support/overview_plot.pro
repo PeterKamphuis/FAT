@@ -174,7 +174,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   for i=0,4 do begin    
      IF i EQ 0 then begin
         tmppos=WHERE(plotpara EQ 'SBR')
-        plotvariable=Arrays[tmp,tmppos]
+        plotvariable=Arrays[tmp,tmppos[0]]
         loadct,0,/silent
         xerr=dblarr(n_elements(plotVariable))
        
@@ -224,11 +224,11 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         AXIS,XAXIS=1,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,XRANGE = convertskyanglefunction(!X.CRANGE,distance),xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],color='000000'x 
         loadct,40,/silent
         tmppos=WHERE(plotpara EQ 'SBR_2')
-        fat_ploterror,plotradii,Arrays[tmp2,tmppos],xerr,xerr,thick=lthick,color='0000FF'x,linestyle=2,ERRCOLOR = '0000FF'x, ERRTHICK=!p.thick*0.4,/over_plot,psym=8,symsize=ssize
+        fat_ploterror,plotradii,Arrays[tmp2,tmppos[0]],xerr,xerr,thick=lthick,color='0000FF'x,linestyle=2,ERRCOLOR = '0000FF'x, ERRTHICK=!p.thick*0.4,/over_plot,psym=8,symsize=ssize
         if keyword_set(splined) then begin
-           newvar=spline(plotradii,Arrays[tmp2,tmppos],newrad)
+           newvar=spline(plotradii,Arrays[tmp2,tmppos[0]],newrad)
            oplot,newrad,newvar,color='0000FF'x,linestyle=2
-        ENDIF ELSE oplot,plotradii,Arrays[tmp2,tmppos],thick=lthick,color='0000FF'x,linestyle=2
+        ENDIF ELSE oplot,plotradii,Arrays[tmp2,tmppos[0]],thick=lthick,color='0000FF'x,linestyle=2
       
         XYOUTs,0.05,0.95-4.5*ysize,plotpara[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,charsize=!p.charsize*1.25,color='000000'x,charthick=charthick
         XYOUTs,0.08,0.95-4.5*ysize,varunits[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,color='000000'x,charthick=charthick
@@ -277,9 +277,9 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         endelse
         XYOUTs,0.05,0.95-(4.5-i)*ysize,plotpara[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,charsize=!p.charsize*1.25,color='000000'x,charthick=charthick
         XYOUTs,0.08,0.95-(4.5-i)*ysize,varunits[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,color='000000'x,charthick=charthick
-        IF plotpara[plotstart[i,0]] EQ 'PA' and fixedpars[0] EQ 0. then XYOUTs,0.53,0.93-(4.5-i)*ysize,'Fixed',/NORMAL,alignment=1.0,charsize=!p.charsize*1.25,color='000000'x,charthick=charthick
-        IF plotpara[plotstart[i,0]] EQ 'INCL' and fixedpars[1] EQ 0. then XYOUTs,0.53,0.93-(4.5-i)*ysize,'Fixed',/NORMAL,alignment=1.0,charsize=!p.charsize*1.25,color='000000'x,charthick=charthick
-        IF plotpara[plotstart[i,0]] EQ 'SDIS' and fixedpars[2] EQ 0. then XYOUTs,0.53,0.93-(4.5-i)*ysize,'Fixed',/NORMAL,alignment=1.0,charsize=!p.charsize*1.25,color='000000'x,charthick=charthick
+        IF plotpara[plotstart[i,0]] EQ 'PA' and fixedpars[0] EQ 0. then XYOUTs,0.53,0.93-(4.-i)*ysize,'Fixed',/NORMAL,alignment=1.0,charsize=!p.charsize*1.25,color='000000'x,charthick=charthick
+        IF plotpara[plotstart[i,0]] EQ 'INCL' and fixedpars[1] EQ 0. then XYOUTs,0.53,0.93-(4.-i)*ysize,'Fixed',/NORMAL,alignment=1.0,charsize=!p.charsize*1.25,color='000000'x,charthick=charthick
+        IF plotpara[plotstart[i,0]] EQ 'SDIS' and fixedpars[2] EQ 0. then XYOUTs,0.53,0.93-(4.-i)*ysize,'Fixed',/NORMAL,alignment=1.0,charsize=!p.charsize*1.25,color='000000'x,charthick=charthick
        loadct,40,/silent
         IF plotstart[i,0] NE plotstart[i,1] then begin
            plotvariable=Arrays[tmp2,plotstart[i,1]]
@@ -323,13 +323,11 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
      XYOUTS,0.60,0.81,'Red lines: receding side parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
      XYOUTS,0.60,0.79,'Blue lines: approaching side input model parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
      XYOUTS,0.60,0.77,'Yellow lines: receding side input model parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
-     if fix(finishafter)/finishafter NE 1 OR finishafter EQ 1 then begin
-        XYOUTS,0.60,0.75,'The inclination and PA were not allowed to vary',/normal,color='000000'x
-        XYOUTS,0.60,0.73,'The major FWHM beam is '+majbeam+' arcsec',/normal,color='000000'x
-        XYOUTS,0.60,0.71,'We used rings of size '+ringsize+' arcsec',/normal,color='000000'x
-     ENDIF ELSE BEGIN
-        XYOUTS,0.60,0.75,'The major FWHM beam is '+majbeam+' arcsec',/normal,color='000000'x
-        XYOUTS,0.60,0.73,'We used rings of size '+ringsize+' arcsec',/normal,color='000000'x
+   
+     XYOUTS,0.60,0.75,'The major FWHM beam is '+majbeam+'" ',/normal,color='000000'x
+     IF in_ringsize EQ out_ringsize then XYOUTS,0.60,0.73,'We used rings of size '+in_ringsize+'"',/normal,color='000000'x else begin
+        XYOUTS,0.60,0.73,'We used rings of size '+in_ringsize+'" in the inner part',/normal,color='000000'x
+        XYOUTS,0.60,0.71,'We used rings of size '+out_ringsize+'" in the outer part',/normal,color='000000'x
      ENDELSE
   ENDIF ELSE BEGIN
      XYOUTS,0.60,0.89,'Systemic Velocity= '+vsys+' km s!E-1',/normal,alignment=0.,charthick=charthick,color='000000'x
@@ -337,13 +335,9 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
      XYOUTS,0.60,0.85,'DEC.= '+DEC,/normal,alignment=0.,charthick=charthick,color='000000'x
      XYOUTS,0.60,0.83,'Black lines: approaching side parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
      XYOUTS,0.60,0.81,'Red lines: receding side parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
-      if fix(finishafter)/finishafter NE 1 OR finishafter EQ 1 then begin
-        XYOUTS,0.60,0.79,'The inclination and PA were not allowed to vary',/normal,charthick=charthick,color='000000'x
-        XYOUTS,0.60,0.77,'The major FWHM beam is '+majbeam+' arcsec',/normal,charthick=charthick,color='000000'x
-        XYOUTS,0.60,0.75,'We used rings of size '+ringsize+' arcsec',/normal,charthick=charthick,color='000000'x
-     Endif ELSE BEGIN
-        XYOUTS,0.60,0.79,'The major FWHM beam is '+majbeam+' arcsec',/normal,charthick=charthick,color='000000'x
-        XYOUTS,0.60,0.77,'We used rings of size '+ringsize+' arcsec',/normal,charthick=charthick,color='000000'x
+     IF in_ringsize EQ out_ringsize then XYOUTS,0.60,0.79,'We used rings of size '+in_ringsize+'"',/normal,color='000000'x else begin
+        XYOUTS,0.60,0.79,'We used rings of size '+in_ringsize+'" in the inner part',/normal,color='000000'x
+        XYOUTS,0.60,0.77,'We used rings of size '+out_ringsize+'" in the outer part',/normal,color='000000'x
      ENDELSE
   ENDELSE
                                 ;Currently GDL does not recognize true
@@ -418,7 +412,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   ENDIF ELSE spawn,'ls -1 PV-Diagrams/'+filenames[0]+'_1_xv.fits',mom0name
   mom0=readfits(mom0name[n_elements(mom0name)-1],mom0hed,/SILENT)
   mom0mod=readfits('PV-Diagrams/Finalmodel_xv.fits',mom0hedmod,/SILENT)
-  velbuf=(2.*velext)/(ceninc*0.2)+disper+2.*sxpar(mom0hed,'CDELT2')
+  velbuf=(2.*velext)*0.2+disper/2.+2.*sxpar(mom0hed,'CDELT2')
 
   mapinmax=MAX(mom0[WHERE(FINITE(mom0))],min=mapinmin)
   if ABS(mapinmin/mapinmax) GT 0.2 then mapinmin=-1*mapinmax/5

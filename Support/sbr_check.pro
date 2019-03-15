@@ -1,4 +1,4 @@
-Pro sbr_check,template,templatevars,sbrarr,sbrarr2,cutoff
+Pro sbr_check,template,templatevars,sbrarr,sbrarr2,cutoff,debug=debug
 
 ;+
 ; NAME:
@@ -40,6 +40,7 @@ Pro sbr_check,template,templatevars,sbrarr,sbrarr2,cutoff
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       15-03-2019 P. Kamphuis; Always write arrays back to template.            
 ;       Written 01-01-2015 P.Kamphuis v1.0
 ;
 ; NOTE:
@@ -88,13 +89,18 @@ Pro sbr_check,template,templatevars,sbrarr,sbrarr2,cutoff
   IF SBRarr[0] GT SBRarr[1] then begin
      SBRarr[0]= SBRarr[1]
      SBRarr2[0]= SBRarr[1]
-     trigger=1
-    
+     trigger=1    
   ENDIF
-  IF trigger then begin
-     tmppos=where('SBR' EQ templatevars)
-     template[tmppos]='SBR='+STRJOIN(strtrim(strcompress(string(SBRarr))),' ')
-     tmppos=where('SBR_2' EQ templatevars)
-     template[tmppos]='SBR_2='+STRJOIN(strtrim(strcompress(string(SBRarr2))),' ')
-  ENDIF
+  
+  SBRarr[0:2]=(SBRarr[0:2]+SBRarr2[0:2])/2.  
+  SBRarr2[0:2]=SBRarr[0:2]
+  if keyword_set(debug) then begin
+     print,'!!!!!!!!!! How Does This Happen !!!!!!!!!!!!!!!!!!!!!'
+     print,SBRarr,SBRarr2
+     print,'!!!!!!!!!! How Does This Happen After !!!!!!!!!!!!!!!!!!!!!'
+  endif
+  tmppos=where('SBR' EQ templatevars)
+  template[tmppos]='SBR= '+STRJOIN(strtrim(strcompress(string(SBRarr))),' ')
+  tmppos=where('SBR_2' EQ templatevars)
+  template[tmppos]='SBR_2= '+STRJOIN(strtrim(strcompress(string(SBRarr2))),' ')
 end

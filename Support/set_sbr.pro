@@ -64,9 +64,9 @@ Pro set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,c
   SBRinput4=SBRinput1
                                 ;and adjust them properly
   SBRinput2[0]='!SBR_2 '+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+':3'
-  SBRinput3[0]='SBR  1 SBR_2 1 '
+  SBRinput3[0]='SBR 1 2 SBR_2 1 2 '
   SBRinput3[1]=strtrim(strcompress(string(SBRarr[1],format='(E12.5)')),1)
-  SBRinput4[0]='SBR 2 SBR_2 2 '
+  SBRinput4[0]='SBR 3 SBR_2 3 '
                                 ;If the disk is too small
   IF norings[0] LE 4 OR finishafter EQ 1.1  then begin
      SBRinput1[2]=strtrim(strcompress(string(cutoff[n_elements(cutoff)-1]/4.,format='(E12.5)')),1)
@@ -99,4 +99,6 @@ Pro set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,c
         SBRinput6[2]=strtrim(strcompress(string(cutoff[norings[0]-1]/4.,format='(E12.5)')),1)
      ENDELSE
   ENDIF
+  ;This is a fix on testing coupling the two inner rings'
+ 
 end

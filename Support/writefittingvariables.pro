@@ -81,7 +81,9 @@ Pro writefittingvariables,inputarray,v1,v2,v3,v4,v5,v6,v7,v8,v9,v10,v11,v12,v13,
      limits=SCOPE_VARFETCH(vv[i],LEVEL=0)
                                 ;Allow for old writing still into
                                 ;proper new mode such that not all
-                                ;fitting arrays need to be modfied immediately
+                                ;fitting arrays need to be modfied
+                                ;immediately
+     IF limits[0] NE ' ' then begin
      IF n_elements(limits) EQ 10 then begin
         strings[0]=strings[0]+strtrim(strcompress(string(limits[0])))+','
         strings[1]=strings[1]+strtrim(strcompress(string(limits[1])))+' '
@@ -127,6 +129,7 @@ Pro writefittingvariables,inputarray,v1,v2,v3,v4,v5,v6,v7,v8,v9,v10,v11,v12,v13,
         strings[6]=strings[6]+strtrim(strcompress(string(limits[5])))+' '
         strings[7]=strings[7]+strtrim(strcompress(string(limits[7])))+' '  
      ENDIF
+     endif
   endfor
   strings[0]=STRMID(strings[0], 0 , STRLEN(strings[0])-1)
 
