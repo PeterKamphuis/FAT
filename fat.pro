@@ -470,6 +470,9 @@ tryconfigagain:
                                 ;Parameter to fix the PA to
                                 ;being flat (the default is 1, not fixed)
            'fix_pa': fix_pa = double(tmp[1])
+                                ;Parameter to fix the PA to
+                                ;being flat (the default is 1, not fixed)
+           'fix_sdis': fix_sdis = double(tmp[1])
                                 ;Input catalogue for the pipeline
            'catalogue':catalogue=tmp[1]
                                 ;Directory with all the directories of the galaxies to be fitted
@@ -598,6 +601,7 @@ noconfig:
   IF n_elements(ring_spacing_in) EQ 0. then ring_spacing_in = 1.
   IF n_elements(fix_incl) EQ 0. then fix_incl = 1.
   IF n_elements(fix_pa) EQ 0. then fix_pa = 1.
+  IF n_elements(fix_sdis) EQ 0. then fix_sdis = 1.
   IF n_elements(optpixelbeam) EQ 0 then optpixelbeam=4.
   IF n_elements(allnewin) EQ 0 then allnewin=1
   IF n_elements(bookkeeping) EQ 0 then bookkeeping=3
@@ -3982,7 +3986,7 @@ noconfig:
      velconstused--
      IF norings[0]*ring_spacing GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
      set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter
-     set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,avinner=avinner,finish_after=finishafter
+     set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,avinner=avinner,finish_after=finishafter,fix=fix_sdis
                                 ;set the surface brightness values
      set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,/initial,doubled=doubled
                                 ;SDIS 14-09-2018 let's make an
@@ -4532,7 +4536,7 @@ noconfig:
         IF velfixrings GT 1 then VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1]=TOTAL(VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1])/n_elements(VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1])
      ENDIF
      set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,finish_after=finishafter,slope=slope
-     set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,finish_after=finishafter,slope=slope
+     set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,finish_after=finishafter,slope=slope,fix=fix_sdis
                                 ;Then set the surface brighness profile parameters
      set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,cutoff,norings,finishafter,doubled=doubled
                                 ;Update the rings to be fitted in the other parameters
@@ -5370,7 +5374,7 @@ noconfig:
            lastcutrings=norings[0] 
                                 ;Set the fitting parameters       
            set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter
-           set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,finish_after=finishafter,slope=slope
+           set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,finish_after=finishafter,slope=slope,fix=fix_sdis
   
                                 ;Adapt the other fitting parameters
                                 ;first the SBRarr
@@ -5628,7 +5632,7 @@ noconfig:
                          ' VSYS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
                                ;Rotation settings
            set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter
-           set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,finish_after=finishafter,slope=slope
+           set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,finish_after=finishafter,slope=slope,fix=fix_sdis
   
                                 ;Write the parameters to the tirific
                                 ;array
@@ -5722,7 +5726,7 @@ noconfig:
        ; sdisinput1[0]=' SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
         ;              ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)
         set_vrotv6,vrotinput1,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,centralexclude=centralexclude,finish_after=finishafter
-        set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,finish_after=finishafter,slope=slope
+        set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,finish_after=finishafter,slope=slope,fix=fix_sdis
   
                                 ;But we need to reset all the fitting parameters
         IF trytwo LT 2. then begin
@@ -6302,7 +6306,7 @@ noconfig:
         fix_incl = 0.
      ENDIF
      names=[currentfitcube,catMom0name[i],catMom1name[i],catmaskname[i],noisemapname,catCatalogname[i],basicinfo]
-     book_keeping,names,bookkeeping,catdistance[i],gdlidl,log=log,noise=catnoise[i],finishafter=finishafter,fixedpars=[fix_pa,fix_incl]
+     book_keeping,names,bookkeeping,catdistance[i],gdlidl,log=log,noise=catnoise[i],finishafter=finishafter,fixedpars=[fix_pa,fix_incl,fix_sdis]
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         printf,66,linenumber()+"Finished "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()

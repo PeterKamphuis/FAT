@@ -1,4 +1,4 @@
-Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,AVINNER=avinner,START=start,CENTRALEXCLUDE=centralexclude,FINISH_AFTER=finish_after,slope=slope,debug=debug
+Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,AVINNER=avinner,START=start,CENTRALEXCLUDE=centralexclude,FINISH_AFTER=finish_after,slope=slope,debug=debug,fix=fix
 
 ;+
 ; NAME:
@@ -63,7 +63,7 @@ Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidt
                                 ;If the model is big we always want to
                                 ;fit a slope to the outer parts
   IF n_elements(slope) EQ 0 then slope=0
- 
+  IF n_elements(fix) EQ 0 then fix=1
   IF double(norings[0]) GT 15. then begin
      IF n_elements(finish_after) EQ 0 then finish_after=2.
      IF finish_after EQ 2.1 then begin
@@ -88,7 +88,7 @@ Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidt
   case (1) of
                                 ;If a small galaxy we fit the
                                 ;dispersion as 1
-     norings[0] LE 4 OR finish_after EQ 1.1:begin
+     norings[0] LE 4 OR finish_after EQ 1.1 OR fix EQ 0:begin
   ;      SDISinput1=['SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
   ;               ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
   ;               '25','5','1','0.1','0.5','0.05','3','70','70']    
