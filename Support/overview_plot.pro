@@ -121,7 +121,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   majbeam=strtrim(string(double(Arrays[0,tmp]),format='(F10.1)'),2)
   tmp=WHERE(plotpara EQ 'RADI')
   out_ringsize=strtrim(string(double(Arrays[n_elements(Arrays[*,0])-1,tmp]-Arrays[n_elements(Arrays[*,0])-2,tmp]),format='(F10.1)'),2)
-  in_ringsize=strtrim(string(double(Arrays[1,tmp]-Arrays[2,tmp]),format='(F10.1)'),2)
+  in_ringsize=strtrim(string(double(Arrays[2,tmp]-Arrays[1,tmp]),format='(F10.1)'),2)
   tmp=WHERE(plotpara EQ 'INCL')
   ceninc=Arrays[0,tmp]
   tmp=WHERE(plotpara EQ 'VROT')
