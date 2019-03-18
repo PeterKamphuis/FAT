@@ -3001,6 +3001,9 @@ noconfig:
                                 ;We always want to smooth the surface
                                 ;brightnes. Added 16-06-2017
      tmppos=where('RADI' EQ VariablesWanted)
+     ;To judge whether we want extend we want to use the non-smoothed profiles
+     SBRarrunmod=SBRarr
+     SBRarr2unmod=SBRarr2 
      SBRarr=fat_hanning(SBRarr,firstfitvalues[*,tmppos])
      SBRarr2=fat_hanning(SBRarr2,firstfitvalues[*,tmppos])
    
@@ -3234,10 +3237,10 @@ noconfig:
         ENDELSE
         AC1=0
      ENDELSE
-     lastsbr=firstfitvalues[n_elements(firstfitvalues[*,2])-1,2]
-     avlastsbr=(TOTAL(firstfitvalues[n_elements(firstfitvalues[*,2])-2:n_elements(firstfitvalues[*,2])-1,2]))/2.
-     lastsbr2=firstfitvalues[n_elements(firstfitvalues[*,8])-1,2]
-     avlastsbr2=(TOTAL(firstfitvalues[n_elements(firstfitvalues[*,2])-2:n_elements(firstfitvalues[*,8])-1,2]))/2.
+     ;lastsbr=firstfitvalues[n_elements(firstfitvalues[*,2])-1,2]
+     ;avlastsbr=(TOTAL(firstfitvalues[n_elements(firstfitvalues[*,2])-2:n_elements(firstfitvalues[*,2])-1,2]))/2.
+     ;lastsbr2=firstfitvalues[n_elements(firstfitvalues[*,8])-1,2]
+     ;avlastsbr2=(TOTAL(firstfitvalues[n_elements(firstfitvalues[*,2])-2:n_elements(firstfitvalues[*,8])-1,2]))/2.
      tmppos=where('Z0' EQ tirificfirstvars)
      tirificfirst[tmppos]='Z0= '+strtrim(string(firstfitvalues[0,10]))
      tmppos=where('Z0_2' EQ tirificfirstvars)
@@ -3378,7 +3381,7 @@ noconfig:
                              
 
                                 ;let's see if the model has the right size           
-           IF secondtime OR doubled then norings=newrings else get_newringsv9,SBRarr,SBRarr2,cutoff,newrings
+           IF secondtime OR doubled then norings=newrings else get_newringsv9,SBRarrunmod,SBRarr2unmod,cutoff,newrings
                                 ;cannot have newsize smaller than 4
            if newrings LT 3 then begin
               IF size(log,/TYPE) EQ 7 then begin
@@ -3418,7 +3421,7 @@ noconfig:
            IF newrings GT sofiarings+(2/ring_spacing) OR newrings LT sofiarings-(3./ring_spacing) then begin        
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"The new amount of rings ("+strtrim(string(fix(newrings*ring_spacing)),2)+") deviates too much from the sofia estimate ("+string(sofiarings)+")."
+                 printf,66,linenumber()+"The new amount of rings ("+strtrim(string(fix(newrings)),2)+") deviates too much from the sofia estimate ("+string(sofiarings)+")."
                  close,66
               ENDIF
               IF newrings LT norings[0] then begin
@@ -3802,8 +3805,8 @@ noconfig:
      get_newringsv9,SBRarr,SBRarr2,cutoff,newindrings,/individual
      SBRarr=fat_hanning(SBRarr,RADarr,rings=newindrings[0])
      SBRarr2=fat_hanning(SBRarr2,RADarr,rings=newindrings[1])
-     SBRarr[0:2]=(SBRarr[0:2]+SBRarr2[0:2])/2.  
-     SBRarr2[0:2]=SBRarr[0:2]
+     SBRarr[0:1]=(SBRarr[0:1]+SBRarr2[0:1])/2.  
+     SBRarr2[0:1]=SBRarr[0:1]
      tmppos=where('SBR' EQ tirificsecondvars)
      tirificsecond[tmppos]='SBR= '+STRJOIN(SBRarr[0:n_elements(SBRarr)-1],' ')
      tmppos=where('SBR_2' EQ tirificsecondvars)
@@ -3865,8 +3868,8 @@ noconfig:
            tmp=1
            interpolate,SBRarr2,RADarr,newradii=rad,output=tmp
            SBRarr2=tmp
-           SBRarr[0:2]=(SBRarr[0:2]+SBRarr2[0:2])/2.  
-           SBRarr2[0:2]=SBRarr[0:2]
+           SBRarr[0:1]=(SBRarr[0:1]+SBRarr2[0:1])/2.  
+           SBRarr2[0:1]=SBRarr[0:1]
            RADarr=rad
            tmppos=where('RADI' EQ tirificsecondvars)
            tirificsecond[tmppos]='RADI= '+STRJOIN(strtrim(strcompress(string(RADarr))),' ')
@@ -4258,6 +4261,7 @@ noconfig:
      
      tmppos=where('SBR' EQ secondfitvaluesnames)
      SBRarr=secondfitvalues[*,tmppos]
+     SBRarrunmod=SBRarr
                                 ;We always want to smooth the surface brightnes. Added 16-06-2017
      get_newringsv9,SBRarr,SBRarr2,cutoff,newindrings,/individual
      SBRarr=fat_hanning(SBRarr,RADarr,rings=newindrings[0])
@@ -4298,6 +4302,7 @@ noconfig:
  
      tmppos=where('SBR_2' EQ secondfitvaluesnames)
      SBRarr2=secondfitvalues[*,tmppos]
+     SBRarr2unmod=SBRarr2
                                 ;We always want to smooth the surface brightnes. Added 16-06-2017
      get_newringsv9,SBRarr,SBRarr2,cutoff,newindrings,/individual
      SBRarr2=fat_hanning(SBRarr2,RADarr,rings=newindrings[1])
@@ -4307,8 +4312,8 @@ noconfig:
      interpolate,inSBR,inRad,newradii=newRAD,output=newSBR
      SBRarr2[0]=(newSBR[0]+SBRarr[0])/2.
      SBRarr[0]=(newSBR[0]+SBRarr[0])/2.
-     SBRarr[0:2]=(SBRarr[0:2]+SBRarr2[0:2])/2.  
-     SBRarr2[0:2]=SBRarr[0:2]
+     SBRarr[0:1]=(SBRarr[0:1]+SBRarr2[0:1])/2.  
+     SBRarr2[0:1]=SBRarr[0:1]
      tmppos=where('SBR' EQ tirificsecondvars)
      tirificsecond[tmppos]='SBR= '+STRJOIN(SBRarr[0:n_elements(SBRarr)-1],' ')
      tmppos=where('SBR_2' EQ tirificsecondvars)
@@ -4831,10 +4836,8 @@ noconfig:
         stringSDIS='SDIS_2= '+STRJOIN(string(SDISarr[0:n_elements(SDISarr)-1]),' ') 
         tmppos=where('SDIS_2' EQ tirificsecondvars)
         tirificsecond[tmppos]=stringSDIS
-        SBRarr[0]=(SBRarr[0]+SBRarr2[0])/2.
-        SBRarr[1]=(SBRarr[1]+SBRarr2[1])/2.
-        SBRarr2[0]=(SBRarr[0]+SBRarr2[0])/2.
-        SBRarr2[1]=(SBRarr[1]+SBRarr2[1])/2.
+        SBRarr[0:1]=(SBRarr[0:1]+SBRarr2[0:1])/2.
+        SBRarr2[0:1]=SBRarr[0:1]
         stringSBR='SBR= '+STRJOIN(string(SBRarr),' ') 
         tmppos=where('SBR' EQ tirificsecondvars)
         tirificsecond[tmppos]=stringSBR
@@ -5213,10 +5216,8 @@ noconfig:
         IF newindrings[1] LT n_elements(SBRarr2) then begin
            SBRarr2[newindrings[1]-1:n_elements(SBRarr2)-1]=1E-16
         ENDIF
-        SBRarr[0]=(SBRarr[0]+SBRarr2[0])/2.
-        SBRarr[1]=(SBRarr[1]+SBRarr2[1])/2.
-        SBRarr2[0]=(SBRarr[0]+SBRarr2[0])/2.
-        SBRarr2[1]=(SBRarr[1]+SBRarr2[1])/2.
+        SBRarr[0:1]=(SBRarr[0:1]+SBRarr2[0:1])/2.
+        SBRarr2[0:1]=SBRarr[0:1]
         stringSBR='SBR= '+STRJOIN(string(SBRarr),' ') 
         tmppos=where('SBR' EQ tirificsecondvars)
         tirificsecond[tmppos]=stringSBR
@@ -5258,7 +5259,7 @@ noconfig:
      IF sbrmodify LT 10. AND finalsmooth NE 1 AND secondtime NE 1  then begin
                                 ;check the SBR profiles to see if we
                                 ;need to cut/add a ring.
-        get_newringsv9,SBRarr,SBRarr2,cutoff,newrings 
+        get_newringsv9,SBRarrunmod,SBRarr2unmod,cutoff,newrings 
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+"Newrings should always be bigger or equal to velconstused "+strtrim(string(fix(newrings)),2)+" =>"+string(velconstused)
@@ -5993,10 +5994,8 @@ noconfig:
 ;                                ;We always want to smooth the surface brightnes. Added 16-06-2017
         SBRarr=fat_hanning(SBRarr,RADarr)
         SBRarr2=fat_hanning(SBRarr2,RADarr)
-        SBRarr[0]=(SBRarr[0]+SBRarr2[0])/2.
-        SBRarr[1]=(SBRarr[1]+SBRarr2[1])/2.
-        SBRarr2[0]=(SBRarr[0]+SBRarr2[0])/2.
-        SBRarr2[1]=(SBRarr[1]+SBRarr2[1])/2.
+        SBRarr[0:1]=(SBRarr[0:1]+SBRarr2[0:1])/2.
+        SBRarr2[0:1]=SBRarr[0:1]
 
     
                                 ;In this case we want to add them back

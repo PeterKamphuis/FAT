@@ -100,5 +100,5 @@ Pro set_sbr,SBRinput1,SBRinput2,SBRinput3,SBRinput4,SBRinput5,SBRinput6,SBRarr,c
      ENDELSE
   ENDIF
   ;This is a fix on testing coupling the two inner rings'
- 
+  SBRinput4[*]=' '
 end

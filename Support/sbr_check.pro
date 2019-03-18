@@ -92,8 +92,8 @@ Pro sbr_check,template,templatevars,sbrarr,sbrarr2,cutoff,debug=debug
      trigger=1    
   ENDIF
   
-  SBRarr[0:2]=(SBRarr[0:2]+SBRarr2[0:2])/2.  
-  SBRarr2[0:2]=SBRarr[0:2]
+  SBRarr[0:1]=(SBRarr[0:1]+SBRarr2[0:1])/2.  
+  SBRarr2[0:1]=SBRarr[0:1]
   if keyword_set(debug) then begin
      print,'!!!!!!!!!! How Does This Happen !!!!!!!!!!!!!!!!!!!!!'
      print,SBRarr,SBRarr2

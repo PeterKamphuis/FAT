@@ -165,9 +165,9 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   tmp=WHERE(plotpara EQ 'RADI')
   plotradii=Arrays[*,tmp]
   tmppos=WHERE(plotpara EQ 'SBR')
-  tmp=WHERE(Arrays[*,tmppos] GT 1.1E-16)
+  tmp=WHERE(Arrays[*,tmppos[0]] GT 1.1E-16)
   tmppos=WHERE(plotpara EQ 'SBR_2')
-  tmp2=WHERE(Arrays[*,tmppos] GT 1.1E-16)
+  tmp2=WHERE(Arrays[*,tmppos[0]] GT 1.1E-16)
   
   maxradii=MAX([plotradii[tmp],plotradii[tmp2]])+(plotradii[n_elements(plotradii)-1]-plotradii[n_elements(plotradii)-2])/2.
   
@@ -224,6 +224,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         AXIS,XAXIS=1,charthick=charthick,xthick=xthick,ythick=ythick,charsize=charsize,XRANGE = convertskyanglefunction(!X.CRANGE,distance),xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],color='000000'x 
         loadct,40,/silent
         tmppos=WHERE(plotpara EQ 'SBR_2')
+        xerr=dblarr(n_elements(Arrays[tmp2,tmppos[0]]))
         fat_ploterror,plotradii,Arrays[tmp2,tmppos[0]],xerr,xerr,thick=lthick,color='0000FF'x,linestyle=2,ERRCOLOR = '0000FF'x, ERRTHICK=!p.thick*0.4,/over_plot,psym=8,symsize=ssize
         if keyword_set(splined) then begin
            newvar=spline(plotradii,Arrays[tmp2,tmppos[0]],newrad)
