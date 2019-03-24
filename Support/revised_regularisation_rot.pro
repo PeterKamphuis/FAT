@@ -677,7 +677,7 @@ refit:
      endorder=n_elements(PA[*])-2-fixedrings
      maxendorder=endorder
      IF endorder LT 2 then endorder=2
-     IF endorder GT 6 then endorder=6
+     IF endorder GT 7 then endorder=7
      beginorder=2
      IF keyword_set(debug) then begin
         print,'this is the fixedrings',fixedrings
@@ -714,7 +714,7 @@ refit:
             
         mcerrors[*,order-beginorder]=shifterrors[*]
      endelse
-     IF order GT 5 then  Chi[order-beginorder]=tmp*order
+     IF order GT 5 then  Chi[order-beginorder]=tmp*(1+(order/5.)/ABS(n_elements(fitPA)-6.))
      IF keyword_set(debug) then begin
         print,'Printing reduced chi, order, Reg red Chi'
         print,tmp,order,Chi[order-beginorder]
