@@ -951,13 +951,15 @@ refit:
  
   IF keyword_set(nocentral) AND n_elements(PAin) GT 15. then newPA[0:fixedrings]=newPA[fixedrings+1]
  
-  for j=0,n_elements(PA[*])-1 do errors[j]=MAX([errors[j],ABS(PA[j]-newPA[j]),ddiv])
-  
+  for j=0,n_elements(PA[*])-1 do errors[j]=MAX([errors[j],ABS(PAin[j]-newPA[j]),ddiv])
+  IF n_elements(newPA) LT 15. then begin
+     errors=errors*SQRT(15./n_elements(newPA))
+  ENDIF
   if keyword_set(debug) then begin
      print,'The estimated  errors before the end'
      print,errors
   ENDIF
- 
+  
   tmp=WHERE(FINITE(newPA) EQ 0.)
   IF tmp[0] NE -1 then newPA[WHERE(FINITE(newPA) EQ 0.)]=PAin[WHERE(FINITE(newPA) EQ 0.)]
   IF n_elements(pamin) gt 0 then tmp=WHERE(PA[*]-errors[*] LT pamin) else tmp=-1
@@ -974,7 +976,7 @@ refit:
   errors[n_elements(errors)-1]= errors[n_elements(errors)-1]*centralerrmult
   If errors[0] LT errors[1] then errors[0]=errors[1]
   IF n_elements(errorin) NE 0 then errorin=REVERSE(errors)
-  
+     
   order=finorder
  
   

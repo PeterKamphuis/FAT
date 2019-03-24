@@ -1358,6 +1358,16 @@ refit:
      errincfact=1.
      goto,cleanup
   endif
+  If our galaxies are smaller our errors increase
+  IF n_elements(newPA[*,0]) LT 15. then begin
+     for i=0,1 do begin
+        errors[*,i]=errors[*,i]*SQRT(15./n_elements(newPA))
+     endfor
+  ENDIF
+
+
+
+  
                                 ;Finaaly we check how many values
                                 ;significantly deviate from the mean
                                 ;if it is one or less then 10% of the
