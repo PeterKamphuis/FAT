@@ -53,6 +53,8 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;  RESOLVE_ROUTINE, STRLOWCASE, STDDEV and likely more.
 ;
 ; MODIFICATION HISTORY:
+;      01-01-2019 P.Kamphuis; Modification history is now tracked
+;                             through Github Commits for all files.  
 ;      30-11-2018 P.Kamphuis; Added the ring size parameter such that
 ;                             now the ring sizes in beams  can be give
 ;                             in input file. The default  is 1 and it
