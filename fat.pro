@@ -1,4 +1,4 @@
-Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATION_CHECK=installation_check,LVHIS_TEST=lvhistest,PAPER_TEST=papertest,RES_TEST=restest,AGC=agctest,SMALL_AGC=smallagctest
+Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATION_CHECK=installation_check,LVHIS_TEST=lvhistest,PAPER_TEST=papertest,RES_TEST=restest,AGC=agctest,SMALL_AGC=smallagctest,PROBLEMS=problems
 
 ;+
 ; NAME:
@@ -350,6 +350,10 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   if keyword_set(smallagctest) then begin
      spawn,'printenv FAT_TEST_DIR',fatmaintest
      configfile=fatmaintest+'/Small_Base/FAT_INPUT.config'
+  endif
+  if keyword_set(problems) then begin
+     spawn,'printenv FAT_TEST_DIR',fatmaintest
+     configfile=fatmaintest+'/Problems/FAT_INPUT.config'
   endif
   IF n_elements(configfile) EQ 0 then begin
      configfile='FAT_INPUT.config'
@@ -3619,7 +3623,7 @@ noconfig:
         IF VROTarr[1] LT 120. AND VROTarr[2] LT 120. then begin
            revised_regularisation_rot,VROTarr,SBRarrcom, firstfitvalues[*,9],/REVERSE,fixedrings=norings[0]-fix(norings[0]*3./4.),difference=verror,cutoff=cutoff,arctan=0.,order=polorder,max_par=VROTmax,min_par=channelwidth,log=log 
         ENDIF ELSE Begin
-           revised_regularisation_rot,VROTarr,SBRarrcom, firstfitvalues[*,9],/REVERSE,fixedrings=norings[0]-fix(norings[0]*3./4.),difference=verror,cutoff=cutoff,arctan=0.,order=polorder,max_par=VROTmax,min_par=channelwidth,/NOCENTRAL,log=log 
+           revised_regularisation_rot,VROTarr,SBRarrcom, firstfitvalues[*,9],/REVERSE,fixedrings=norings[0]-fix(norings[0]*3./4.),difference=verror,cutoff=cutoff,arctan=0.,order=polorder,max_par=VROTmax,min_par=channelwidth,/NOCENTRAL,log=log,/debug 
         ENDELSE
         tmp0check=WHERE(VROTarr LT 0)
         IF tmp0check[0] NE -1 then VROTarr[tmp0check]=3.*channelwidth
@@ -4268,14 +4272,16 @@ noconfig:
      get_newringsv9,SBRarr,SBRarr2,cutoff,newindrings,/individual
      SBRarr=fat_hanning(SBRarr,RADarr,rings=newindrings[0])
                                 ;and take the central point as the
-                                ;extension of the previous two. Added 18-10-2018
-     inSBR=SBRarr[1:2]
-     inRad=RADarr[1:2]
-     newRAD=RADarr[0:2]
-     newSBR=1
-     interpolate,inSBR,inRad,newradii=newRAD,output=newSBR
-     SBRarr[0]=newSBR[0]
-    
+                                ;extension of the previous two. Added
+                                ;18-10-2018. This is done in
+                                ;fat_hanning already
+     ;inSBR=SBRarr[1:2]
+     ;inRad=RADarr[1:2]
+     ;newRAD=RADarr[0:2]
+     ;newSBR=1
+     ;interpolate,inSBR,inRad,newradii=newRAD,output=newSBR
+     ;SBRarr[0]=newSBR[0]
+    ;
      
      tmppos=where('INCL' EQ secondfitvaluesnames)
      INCLang=secondfitvalues[*,tmppos]
@@ -4308,12 +4314,12 @@ noconfig:
                                 ;We always want to smooth the surface brightnes. Added 16-06-2017
      get_newringsv9,SBRarr,SBRarr2,cutoff,newindrings,/individual
      SBRarr2=fat_hanning(SBRarr2,RADarr,rings=newindrings[1])
-     inSBR=SBRarr2[1:2]
-     inRad=RADarr[1:2]
-     newSBR=1.
-     interpolate,inSBR,inRad,newradii=newRAD,output=newSBR
-     SBRarr2[0]=(newSBR[0]+SBRarr[0])/2.
-     SBRarr[0]=(newSBR[0]+SBRarr[0])/2.
+     ;inSBR=SBRarr2[1:2]
+     ;inRad=RADarr[1:2]
+     ;newSBR=1.
+     ;interpolate,inSBR,inRad,newradii=newRAD,output=newSBR
+     ;SBRarr2[0]=(newSBR[0]+SBRarr[0])/2.
+     ;SBRarr[0]=(newSBR[0]+SBRarr[0])/2.
      SBRarr[0:1]=(SBRarr[0:1]+SBRarr2[0:1])/2.  
      SBRarr2[0:1]=SBRarr[0:1]
      tmppos=where('SBR' EQ tirificsecondvars)
@@ -4470,7 +4476,7 @@ noconfig:
      IF norings[0]*ring_spacing GT 8 AND not finishafter EQ 2.1 then velconstused=velconstused-1
      xind=0
      IF (TOTAL(VROTarr[1:2])/2. GT 150 AND VROTarr[1] GT VROTarr[2] AND VROTarr[1] GT VROTarr[3]) OR $
-        (MEAN(VROTarr[1:n_elements(vrotarr)-1]) GT 250.) then begin
+        (MEAN(VROTarr[1:n_elements(vrotarr)-1]) GT 200.) then begin
         x=n_elements(VROTarr)-1
         WHILE VROTarr[x] GT  VROTarr[x-1] AND x GT fix(n_elements(VROTarr)/2) DO x--
         
@@ -4494,7 +4500,7 @@ noconfig:
            xind=x
            IF norings[0]-x GT velconstused then velconstused=norings[0]-x
         ENDIF ELSE BEGIN
-           IF MEAN(VROTarr[1:n_elements(vrotarr)-1]) GT 250. then begin
+           IF MEAN(VROTarr[1:n_elements(vrotarr)-1]) GT 200. then begin
               min=MAX(VROTarr)
               xind=n_elements(VROTarr)-1
               for x=fix(n_elements(VROTarr)/2),n_elements(VROTarr)-1 do begin
@@ -4813,7 +4819,7 @@ noconfig:
         IF double(VROTarr[1]) LT 120. AND  double(VROTarr[2]) LT 120. then begin
            revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=1,order=polorder,error=sigmarot,log=log,max_par=VROTmax,min_par=channelwidth  
         ENDIF ELSE BEGIN
-           revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=1,/NOCENTRAL,error=sigmarot,log=log,max_par=VROTmax,min_par=channelwidth    
+           revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=1,/NOCENTRAL,error=sigmarot,log=log,max_par=VROTmax,min_par=channelwidth,/debug    
         ENDELSE
 
         stringVROT='VROT= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
@@ -5076,11 +5082,31 @@ noconfig:
             ENDIF
            slope=1
            IF velfixrings GT 1 then VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1]=TOTAL(VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1])/n_elements(VROTarr[n_elements(VROTarr)-velfixrings:n_elements(VROTarr)-1])
+           stringVROT='VROT= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
+           tmppos=where('VROT' EQ tirificsecondvars)
+           tirificsecond[tmppos]=stringVROT
+           stringVROT='VROT_2= 0. '+STRJOIN(string(VROTarr[1:n_elements(VROTarr)-1]),' ') 
+           tmppos=where('VROT_2' EQ tirificsecondvars)
+           tirificsecond[tmppos]=stringVROT
         ENDIF
+        SDISarr=(SDISarr+SDISarr2)/2.
+        if norings[0] LT 4 OR finishafter EQ 1.1 then begin
+           SDISarr[*]=MEAN(SDISarr)
+           sigmasdis=replicate(channelwidth/4.,n_elements(SDISarr))
+        endif else begin
+           regularisation_sdis,SDISarr,tmpSBR,RADarr,log=log,max_par=SDISmax,min_par=SDISmin,arctan=1,fixedrings=velfixrings,difference=channelwidth/4.,cutoff=cutoff,gdlidl=gdlidl ,error= sigmasdis
+        endelse
+        stringSDIS='SDIS= '+STRJOIN(string(SDISarr[0:n_elements(SDISarr)-1]),' ') 
+        tmppos=where('SDIS' EQ tirificsecondvars)
+        tirificsecond[tmppos]=stringSDIS
+        stringSDIS='SDIS_2= '+STRJOIN(string(SDISarr[0:n_elements(SDISarr)-1]),' ') 
+        tmppos=where('SDIS_2' EQ tirificsecondvars)
+        tirificsecond[tmppos]=stringSDIS
         IF finalsmooth EQ 1 AND velconstused LT norings[0] AND (norings[0]*ring_spacing LT 15 OR (polorder1[1] LT 4. AND polorder2[1] LT 4)) then begin
            vrotslopinput=strarr(10)
            start=3.+fix((norings[0]-3./ring_spacing)/5.)
-           set_vrotv6,vrotslopinput,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,start=start,centralexclude=centralexclude,finish_after=finishafter,slope=slope 
+           set_vrotv6,vrotslopinput,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,start=start,centralexclude=centralexclude,finish_after=finishafter,slope=slope
+           
            INCLinputall=['INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' '+$
                     'INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
                          '90','5',string(0.5),string(0.1),string(0.5),string(0.1),'3','70','70']
@@ -5151,7 +5177,7 @@ noconfig:
         IF double(VROTarr[1]) LT 120. AND  double(VROTarr[2]) LT 120. then begin
            revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=prefunc,order=polorder,max_par=tmphigh[0],min_par=tmplow[0],accuracy=accuracy,error=sigmarot,log=log  
         ENDIF ELSE BEGIN
-           revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=prefunc,/NOCENTRAL,order=polorder,max_par=tmphigh[0],min_par=tmplow[0],accuracy=accuracy,error=sigmarot,log=log  
+           revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=prefunc,/NOCENTRAL,order=polorder,max_par=tmphigh[0],min_par=tmplow[0],accuracy=accuracy,error=sigmarot,log=log,/debug  
         ENDELSE
         tmp0check=WHERE(VROTarr LT 0)
         IF tmp0check[0] NE -1 then VROTarr[tmp0check]=tmplow[0]
@@ -5169,13 +5195,13 @@ noconfig:
            Close,66
         ENDIF
          ;SDIS
-        SDISarr=(SDISarr+SDISarr2)/2.
-        if norings[0] LT 4 OR finishafter EQ 1.1 then begin
-           SDISarr[*]=MEAN(SDISarr)
-           sigmasdis=replicate(channelwidth/4.,n_elements(SDISarr))
-        endif else begin
-           regularisation_sdis,SDISarr,tmpSBR,RADarr,log=log,max_par=SDISmax,min_par=SDISmin,arctan=prefunc,fixedrings=velfixrings,difference=channelwidth/4.,cutoff=cutoff,gdlidl=gdlidl ,error= sigmasdis
-        endelse
+       ; SDISarr=(SDISarr+SDISarr2)/2.
+       ; if norings[0] LT 4 OR finishafter EQ 1.1 then begin
+       ;    SDISarr[*]=MEAN(SDISarr)
+       ;    sigmasdis=replicate(channelwidth/4.,n_elements(SDISarr))
+       ; endif else begin
+       ;    regularisation_sdis,SDISarr,tmpSBR,RADarr,log=log,max_par=SDISmax,min_par=SDISmin,arctan=prefunc,fixedrings=velfixrings,difference=channelwidth/4.,cutoff=cutoff,gdlidl=gdlidl ,error= sigmasdis
+       ; endelse
        
         
      ENDIF
@@ -6321,6 +6347,7 @@ noconfig:
      if finishafter EQ 1.1 then begin
         fix_pa = 0
         fix_incl = 0.
+        fix_sdis = 0
      ENDIF
      names=[currentfitcube,catMom0name[i],catMom1name[i],catmaskname[i],noisemapname,catCatalogname[i],basicinfo]
      book_keeping,names,bookkeeping,catdistance[i],gdlidl,log=log,noise=catnoise[i],finishafter=finishafter,fixedpars=[fix_pa,fix_incl,fix_sdis]
