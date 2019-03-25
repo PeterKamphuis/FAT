@@ -1358,10 +1358,12 @@ refit:
      errincfact=1.
      goto,cleanup
   endif
-  If our galaxies are smaller our errors increase
+                                ;If our galaxies are smaller our
+                                ;errors increase, maybe this should be
+                                ;base on real size not no rings?
   IF n_elements(newPA[*,0]) LT 15. then begin
      for i=0,1 do begin
-        errors[*,i]=errors[*,i]*SQRT(15./n_elements(newPA))
+        errors[*,i]=errors[*,i]*(15./n_elements(newPA[*,i]))^0.1
      endfor
   ENDIF
 
@@ -1376,9 +1378,9 @@ refit:
 
   for i=0,1 do begin
      mean_par=MEAN(newPA[*,i])
-     dev_real=WHERE(newPA[*,i]+errors[*,i] LT mean_par OR newPA[*,i]-errors[*,i] GT mean_par)
+     dev_real=WHERE((newPA[*,i]+errors[*,i] LT mean_par OR newPA[*,i]-errors[*,i] GT mean_par) and newPA[*,i] NE newPA[0,i])
      IF n_elements(newPA[*,i]) LT 15 then limit=1 else limit = n_elements(newPA[*,i])*0.133333
-     IF n_elements(dev_real) LE limit then newPA[*,i]=mean_par
+     IF n_elements(dev_real) LE limit then newPA[*,i]=newPA[0,i]
   endfor
   
 
