@@ -714,7 +714,7 @@ refit:
             
         mcerrors[*,order-beginorder]=shifterrors[*]
      endelse
-     IF order GT 5 then  Chi[order-beginorder]=tmp*(1+(order/5.)/ABS(n_elements(fitPA)-6.))
+     IF order GE 5 then  Chi[order-beginorder]=tmp*(1.+(order/5.)/ABS(n_elements(fitPA)-6.))
      IF keyword_set(debug) then begin
         print,'Printing reduced chi, order, Reg red Chi'
         print,tmp,order,Chi[order-beginorder]
@@ -884,13 +884,13 @@ refit:
         newPA[*]= newPA[*]+newPAcoeff[i]*RADII[*]^i 
      endfor
      IF (TOTAL(newPA[n_elements(newPA)-2:n_elements(newPA)-1])/2. GT 150 AND newPA[n_elements(newPA)-1] GT newPA[n_elements(newPA)-2] AND newPA[n_elements(newPA)-1] GT newPA[n_elements(newPA)-3]) OR $
-        (MEAN(newPA[0:n_elements(newPA)-1]) GT 250.) then begin
+        (MEAN(newPA[0:n_elements(newPA)-1]) GT 200.) then begin
         x=0
         WHILE newPA[x] GT  newPA[x+1] AND x LT fix(n_elements(newPA)/2) DO x++
         IF x GT 0 then begin
            newPA[0:x]=newPA[x]       
         ENDIF ELSE BEGIN
-           IF MEAN(newPA[1:n_elements(newPA)-1]) GT 250. then begin
+           IF MEAN(newPA[1:n_elements(newPA)-1]) GT 200. then begin
               min=MAX(newPA)
               xind=0
               for x=0,fix(n_elements(newPA)/2)-1 do begin
@@ -949,11 +949,14 @@ refit:
      ENDIF
   ENDIF
  
-  IF keyword_set(nocentral) AND n_elements(PAin) GT 15. then newPA[0:fixedrings]=newPA[fixedrings+1]
+  IF keyword_set(nocentral) then begin
+     if newPA[n_elements(newPA)-1] LT newPA[n_elements(newPA)-2] then newPA[n_elements(newPA)-1] = PAin[1]
+     if n_elements(PAin) GT 15. then newPA[0:fixedrings]=newPA[fixedrings+1]
+  endif
  
   for j=0,n_elements(PA[*])-1 do errors[j]=MAX([errors[j],ABS(PAin[j]-newPA[j]),ddiv])
   IF n_elements(newPA) LT 15. then begin
-     errors=errors*SQRT(15./n_elements(newPA))
+     errors=errors*(15./n_elements(newPA))^0.1
   ENDIF
   if keyword_set(debug) then begin
      print,'The estimated  errors before the end'
