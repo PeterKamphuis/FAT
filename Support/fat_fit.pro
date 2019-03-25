@@ -285,7 +285,7 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
               IF n_elements(ddiv) NE 0 then begin
                  for i=1,fix(n_elements(newy)/4.) do begin
                     change=newY[i-1]-newY[i]
-                    IF change LT 0. AND ABS(change) GT ddiv then chisqr=chisqr*ABS(change)
+                    IF change LT 0. AND ABS(change) GT ddiv then chisqr=chisqr*ABS(change/ddiv)
                  endfor
               ENDIF
 
@@ -371,10 +371,10 @@ skippenalize:
            ENDELSE
         ENDIF
           
-           ;IF n_elements(errors) GT 0 then chisqr=TOTAL((newy - y)^2/(sqerrors)) else chisqr=TOTAL((newy - y)^2)
+        IF n_elements(errors) GT 0 then chisqr=TOTAL((newy - y)^2/(sqerrors)) else chisqr=TOTAL((newy - y)^2)
        
         ;rchisqr=chisqr/(n_elements(y)-order)
-        chisqr=TOTAL(chiarr[0:iterno-1])/n_elements(chiarr[0:iterno-1])
+        ;chisqr=TOTAL(chiarr[0:iterno-1])/n_elements(chiarr[0:iterno-1])
         rchisqr=chisqr/(n_elements(y)-order)
      ENDELSE
      chiarr=0.
