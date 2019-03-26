@@ -126,6 +126,9 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
         satisf=0.
         gftim=0.
         check = 0
+                                ;If we have lots of fixedrings p does
+                                ;really mean much so blow up the chisqr
+        IF n_elements(newy)-fixedrings LT order then blowup=1 else blowup=0
         WHILE iterno LT mc_iters-1 AND satisf NE 1 DO BEGIN
            IF iterno/10000. EQ fix(iterno/10000.) AND iterno GT 50000 then begin
                IF size(log,/TYPE) EQ 7 then begin
@@ -136,7 +139,7 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
                   ENDIF
                   printf,66,linenumber()+'FAT_FIT: We are currently at iteration number '+strtrim(string(iterno),2)
                   IF iterno GT 75000 then begin
-                     printf,66,linenumber()+'FAT_FIT: The current difference is '+strtrim(STRJOIN(div[*]/totp[*]*100.,' '),2)
+                     printf,66,linenumber()+'FAT_FIT: The current difference is '+strtrim(STRJOIN(ABS(div[*]/totp[*]*100.),' '),2)
                      printf,66,linenumber()+'FAT_FIT: And we have satisfied '+strtrim(string(gftim),2)+' times.'
                   ENDIF
                   close,66
@@ -147,7 +150,7 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
                   ENDIF
                   print,'FAT_FIT: We are currently at iteration number '+strtrim(string(iterno),2)
                   IF iterno GT 75000 then begin
-                     print,'FAT_FIT: The current difference is '+strtrim(STRJOIN(div[*]/totp[*]*100.,' '),2)
+                     print,'FAT_FIT: The current difference is '+strtrim(STRJOIN(ABS(div[*]/totp[*]*100.),' '),2)
                      print,'FAT_FIT: And we have satisfied '+strtrim(string(gftim),2)+' times.'
                   ENDIF
                ENDELSE
@@ -166,8 +169,9 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
            ENDIF ELSE BeGIN
               newy[*]=p[0]
               for i=1,n_elements(p)-1 do newy[*]=newy[*]+p[i]*x[*]^i
- 
-              IF fixedrings GT 0. and order NE 0 then begin
+             
+              IF fixedrings GT 0. and order NE 0 and blowup NE 1 then begin
+        
                  IF n_elements(ddiv) EQ 0 then begin
                     IF fixedrings GT fix(n_elements(newy)/2.)-1 then begin
                        newy[0:fix(n_elements(newy)/2.)-1]=yor[0]
@@ -221,8 +225,11 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
                     
                  ENDELSE
               ENDIF
-              
+             
               IF n_elements(errors) GT 0 then chisqr=TOTAL((newy - y)^2/sqerrors) else chisqr=TOTAL((newy - y)^2)
+             
+
+              
                                 ;If underdetermined do not penalize
               
               IF chisqr LT (n_elements(fitPA)-order) then goto,skippenalize
@@ -285,7 +292,7 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
               IF n_elements(ddiv) NE 0 then begin
                  for i=1,fix(n_elements(newy)/4.) do begin
                     change=newY[i-1]-newY[i]
-                    IF change LT 0. AND ABS(change) GT ddiv then chisqr=chisqr*ABS(change/ddiv)
+                    IF change LT 0. AND ABS(change) GT ddiv then chisqr=chisqr*ABS(change)
                  endfor
               ENDIF
 
