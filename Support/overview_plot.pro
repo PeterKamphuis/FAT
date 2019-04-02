@@ -75,7 +75,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   
   arrays=1.
   IF gdlidl then SET_PLOT,'PS' else SET_PLOT, 'Z'
-  plotpara=['RADI','SBR','SBR_2','VROT','VROT_ERR','PA','PA_ERR','PA_2','PA_2_ERR','INCL','INCL_ERR','INCL_2','INCL_2_ERR','BMAJ','SDIS','XPOS','YPOS','VSYS','SDIS_ERR']
+  plotpara=['RADI','SBR','SBR_2','VROT','VROT_ERR','PA','PA_ERR','PA_2','PA_2_ERR','INCL','INCL_ERR','INCL_2','INCL_2_ERR','BMAJ','SDIS','XPOS','YPOS','VSYS','SDIS_ERR','Z0','Z0_2']
   plotstart=[[1,3,14,5,9],[2,3,14,7,11],[0,1,4,1,1]]
   Template=1.
   WriteNewToTemplate,Template,'Finalmodel/Finalmodel.def',ARRAYS=Arrays,VARIABLECHANGE=plotpara,/EXTRACT
@@ -100,10 +100,24 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   buffer=dblarr(5)
   minvar[*]=100000
   maxvar[*]=-10000
-  for i=0,4 do begin
-     tmpvals=[Arrays[*,plotstart[i,0]],Arrays[*,plotstart[i,1]]]
+  for i=0,4 do begin  plotVariableErr=Arrays[tmp,plotstart[i,0]+plotstart[i,2]]
+     if i GT 0 then begin
+        tmpvals=[Arrays[*,plotstart[i,0]]+Arrays[*,plotstart[i,0]+plotstart[i,2]],$
+                 Arrays[*,plotstart[i,0]]-Arrays[*,plotstart[i,0]+plotstart[i,2]],$
+                 Arrays[*,plotstart[i,1]]+Arrays[*,plotstart[i,1]+plotstart[i,2]],$
+                 Arrays[*,plotstart[i,1]]+Arrays[*,plotstart[i,1]-plotstart[i,2]]]
+     endif else begin
+        tmpvals=[Arrays[*,plotstart[i,0]],Arrays[*,plotstart[i,1]]]
+     endelse
      tmplocs=WHERE(tmpvals NE 0.)
-     tmpmax=MAX(tmpvals[tmplocs],MIN=tmpmin)
+   
+     IF FILE_TEST('ModelInput.def') then begin
+        tmpmodvals=[ModArrays[*,plotstart[i,0]],ModArrays[*,plotstart[i,1]]]
+        modtmplocs=WHERE(tmpmodvals NE 0.)
+        tmpmax=MAX([tmpvals[tmplocs],tmpmodvals[modtmplocs]],MIN=tmpmin)
+     ENDIF else begin
+        tmpmax=MAX(tmpvals[tmplocs],MIN=tmpmin)
+     endelse
      IF tmpmax GT Maxvar[i] then Maxvar[i]=tmpmax
      IF tmpmin LT Minvar[i] then Minvar[i]=tmpmin
      buffer[i]=(ABS(Maxvar[i])+ABS(minvar[i]))/20.
@@ -124,6 +138,11 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   in_ringsize=strtrim(string(double(Arrays[2,tmp]-Arrays[1,tmp]),format='(F10.1)'),2)
   tmp=WHERE(plotpara EQ 'INCL')
   ceninc=Arrays[0,tmp]
+  tmp=WHERE(plotpara EQ 'Z0')
+  sclarc=Arrays[0,tmp]
+  sclkpc=convertskyanglefunction(double(sclarc), distance)*1000.
+  tmp=WHERE(plotpara EQ 'Z0_2')
+  sclarc2=Arrays[0,tmp]
   tmp=WHERE(plotpara EQ 'VROT')
   maxvrot=MAX(Arrays[*,tmp])
   ysize=0.1
@@ -315,6 +334,9 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
      DECmod=double(ModArrays[0,tmp])
      convertradec,RAmod,DECmod
      tmp=WHERE(plotpara EQ 'VSYS')
+     tmp=WHERE(plotpara EQ 'Z0')
+     sclarcmod=double(ModArrays[0,tmp])
+     sclkpcmod= convertskyanglefunction(double(sclarcmod), distance)*1000.
      vsysmod=strtrim(string(double(ModArrays[0,tmp]),format='(F10.1)'),2)
      dispermod=strtrim(string(double(ModArrays[0,n_elements(plotpara)-4]),format='(F10.1)'),2)
      XYOUTS,0.60,0.89,'Systemic Velocity= '+vsys+' ('+vsysmod+') km s!E-1',/normal,alignment=0.,charthick=charthick,color='000000'x
@@ -324,11 +346,23 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
      XYOUTS,0.60,0.81,'Red lines: receding side parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
      XYOUTS,0.60,0.79,'Blue lines: approaching side input model parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
      XYOUTS,0.60,0.77,'Yellow lines: receding side input model parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
-   
-     XYOUTS,0.60,0.75,'The major FWHM beam is '+majbeam+'" ',/normal,color='000000'x
+     XYOUTS,0.60,0.75,'The major FWHM beam is '+majbeam+'" ',/normal,color='000000'x,alignment=0.,charthick=charthick
      IF in_ringsize EQ out_ringsize then XYOUTS,0.60,0.73,'We used rings of size '+in_ringsize+'"',/normal,color='000000'x else begin
         XYOUTS,0.60,0.73,'We used rings of size '+in_ringsize+'" in the inner part',/normal,color='000000'x
         XYOUTS,0.60,0.71,'We used rings of size '+out_ringsize+'" in the outer part',/normal,color='000000'x
+     ENDELSE
+     if sclarc NE sclarc2 then begin
+        XYOUTS,0.60,0.69,'!!!!!!!!!!!!!!!The scale height is not equal on both sides !!!!!!!!!!!!!!!!'
+        XYOUTS,0.60,0.67,'!!!!!!!!!!!!!!!The approaching side has '+strtrim(string(double(sclarc),format='(F10.1)'),2)+' arcsec   !!!!!!!!!!!!!!!!'$
+               ,/normal,color='000000'x,alignment=0.,charthick=charthick
+        XYOUTS,0.60,0.65,'!!!!!!!!!!!!!!!While the receding side has '+strtrim(string(double(sclarc2),format='(F10.1)'),2)+' arcsec   !!!!!!!!!!!!!!!!',$
+               /normal,color='000000'x,alignment=0.,charthick=charthick
+        XYOUTS,0.60,0.63,'!!!!!!!!!!!!!!!This Normally indicates an Error!!!!!!!!!!',/normal,color='000000'x,alignment=0.,charthick=charthick
+     ENDIF ELSE BEGIN
+        XYOUTS,0.60,0.69,'We fitted scale height of '+strtrim(string(double(sclarc),format='(F10.1)'),2)+$
+               ' arcsec ('+strtrim(string(double(sclkpc),format='(F10.1)'),2)+' pc)',/normal,color='000000'x
+        XYOUTS,0.60,0.67,'In the model a scale height of '+strtrim(string(double(sclarcmod),format='(F10.1)'),2)+$
+               ' arcsec ('+strtrim(string(double(sclkpcmod),format='(F10.1)'),2)+' pc) was inserted',/normal,color='000000'x
      ENDELSE
   ENDIF ELSE BEGIN
      XYOUTS,0.60,0.89,'Systemic Velocity= '+vsys+' km s!E-1',/normal,alignment=0.,charthick=charthick,color='000000'x
@@ -336,9 +370,21 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
      XYOUTS,0.60,0.85,'DEC.= '+DEC,/normal,alignment=0.,charthick=charthick,color='000000'x
      XYOUTS,0.60,0.83,'Black lines: approaching side parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
      XYOUTS,0.60,0.81,'Red lines: receding side parameters.',/normal,alignment=0.,charthick=charthick,color='000000'x
-     IF in_ringsize EQ out_ringsize then XYOUTS,0.60,0.79,'We used rings of size '+in_ringsize+'"',/normal,color='000000'x else begin
-        XYOUTS,0.60,0.79,'We used rings of size '+in_ringsize+'" in the inner part',/normal,color='000000'x
-        XYOUTS,0.60,0.77,'We used rings of size '+out_ringsize+'" in the outer part',/normal,color='000000'x
+     XYOUTS,0.60,0.79,'The major FWHM beam is '+majbeam+'" ',/normal,color='000000'x,alignment=0.,charthick=charthick
+     IF in_ringsize EQ out_ringsize then XYOUTS,0.60,0.77,'We used rings of size '+in_ringsize+'"',/normal,color='000000'x,alignment=0.,charthick=charthick else begin
+        XYOUTS,0.60,0.77,'We used rings of size '+in_ringsize+'" in the inner part',/normal,color='000000'x,alignment=0.,charthick=charthick
+        XYOUTS,0.60,0.75,'We used rings of size '+out_ringsize+'" in the outer part',/normal,color='000000'x,alignment=0.,charthick=charthick
+     ENDELSE
+     if sclarc NE sclarc2 then begin
+        XYOUTS,0.60,0.73,'!!!!!!!!!!!!!!!The scale height is not equal on both sides !!!!!!!!!!!!!!!!'
+        XYOUTS,0.60,0.71,'!!!!!!!!!!!!!!!The approaching side has '+strtrim(string(double(sclarc),format='(F10.1)'),2)+' arcsec   !!!!!!!!!!!!!!!!'$
+               ,/normal,color='000000'x,alignment=0.,charthick=charthick
+        XYOUTS,0.60,0.69,'!!!!!!!!!!!!!!!While the receding side has '+strtrim(string(double(sclarc2),format='(F10.1)'),2)+' arcsec   !!!!!!!!!!!!!!!!',$
+               /normal,color='000000'x,alignment=0.,charthick=charthick
+        XYOUTS,0.60,0.67,'!!!!!!!!!!!!!!!This Normally indicates an Error!!!!!!!!!!',/normal,color='000000'x,alignment=0.,charthick=charthick
+     ENDIF ELSE BEGIN
+        XYOUTS,0.60,0.73,'We fitted scale height of '+strtrim(string(double(sclarc),format='(F10.1)'),2)+$
+               ' arcsec ('+strtrim(string(double(sclkpc),format='(F10.1)'),2)+' pc)',/normal,color='000000'x
      ENDELSE
   ENDELSE
                                 ;Currently GDL does not recognize true
