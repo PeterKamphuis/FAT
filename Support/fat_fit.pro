@@ -126,6 +126,7 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
         satisf=0.
         gftim=0.
         check = 0
+        conv_limit=1e-2
                                 ;If we have lots of fixedrings p does
                                 ;really mean much so blow up the chisqr
         IF n_elements(newy)-fixedrings LT order then blowup=1 else blowup=0
@@ -140,6 +141,7 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
                   printf,66,linenumber()+'FAT_FIT: We are currently at iteration number '+strtrim(string(iterno),2)
                   IF iterno GT 75000 then begin
                      printf,66,linenumber()+'FAT_FIT: The current difference is '+strtrim(STRJOIN(ABS(div[*]/totp[*]*100.),' '),2)
+                     printf,66,linenumber()+'FAT_FIT: Where we should have '+strtrim(string(conv_limit),2)
                      printf,66,linenumber()+'FAT_FIT: And we have satisfied '+strtrim(string(gftim),2)+' times.'
                   ENDIF
                   close,66
@@ -151,6 +153,7 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
                   print,'FAT_FIT: We are currently at iteration number '+strtrim(string(iterno),2)
                   IF iterno GT 75000 then begin
                      print,'FAT_FIT: The current difference is '+strtrim(STRJOIN(ABS(div[*]/totp[*]*100.),' '),2)
+                     print,'FAT_FIT: Where we should have '+strtrim(string(conv_limit),2)
                      print,'FAT_FIT: And we have satisfied '+strtrim(string(gftim),2)+' times.'
                   ENDIF
                ENDELSE
@@ -303,11 +306,12 @@ skippenalize:
               totp[*]=TOTAL(chiarr[0:iterno]#coeff[0:iterno,*],1)/TOTAL(chiarr[0:iterno])
             
               div=ABS(totp[*]-prevp[*])
+              conv_limit=0.9e-2*(n_elements(y)/(n_elements(y)-fixedrings))
+              if conv_limit LT 1e-2 then conv_limit = 1e-2
+              tmp=WHERE(ABS(div[*]/totp[*]*100.) LT conv_limit)
               
-              tmp=WHERE(ABS(div[*]/totp[*]*100.) LT 1e-2)
               
-              
-              IF n_elements(tmp) GE n_elements(totp)/2. AND TOTAL(ABS(div[*]/totp[*]*100.))/n_elements(totp) LT 1e-2 then begin
+              IF n_elements(tmp) GE n_elements(totp)/2. AND TOTAL(ABS(div[*]/totp[*]*100.))/n_elements(totp) LT conv_limit then begin
                  gftim++
                
                  IF gftim gt 1000 AND iterno GT 10000 then satisf=1

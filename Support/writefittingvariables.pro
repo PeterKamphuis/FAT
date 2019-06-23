@@ -94,7 +94,7 @@ Pro writefittingvariables,inputarray,v1,v2,v3,v4,v5,v6,v7,v8,v9,v10,v11,v12,v13,
         ;strings[6]=strings[6]+strtrim(strcompress(string(limits[8])))+' '
         ;strings[7]=strings[7]+strtrim(strcompress(string(limits[9])))+' '
         ;strings[8]=strings[8]+strtrim(strcompress(string(limits[5])))+' '
-        strings[6]=strings[6]+strtrim(strcompress(string(limits[6])))+' '
+        strings[6]=strings[6]+strtrim(strcompress(string(limits[5]/10.)))+' '
      ENDIF
      IF n_elements(limits) EQ 11 then begin
         strings[0]=strings[0]+strtrim(strcompress(string(limits[0])))+','
@@ -106,7 +106,7 @@ Pro writefittingvariables,inputarray,v1,v2,v3,v4,v5,v6,v7,v8,v9,v10,v11,v12,v13,
         ;strings[6]=strings[6]+strtrim(strcompress(string(limits[8])))+' '
         ;strings[7]=strings[7]+strtrim(strcompress(string(limits[9])))+' '
         ;strings[8]=strings[8]+strtrim(strcompress(string(limits[5])))+' '
-        strings[6]=strings[6]+strtrim(strcompress(string(limits[6])))+' '
+        strings[6]=strings[6]+strtrim(strcompress(string(limits[5]/10.)))+' '
         strings[7]=strings[7]+strtrim(strcompress(string(limits[10])))+' '
      ENDIF
      ;New writing start here  strings=strarr(8)

@@ -1,4 +1,4 @@
-Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixedringsin,REVERSE=rev,NOWEIGHT=noweight,Difference=DDivin,cutoff=cutoffin,arctan=arctanin,debug=debug,nocentral=nocentral,order=order,max_deviation=maxdevin,max_par=PAmaxin,min_par=PAminin,accuracy=accuracy,extending=extending,gdlidl=gdlidl,log=log
+Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixedringsin,REVERSE=rev,NOWEIGHT=noweight,Difference=DDivin,cutoff=cutoffin,arctan=arctanin,debug=debug,nocentral=nocentral,order=order,max_deviation=maxdevin,max_par=PAmaxin,min_par=PAminin,accuracy=accuracy,extending=extending,gdlidl=gdlidl,log=log,ring_spacing=ring_spacing
 
 ;+
 ; NAME:
@@ -149,6 +149,7 @@ Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
   If n_elements(PAmaxin) GT 0 then PAmax=double(PAmaxin)
   If n_elements(PAminin) GT 0 then PAmin=double(PAminin)
   IF n_elements(accuracy) EQ 0 then accuracy=1.
+  IF n_elements(ring_spacing) EQ 0 then ring_spacing=1.
   IF n_elements(order) EQ 0 then order=dblarr(1)  
   IF accuracy LT 0.1 then accuracy=0.1
   if n_elements(fixedrings) GT 1 then fixedrings=fixedrings[0]
@@ -281,6 +282,7 @@ Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
                                 ;If arctan is 1 then we only want smooth and return the new values
   IF arctan EQ 1 OR n_elements(PA) LE 5 then begin
      newPA=PAsmooth
+     if fixedrings GT 1 then newPA[0:fixedrings-1]=PA[fixedrings]
      errors=ABS(PA[*]-PAsmooth[*])
      fitstat=-1.
      arctan=1
@@ -950,13 +952,13 @@ refit:
   ENDIF
  
   IF keyword_set(nocentral) then begin
-     if newPA[n_elements(newPA)-1] LT newPA[n_elements(newPA)-2] then newPA[n_elements(newPA)-1] = PAin[1]
+     if (newPA[n_elements(newPA)-1] LT newPA[n_elements(newPA)-2] or finorder LT 4) and newPA[n_elements(newPA)-1] GT PAin[1] then  newPA[n_elements(newPA)-1] = PAin[1] 
      if n_elements(PAin) GT 15. then newPA[0:fixedrings]=newPA[fixedrings+1]
   endif
  
   for j=0,n_elements(PA[*])-1 do errors[j]=MAX([errors[j],ABS(PAin[j]-newPA[j]),ddiv])
-  IF n_elements(newPA) LT 15. then begin
-     errors=errors*(15./n_elements(newPA))^0.1
+  IF n_elements(newPA)*ring_spacing LT 4. then begin
+       errors=errors*(5./(n_elements(newPA)*ring_spacing))^0.1
   ENDIF
   if keyword_set(debug) then begin
      print,'The estimated  errors before the end'
@@ -988,6 +990,7 @@ refit:
      PAin=[PA0,PAin]
      IF n_elements(errorin) NE 0 then errorin=[errorin[0],errorin]
   ENDIF
+  PAin[0]=0.
    if keyword_set(debug) AND n_elements(errorin) NE 0  then begin
      print,'The estimated  errors'
      print,errorin

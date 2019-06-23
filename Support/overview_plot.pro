@@ -105,12 +105,12 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         tmpvals=[Arrays[*,plotstart[i,0]]+Arrays[*,plotstart[i,0]+plotstart[i,2]],$
                  Arrays[*,plotstart[i,0]]-Arrays[*,plotstart[i,0]+plotstart[i,2]],$
                  Arrays[*,plotstart[i,1]]+Arrays[*,plotstart[i,1]+plotstart[i,2]],$
-                 Arrays[*,plotstart[i,1]]+Arrays[*,plotstart[i,1]-plotstart[i,2]]]
+                 Arrays[*,plotstart[i,1]]-Arrays[*,plotstart[i,1]+plotstart[i,2]]]
+        tmplocs=WHERE([Arrays[*,plotstart[i,0]],Arrays[*,plotstart[i,0]],Arrays[*,plotstart[i,1]],Arrays[*,plotstart[i,1]]] NE 0.)
      endif else begin
         tmpvals=[Arrays[*,plotstart[i,0]],Arrays[*,plotstart[i,1]]]
+        tmplocs=WHERE(tmpvals NE 0.)
      endelse
-     tmplocs=WHERE(tmpvals NE 0.)
-   
      IF FILE_TEST('ModelInput.def') then begin
         tmpmodvals=[ModArrays[*,plotstart[i,0]],ModArrays[*,plotstart[i,1]]]
         modtmplocs=WHERE(tmpmodvals NE 0.)
@@ -120,7 +120,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
      endelse
      IF tmpmax GT Maxvar[i] then Maxvar[i]=tmpmax
      IF tmpmin LT Minvar[i] then Minvar[i]=tmpmin
-     buffer[i]=(ABS(Maxvar[i])+ABS(minvar[i]))/20.
+     buffer[i]=(ABS(Maxvar[i])+ABS(minvar[i]))/40.
   endfor
   tmp=WHERE(plotpara EQ 'XPOS')
   RA=double(Arrays[0,tmp])
@@ -334,10 +334,10 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
      DECmod=double(ModArrays[0,tmp])
      convertradec,RAmod,DECmod
      tmp=WHERE(plotpara EQ 'VSYS')
+     vsysmod=strtrim(string(double(ModArrays[0,tmp]),format='(F10.1)'),2)
      tmp=WHERE(plotpara EQ 'Z0')
      sclarcmod=double(ModArrays[0,tmp])
      sclkpcmod= convertskyanglefunction(double(sclarcmod), distance)*1000.
-     vsysmod=strtrim(string(double(ModArrays[0,tmp]),format='(F10.1)'),2)
      dispermod=strtrim(string(double(ModArrays[0,n_elements(plotpara)-4]),format='(F10.1)'),2)
      XYOUTS,0.60,0.89,'Systemic Velocity= '+vsys+' ('+vsysmod+') km s!E-1',/normal,alignment=0.,charthick=charthick,color='000000'x
      XYOUTS,0.60,0.87,'R.A.= '+RA+' ('+RAmod+')',/normal,alignment=0.,charthick=charthick,color='000000'x
@@ -414,11 +414,11 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   Contour,mom0mod,xaxis,yaxis,levels=levels,/overplot,c_colors=['0000FF'x]
   beam_plot,beam[0],beam[1],bpa=bpa,center=[xaxis[0]-beam[0]/3600.,yaxis[0]+beam[0]/3600.],/fill,color='000000'x,/transparent
   colormaps,'heat',/invert
-  colour_bar,[0.37,0.39],[0.12,0.1+0.2*scrdim[0]/scrdim[1]-0.02],strtrim(string(0,format='(F10.1)'),2),strtrim(string(mapmax,format='(F10.1)'),2),/OPPOSITE_LABEL,/BLACK,TITLE='(Jy bm!E-1!N x km s!E-1!N)',/VERTICAL,charthick=charthick,/hex_color
+  colour_bar,[0.37,0.38],[0.12,0.1+0.2*scrdim[0]/scrdim[1]-0.02],strtrim(string(0,format='(F10.1)'),2),strtrim(string(mapmax,format='(F10.1)'),2),/OPPOSITE_LABEL,/BLACK,TITLE='(Jy bm!E-1!N x km s!E-1!N)',/VERTICAL,charthick=charthick,/hex_color
   loadct,0,/SILENT
-  XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1],'Velocity Field, Moment0 and PV-Diagram along the major axis.',color='000000'x,/normal,charthick=charthick
-  XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.02,'Black Contours: Data, White/Red Contours: Final Model',color='000000'x,/normal,charthick=charthick
-  XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.04,'Moment 0 Contours are at 1, 2, 4, 8, 16, 32 x 10!E20!N cm!E-2',color='000000'x,/normal,charthick=charthick
+  XYOUTS,0.57,0.1+0.4*scrdim[0]/scrdim[1]+0.04,'Velocity Field, Moment0 and PV-Diagram along the major axis.',color='000000'x,/normal,charthick=charthick
+  XYOUTS,0.57,0.1+0.4*scrdim[0]/scrdim[1]+0.02,'Black Contours: Data, White/Red Contours: Final Model',color='000000'x,/normal,charthick=charthick
+  XYOUTS,0.57,0.1+0.4*scrdim[0]/scrdim[1],'Moment 0 Contours are at 1, 2, 4, 8, 16, 32 x 10!E20!N cm!E-2',color='000000'x,/normal,charthick=charthick
 
 ;Velocity Field
   tmpstr=strtrim(strsplit(filenames[2],'/',/extract),2)
@@ -448,10 +448,42 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   Contour,mom0mod,xaxis,yaxis,levels=levels,/overplot,c_colors=['ffffff'x]
   beam_plot,beam[0],beam[1],bpa=bpa,center=[xaxis[0]-beam[0]/3600.,yaxis[0]+beam[0]/3600.],/fill,/transparent,color='000000'x
   colormaps,'sauron_colormap'
-  colour_bar,[0.37,0.39],[0.1+0.2*scrdim[0]/scrdim[1]+0.02,0.1+0.4*scrdim[0]/scrdim[1]-0.02],strtrim(string(mapmin,format='(F10.1)'),2),strtrim(string(mapmax,format='(F10.1)'),2),/OPPOSITE_LABEL,/BLACK,TITLE='(km s!E-1!N)',/VERTICAL,charthick=charthick,/hex_color
+;  colour_bar,[0.37,0.39],[0.1+0.2*scrdim[0]/scrdim[1]+0.02,0.1+0.4*scrdim[0]/scrdim[1]-0.02],strtrim(string(mapmin,format='(F10.1)'),2),strtrim(string(mapmax,format='(F10.1)'),2),/OPPOSITE_LABEL,/BLACK,TITLE='(km s!E-1!N)',/VERTICAL,charthick=charthick,/hex_color
+  colour_bar,[0.17,0.33],[0.1+0.4*scrdim[0]/scrdim[1]+0.01,0.1+0.4*scrdim[0]/scrdim[1]+0.02],strtrim(string(mapmin,format='(F10.1)'),2),strtrim(string(mapmax,format='(F10.1)'),2),/OPPOSITE_LABEL,/BLACK,TITLE='(km s!E-1!N)',charthick=charthick,/hex_color
   loadct,0,/SILENT
-  XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.06,'Velocity Field Contours start at '+strtrim(string(levels[0],format='(F10.1)'),2)+' km s!E-1!N and increase with '+strtrim(string(velostep,format='(I10)'),2)+' km s!E-1!N.',color='000000'x,/normal,charthick=charthick
-  
+  XYOUTS,0.57,0.1+0.4*scrdim[0]/scrdim[1]-0.02,'Velocity Field Contours start at '+strtrim(string(levels[0],format='(F10.1)'),2)+' km s!E-1!N and increase with '+strtrim(string(velostep,format='(I10)'),2)+' km s!E-1!N.',color='000000'x,/normal,charthick=charthick
+
+                      ;Line width
+  tmpstr=strtrim(strsplit(filenames[7],'/',/extract),2)
+  IF strupcase(tmpstr[0]) EQ 'MOMENTS' then begin
+     mom0=readfits(filenames[7]+'.fits',mom0hed,/SILENT)
+  ENDIF else begin
+     mom0=readfits('Moments/'+filenames[7]+'.fits',mom0hed,/SILENT)
+  ENDELSE
+
+  mom0mod=readfits('Moments/Finalmodel_mom2.fits',mom0hedmod,/SILENT)
+  tmp=WHERE(FINITE(mom0mod))
+  ;Too low inclination can result in a too small range
+ 
+  ;velext=1.25*maxvrot*SIN((ceninc)*!DtoR)
+  mapmaxw=1.1*MAX(mom0mod[tmp])
+  mapminw=0.9*MIN(mom0mod[tmp])
+  buildaxii,mom0hed,xaxisw,yaxisw
+  colormaps,'sauron_colormap'
+  showpixelsmap,xaxisw,yaxisw,mom0,position=[0.35,0.1+0.2*scrdim[0]/scrdim[1],0.55,0.1+0.4*scrdim[0]/scrdim[1]],/WCS,BLANK_VALUE=0.,range=[mapminw,mapmaxw],/NOERASE,charthick=charthick,thick=thick,ytickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],/hex_color,xtickname=[' ',' ',' ',' ',' ',' ',' ',' ',' ',' ']
+
+  velostepw=fix((fix(mapmaxw-mapminw)-fix(mapmaxw-mapminw)/5.)/5.)
+  IF velostepw LT 5 then velostepw=5
+  levelsw=(findgen(9)+0.5)*velostepw+mapminw
+  loadct,0,/SILENT
+  Contour,mom0,xaxisw,yaxisw,levels=levelsw,/overplot,c_colors=['000000'x]
+  Contour,mom0mod,xaxisw,yaxisw,levels=levelsw,/overplot,c_colors=['ffffff'x]
+  beam_plot,beam[0],beam[1],bpa=bpa,center=[xaxis[0]-beam[0]/3600.,yaxis[0]+beam[0]/3600.],/fill,/transparent,color='000000'x
+  colormaps,'sauron_colormap'
+;  colour_bar,[0.37,0.39],[0.1+0.2*scrdim[0]/scrdim[1]+0.02,0.1+0.4*scrdim[0]/scrdim[1]-0.02],strtrim(string(mapmin,format='(F10.1)'),2),strtrim(string(mapmax,format='(F10.1)'),2),/OPPOSITE_LABEL,/BLACK,TITLE='(km s!E-1!N)',/VERTICAL,charthick=charthick,/hex_color
+  colour_bar,[0.37,0.53],[0.1+0.4*scrdim[0]/scrdim[1]+0.01,0.1+0.4*scrdim[0]/scrdim[1]+0.02],strtrim(string(mapminw,format='(F10.1)'),2),strtrim(string(mapmaxw,format='(F10.1)'),2),/OPPOSITE_LABEL,/BLACK,TITLE='(km s!E-1!N)',charthick=charthick,/hex_color
+  loadct,0,/SILENT
+  XYOUTS,0.57,0.1+0.4*scrdim[0]/scrdim[1]-0.04,'Moment 2 map contours start at '+strtrim(string(levelsw[0],format='(F10.1)'),2)+' km s!E-1!N and increase with '+strtrim(string(velostepw,format='(I10)'),2)+' km s!E-1!N.',color='000000'x,/normal,charthick=charthick
   
 ;PV Diagram along major axis
   IF fix(version) EQ version then begin
@@ -468,7 +500,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   IF mapmin-velbuf LT yaxis[0] then tmpmin=yaxis[0] else tmpmin=mapmin-velbuf
   yrange=[tmpmin,tmp]
   colormaps,'heat',/invert
-  showpixelsmap,xaxis*3600.,yaxis,mom0,position=[0.65,0.1+0.2*scrdim[0]/scrdim[1],0.85,0.1+0.4*scrdim[0]/scrdim[1]], xtitle='Offset (arcsec)',ytitle='Velocity (km s!E-1!N)',BLANK_VALUE=0.,range=[mapinmin,mapinmax],/NOERASE,charthick=charthick,thick=thick,/black,yrange=yrange,/hex_color
+  showpixelsmap,xaxis*3600.,yaxis,mom0,position=[0.55,0.1,0.75,0.1+0.2*scrdim[0]/scrdim[1]], xtitle='Offset (arcsec)',ytitle='Velocity (km s!E-1!N)',BLANK_VALUE=0.,range=[mapinmin,mapinmax],/NOERASE,charthick=charthick,thick=thick,/black,yrange=yrange,/hex_color
   if n_elements(noise) LT 1 then noise=STDDEV(mom0[0:10,0:10])
   levels=[1,2,4,8,16,32,64,128]*1.5*noise
   levelsneg=([-2,-1])*1.5*noise
@@ -478,11 +510,11 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   loadct,40,/silent
   Contour,mom0mod,xaxis*3600,yaxis,levels=levels,/overplot,c_colors=['0000FF'x]
   colormaps,'heat',/invert
-  colour_bar,[0.87,0.89],[0.1+0.2*scrdim[0]/scrdim[1]+0.02,0.1+0.4*scrdim[0]/scrdim[1]-0.02],strtrim(string(mapinmin,format='(F10.4)'),2),strtrim(string(mapinmax,format='(F10.4)'),2),/OPPOSITE_LABEL,/BLACK,TITLE='(Jy bm!E-1!N)',/VERTICAL,charthick=charthick,/hex_color
+  colour_bar,[0.77,0.78],[0.1+0.02,0.1+0.2*scrdim[0]/scrdim[1]-0.02],strtrim(string(mapinmin,format='(F10.4)'),2),strtrim(string(mapinmax,format='(F10.4)'),2),/OPPOSITE_LABEL,/BLACK,TITLE='(Jy bm!E-1!N)',/VERTICAL,charthick=charthick,/hex_color
   loadct,0,/SILENT
-  XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.08,'PV-Diagram Contours start are at -3, -1.5, 1.5, 3, 6, 12, 24 x rms.',color='000000'x,/normal,charthick=charthick
-  XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.1,'rms = '+strtrim(string(noise,format='(F10.5)'),2)+' Jy bm!E-1!N.',color='000000'x,/normal,charthick=charthick
-  XYOUTS,0.45,0.01+0.2*scrdim[0]/scrdim[1]-0.12,'The distance used for conversions = '+strtrim(string(Distance,format='(F10.1)'),2)+' Mpc',color='000000'x,/normal,charthick=charthick
+  XYOUTS,0.57,0.1+0.4*scrdim[0]/scrdim[1]-0.06,'PV-Diagram Contours start are at -3, -1.5, 1.5, 3, 6, 12, 24 x rms.',color='000000'x,/normal,charthick=charthick
+  XYOUTS,0.57,0.1+0.4*scrdim[0]/scrdim[1]-0.08,'rms = '+strtrim(string(noise,format='(F10.5)'),2)+' Jy bm!E-1!N.',color='000000'x,/normal,charthick=charthick
+  XYOUTS,0.57,0.1+0.4*scrdim[0]/scrdim[1]-0.1,'The distance used for conversions = '+strtrim(string(Distance,format='(F10.1)'),2)+' Mpc',color='000000'x,/normal,charthick=charthick
   IF ~(gdlidl) then image = tvrd(/true)
   DEVICE,/CLOSE  
   IF ~(gdlidl) then  write_png,'Overview.png',image

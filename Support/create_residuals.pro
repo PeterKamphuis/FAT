@@ -25,7 +25,7 @@ Pro create_residuals,filenames,version
 ;
 ; INPUTS:
 ;      filenames = the names of the files that are variable the order
-;      is [Cube,moment0,moment1,mask,noisemap,sofia_catalog,basicinfofilename]   
+;      is [Cube,moment0,moment1,mask,noisemap,sofia_catalog,basicinfofilename,moment2]   
 ;      version = the requested amount of files. 0 just organize the
 ;      output and keep all (This will also happen when a fit is
 ;      unsuccesful); 1 remove optimized files, log files and input
@@ -69,6 +69,7 @@ Pro create_residuals,filenames,version
   xv=readfits(filenames[0]+'_1_xv.fits',hed1xv,/SILENT)
   mom0=readfits(filenames[1]+'.fits',mom0hed,/SILENT)
   mom1=readfits(filenames[2]+'.fits',mom1hed,/SILENT)
+  mom2=readfits(filenames[7]+'.fits',mom2hed,/SILENT)
   IF version EQ fix(version) then begin
      xv2=readfits(filenames[0]+'_2_xv.fits',hed2xv,/SILENT)
      cubem1=readfits('1stfit.fits',dummy,/SILENT)
@@ -77,25 +78,31 @@ Pro create_residuals,filenames,version
      xvm2=readfits('2ndfit_xv.fits',dummy,/SILENT)
      mom0m1=readfits('1stfit_mom0.fits',dummy,/SILENT)
      mom1m1=readfits('1stfit_mom1.fits',dummy,/SILENT)
+     mom2m1=readfits('1stfit_mom2.fits',dummy,/SILENT)
      mom0m2=readfits('2ndfit_mom0.fits',dummy,/SILENT)
      mom1m2=readfits('2ndfit_mom1.fits',dummy,/SILENT)
+     mom2m2=readfits('2ndfit_mom2.fits',dummy,/SILENT)
      create_residual_file,'Residuals/Cube_No_Warp.fits',Cube,Cubem1,hed
      create_residual_file,'Residuals/Cube_No_Warp_xv.fits',xv,xvm1,hed1xv
      create_residual_file,'Residuals/Cube_No_Warp_mom0.fits',mom0,mom0m1,mom0hed
      create_residual_file,'Residuals/Cube_No_Warp_mom1.fits',mom1,mom1m1,mom1hed
+     create_residual_file,'Residuals/Cube_No_Warp_mom2.fits',mom2,mom2m1,mom2hed
      create_residual_file,'Residuals/Cube_Finalmodel.fits',Cube,Cubem2,hed
      create_residual_file,'Residuals/Cube_Finalmodel_xv.fits',xv2,xvm2,hed2xv
      create_residual_file,'Residuals/Cube_Finalmodel_mom0.fits',mom0,mom0m2,mom0hed
      create_residual_file,'Residuals/Cube_Finalmodel_mom1.fits',mom1,mom1m2,mom1hed
+     create_residual_file,'Residuals/Cube_Finalmodel_mom2.fits',mom2,mom2m2,mom2hed
   ENDIF ELSE BEGIN
      cubem1=readfits('1stfit.fits',dummy,/SILENT)
      xvm1=readfits('1stfit_xv.fits',dummy,/SILENT)
      mom0m1=readfits('1stfit_mom0.fits',dummy,/SILENT)
      mom1m1=readfits('1stfit_mom1.fits',dummy,/SILENT)
+     mom2m1=readfits('1stfit_mom2.fits',dummy,/SILENT)
      create_residual_file,'Residuals/Cube_Finalmodel.fits',Cube,Cubem1,hed
      create_residual_file,'Residuals/Cube_Finalmodel_xv.fits',xv,xvm1,hed1xv
      create_residual_file,'Residuals/Cube_Finalmodel_mom0.fits',mom0,mom0m1,mom0hed
      create_residual_file,'Residuals/Cube_Finalmodel_mom1.fits',mom1,mom1m1,mom1hed
+     create_residual_file,'Residuals/Cube_Finalmodel_mom2.fits',mom2,mom2m1,mom2hed
   ENDELSE
 end
 

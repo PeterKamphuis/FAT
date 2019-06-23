@@ -126,6 +126,7 @@ IF map GE 1 then begin
       b=1.
       c=1.
       Momentmap=SQRT(TOTAL(Cube*(d)^2,3)/TOTAL(Cube,3))
+      d=0.
    ENDIF
    maxmap=MAX(momentmap[where(FINITE(momentmap) eq 1)],MIN=minmap)
    if FINITE(maxmap) then sxaddpar,header,'DATAMAX',maxmap else sxaddpar,header,'DATAMAX',zaxis[n_elements(zaxis)-1]

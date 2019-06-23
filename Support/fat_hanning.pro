@@ -45,8 +45,8 @@ Function fat_hanning,SBRin,Radin,rings=rings
 ;-
   COMPILE_OPT IDL2
   DEFSYSV, '!GDL', EXISTS = gdlidl ;is 1 when running GDL
- ;  goto,skipcatch
-  CATCH,Error_status  
+  goto,skipcatch
+  CATCH,Error_status
   IF  Error_status NE 0. THEN BEGIN
     
      print, ' '
@@ -95,7 +95,7 @@ Function fat_hanning,SBRin,Radin,rings=rings
   case 1 of
      n_elements(SBRin) LE 4:begin
         SBR = SBRin
-        SBR[0]=(SBRin[0]+SBRin[1]*2)/3.
+        SBR[0]=(SBRin[0]+SBRin[1]*2.)/3.
         
         case  n_elements(SBRin) of
            2:begin
@@ -114,10 +114,11 @@ Function fat_hanning,SBRin,Radin,rings=rings
         endcase
         return,SBR
      end
-     n_elements(SBRin) LT 15:points=5
-     else:points=7
+     n_elements(SBRin) LT 15: points=5
+     else: points=7
   endcase
-  SBR=SBRin[1:n_elements(SBRin)-1]
+  SBR=SBRin[0:n_elements(SBRin)-1]
+  SBR[0]=(SBRin[0]+SBRin[1]*2.)/3.
   SBRout=dblarr(n_elements(SBR))
   window=dblarr(points)
   xaxis=findgen(points)
@@ -144,7 +145,8 @@ Function fat_hanning,SBRin,Radin,rings=rings
                                 ;Finally we need to add the central
                                 ;point again which we will merely
                                 ;extrapolate from the profile
- 
+  tmp=SBRout[1:n_elements(SBRin)-1]
+  SBRout=tmp
   rad=radin[1:n_elements(SBRin)-1]
   tmp=1
   interpolate,SBRout,RAD,newradii=radin,output=tmp
