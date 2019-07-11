@@ -166,9 +166,9 @@ Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidt
         string7=string(0.1*channelwidth)+' '+string(0.01*channelwidth)+' '+string(0.1*channelwidth)
         string8='3 3 3'
         string9='70 70 70'
-        string10=' SDIS '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+$
+        string10=' SDIS '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+$
                  ':'+strtrim(strcompress(string(velconstused+1,format='(I3)')),1)+$
-                 ' SDIS_2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+$
+                 ' SDIS_2 '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+$
                  ':'+strtrim(strcompress(string(velconstused+1,format='(I3)')),1)
      end
   endcase

@@ -118,7 +118,7 @@ Function fat_hanning,SBRin,Radin,rings=rings
      else: points=7
   endcase
   SBR=SBRin[0:n_elements(SBRin)-1]
-  SBR[0]=(SBRin[0]+SBRin[1]*2.)/3.
+  IF SBR[0] GT SBR[1] then SBR[0]=(SBRin[0]+SBRin[1]*2.)/3.
   SBRout=dblarr(n_elements(SBR))
   window=dblarr(points)
   xaxis=findgen(points)
