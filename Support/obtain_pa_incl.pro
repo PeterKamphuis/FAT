@@ -226,7 +226,7 @@ wrongpa:
   extent=TOTAL(tmpwidth[indexmin-1:indexmin+1])/30.
   If incl[0] LT 40. AND incl[1] LT abs(40.-incl[0])/2. then incl[1]=abs(40.-incl[0])/2.
   If incl[0] LT 5. then incl[0]=5.
-  IF incl[0] LT 80 AND incl[0] GT 20 AND extent GT 3.*beam[0]/10. then incl[0]=incl[0]-2
+  IF incl[0] LT 80 AND incl[0] GT 20 AND extent GT 3.*beam[0] then incl[0]=incl[0]-2
 ;If the inclination is low we become rather sensitive to
 ;inhomogeneities so we should try to correct for them
 
