@@ -116,27 +116,38 @@ Function fat_savgol,SBRin,Radin,rings=rings,step=step
         points=3
         order= 1
      end
-     else: begin
+     n_elements(SBRin) LT 15: begin
         points=7
+        order=2
+     end
+     n_elements(SBRin) LT 20: begin
+        points=9
+        order=3
+     end
+     else: begin
+        points=11
         order=4
      end
   endcase
   
   SBR=SBRin[0:n_elements(SBRin)-1]
   RAD=radin[0:n_elements(SBRin)-1]
-  extRAD=dblarr(n_elements(SBR)+points)
-  extSBR=dblarr(n_elements(SBR)+points)
+  extRAD=dblarr(n_elements(SBR)+fix(points/2.+1))
+  extSBR=dblarr(n_elements(SBR)+fix(points/2.+1))
   extRAD[0:n_elements(SBR)-1]=RAD[*]
 ;As we want to make sure the SBR
                                 ;profile tapers of nicely we pad we
                                 ;1E-16 the outer rings
   extSBR[*]=1E-8
   extSBR[0:n_elements(SBR)-1]=SBR[*]
-  for i=0,points-1 do begin
+;If the inner to points are more then 1.5* point 3 than make them half
+  IF extSBR[0] GT extSBR[2]*1.5 then extSBR[0]=extSBR[0]/2.
+  IF extSBR[1] GT extSBR[2]*1.5 then extSBR[1]=extSBR[1]/2.
+
+  
+  for i=0,fix(points/2.) do begin
      extRAD[n_elements(SBR)+i]=RAD[n_elements(SBR)-1]+(i+1)*(RAD[n_elements(SBR)-1]-RAD[n_elements(SBR)-2])
   endfor
-  print,RAD,extRAD
-  print,SBR,extSBR
   IF n_elements(rings) GT 0 then begin
      IF rings[0]+1 LT n_elements(SBR) then SBR[rings[0]+1:n_elements(SBRout)-1]=1e-16
   ENDIF
@@ -144,8 +155,8 @@ Function fat_savgol,SBRin,Radin,rings=rings,step=step
   for i=0,n_elements(SBR)-1 do begin
      case 1 of
         i LT points/2.-1: begin
-           x=RAD[0:points-1]
-           y=SBR[0:points-1]
+           x=extRAD[0:points-1]
+           y=extSBR[0:points-1]
            retr_index=i
           
         end
