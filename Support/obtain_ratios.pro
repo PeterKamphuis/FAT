@@ -66,7 +66,8 @@ FUNCTION obtain_ratios,angles,map,center=center,MAJ_AXIS=tmpwidth,gdlidl=gdlidl,
         
         ratios[i]=double(yFWHM/xFWHM)
      endif else ratios[i]=0.
-     tmpwidth[i]=xFWHM*2.5/(2.*SQRT(2*ALOG(2)))/2.
+     ;This is supposedly the FWHM so let's take 3sigma
+     tmpwidth[i]=(xFWHM/(2.*SQRT(2*ALOG(2))))*3.
      
      
   endfor
