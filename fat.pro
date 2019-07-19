@@ -387,7 +387,7 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   RESOLVE_ROUTINE, 'fatarctan',/IS_FUNCTION
   RESOLVE_ROUTINE, 'fat_fit',/IS_FUNCTION
   IF gdlidl then RESOLVE_ROUTINE,'fat_gdlgauss',/IS_FUNCTION,/COMPILE_FULL_FILE
-  RESOLVE_ROUTINE, 'fat_hanning',/IS_FUNCTION
+  RESOLVE_ROUTINE, 'fat_savgol',/IS_FUNCTION
   RESOLVE_ROUTINE, 'fat_ploterror'
   RESOLVE_ROUTINE, 'fat_smooth',/IS_FUNCTION
   RESOLVE_ROUTINE, 'getdhi'
@@ -2803,8 +2803,8 @@ noconfig:
                                 ;We always want to smooth the surface
                                 ;brightnes. Added 16-06-2017
         tmppos=where('RADI' EQ VariablesWanted)
-        SBRarr=fat_hanning(SBRarr,firstfitvalues[*,tmppos])
-        SBRarr2=fat_hanning(SBRarr2,firstfitvalues[*,tmppos])
+        SBRarr=fat_savgol(SBRarr,firstfitvalues[*,tmppos])
+        SBRarr2=fat_savgol(SBRarr2,firstfitvalues[*,tmppos])
                                 ;checking the surface brightness
         sbr_check,tirificfirst, tirificfirstvars,sbrarr,sbrarr2,cutoff
         IF newinclination[0] LT 40 then newrot=W50/2./SIN(ABS(newinclination[0]+5)*!pi/180.) else newrot=W50/2./SIN(newinclination[0]*!pi/180.)
@@ -3094,8 +3094,8 @@ noconfig:
      ;To judge whether we want extend we want to use the non-smoothed profiles
      SBRarrunmod=SBRarr
      SBRarr2unmod=SBRarr2 
-     SBRarr=fat_hanning(SBRarr,firstfitvalues[*,tmppos])
-     SBRarr2=fat_hanning(SBRarr2,firstfitvalues[*,tmppos])
+     SBRarr=fat_savgol(SBRarr,firstfitvalues[*,tmppos])
+     SBRarr2=fat_savgol(SBRarr2,firstfitvalues[*,tmppos])
    
      tmppos=where('VROT' EQ VariablesWanted)
      VROTarr=firstfitvalues[*,tmppos]
@@ -3694,7 +3694,7 @@ noconfig:
         VROTarr=firstfitvalues[*,7]
         SBRarrcom=(firstfitvalues[*,2]+firstfitvalues[*,8])/2.
           ;We always want to smooth the surface brightnes. Added 16-06-2017
-        SBRarrcom=fat_hanning(SBRarrcom,firstfitvalues[*,9])
+        SBRarrcom=fat_savgol(SBRarrcom,firstfitvalues[*,9])
         VROTarr[0]=0.
         vmaxdev=MAX([30,7.5*channelwidth*(1.+vresolution)])
         verror=MAX([5.,channelwidth/2.*(1.+vresolution)/SQRT(sin(catinc[i]*!DtoR))])
@@ -3992,8 +3992,8 @@ noconfig:
      SBRarr[n_elements(SBRarr)-3:n_elements(SBRarr)-1]=SBRarr[n_elements(SBRarr)-3:n_elements(SBRarr)-1]*1.5
      SBRarr2[n_elements(SBRarr2)-3:n_elements(SBRarr2)-1]=SBRarr[n_elements(SBRarr2)-3:n_elements(SBRarr2)-1]*1.5
      
-     SBRarr=fat_hanning(SBRarr,RADarr)
-     SBRarr2=fat_hanning(SBRarr2,RADarr)
+     SBRarr=fat_savgol(SBRarr,RADarr)
+     SBRarr2=fat_savgol(SBRarr2,RADarr)
      SBRarr[0:1]=(SBRarr[0:1]+SBRarr2[0:1])/2.  
      SBRarr2[0:1]=SBRarr[0:1]
      tmppos=where('SBR' EQ tirificsecondvars)
@@ -4477,11 +4477,11 @@ noconfig:
      SBRarrunmod=SBRarr
                                 ;We always want to smooth the surface brightnes. Added 16-06-2017
     
-     SBRarr=fat_hanning(SBRarr,RADarr)
+     SBRarr=fat_savgol(SBRarr,RADarr)
                                 ;and take the central point as the
                                 ;extension of the previous two. Added
                                 ;18-10-2018. This is done in
-                                ;fat_hanning already
+                                ;fat_savgol already
      ;inSBR=SBRarr[1:2]
      ;inRad=RADarr[1:2]
      ;newRAD=RADarr[0:2]
@@ -4520,7 +4520,7 @@ noconfig:
      SBRarr2unmod=SBRarr2
                                 ;We always want to smooth the surface brightnes. Added 16-06-2017
     
-     SBRarr2=fat_hanning(SBRarr2,RADarr)
+     SBRarr2=fat_savgol(SBRarr2,RADarr)
      SBRarr[0:1]=(SBRarr[0:1]+SBRarr2[0:1])/2.  
      SBRarr2[0:1]=SBRarr[0:1]
      tmppos=where('SBR' EQ tirificsecondvars)
