@@ -1719,7 +1719,7 @@ noconfig:
         norings[0] = maxrings-ringbuffer
         if norings[0] LT 1. then norings[0]=1.
      endif else begin
-        IF newinclination[0] LT 60 then norings=norings[0]-round(1./ring_spacing)
+        IF newinclination[0] LT 60 AND norings[0] GT 4 then norings=norings[0]-round(1./ring_spacing)
      endelse
      ;IF norings LT 3 then norings=3
      noringspix=norings[0]*(catmajbeam[i]*ring_spacing)/(ABS(sxpar(headermap,'cdelt1'))*3600.)
