@@ -8,6 +8,11 @@ FUNCTION obtain_ratios,angles,map,center=center,MAJ_AXIS=tmpwidth,gdlidl=gdlidl,
   ENDIF
   ratios=dblarr(n_elements(angles))
   tmpwidth=dblarr(n_elements(angles))
+                                ;Experiment
+  axis1=findgen(beam[0]*40.)/10.-beam[0]*2.
+  psf1=(1./(2.*!pi*(beam[0]*10.)^2))*EXP(-((0.5*axis1^2)/((beam[0]*10.)^2)))
+  psf2=(1./(2.*!pi*(beam[1]*10.)^2))*EXP(-((0.5*axis1^2)/((beam[1]*10.)^2)))
+
   for i=0,n_elements(angles)-1 do begin
                                 ;first get the profiles from the image
      int_profilev2,map,xprofile,pa=angles[i],xcenter=center[0],ycenter=center[1]
@@ -38,17 +43,34 @@ FUNCTION obtain_ratios,angles,map,center=center,MAJ_AXIS=tmpwidth,gdlidl=gdlidl,
      if limit LT maxxprof and limit LT maxyprof  then begin
         tmp=WHERE(xprofile GT limit)
         
-        IF tmp[n_elements(tmp)-1]-tmp[0] LT beam[1] then xFWHM=beam[1] else $
-           xFWHM=SQRT(double(tmp[n_elements(tmp)-1]-tmp[0])^2-2.*beam[1]^2)
-        
+        IF tmp[n_elements(tmp)-1]-tmp[0] LT beam[1]*10. then xFWHM=beam[0]*10. else $
+           xFWHM=SQRT(double(tmp[n_elements(tmp)-1]-tmp[0])^2-2.*(beam[0]*10.)^2)
+       
         tmp=WHERE(yprofile GT limit)
-        IF tmp[n_elements(tmp)-1]-tmp[0] LT beam[1] then yFWHM=beam[1] else $
-           yFWHM=SQRT(double(tmp[n_elements(tmp)-1]-tmp[0])^2-2.*beam[1]^2)
+        IF tmp[n_elements(tmp)-1]-tmp[0] LT beam[1]*10. then yFWHM=beam[1]*10. else $
+           yFWHM=SQRT(double(tmp[n_elements(tmp)-1]-tmp[0])^2-2.*(beam[1]*10.)^2)
+                                ;IF the sizes are very close to
+                                ;the beam sizes let's but a bit
+                                ;more effort  into deconvolution
+        ;print,xFWHM,yFWHM,beam[0]*10., beam[1]*10.
+        if xFWHM/(beam[0]*10.) LT 5. then begin
+           ;print,'Old xFWHM',xFWHM
+           xFWHM = xFWHM- (beam[0]*10)^2/(2.*xFWHM)
+           ;print,'New xFWHM',xFWHM
+        endif
+        if yFWHM/(beam[1]*10.) LT 5. then begin
+           ;print,'Old yFWHM',yFWHM
+           yFWHM = yFWHM- (beam[1]*10.)^2/(2.*yFWHM)
+           ;print,'New yFWHM',yFWHM
+        endif
+        
         ratios[i]=double(yFWHM/xFWHM)
      endif else ratios[i]=0.
-     tmpwidth[i]=xFWHM*2.5/(2.*SQRT(2*ALOG(2)))/2.
+     ;This is supposedly the FWHM so let's take 3sigma
+     tmpwidth[i]=(xFWHM/(2.*SQRT(2*ALOG(2))))*3.
      
      
   endfor
+ 
   return,ratios
 end

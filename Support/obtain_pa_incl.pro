@@ -121,7 +121,7 @@ use_corrected:
      print,'Initial PA'
      print,pa
   ENDIF
-  miss=1
+  miss=0
 wrongpa:
 
 
@@ -220,12 +220,13 @@ wrongpa:
 ;If the inclination is low we become rather sensitive to
 ;inhomogeneities so we should try to correct for them
 ;let's not do inclinations lower than 1
+
   IF incl[1] LT 2 AND  incl[0] GE 20 then incl[1]=2. 
   IF incl[1] LT 2 AND  incl[0] LT 20 then incl[1]=5.
   extent=TOTAL(tmpwidth[indexmin-1:indexmin+1])/30.
   If incl[0] LT 40. AND incl[1] LT abs(40.-incl[0])/2. then incl[1]=abs(40.-incl[0])/2.
   If incl[0] LT 5. then incl[0]=5.
-  IF incl[0] LT 80 AND incl[0] GT 20 AND extent GT 3.*beam[0]/10. then incl[0]=incl[0]-2
+  IF incl[0] LT 80 AND incl[0] GT 20 AND extent GT 3.*beam[0] then incl[0]=incl[0]-2
 ;If the inclination is low we become rather sensitive to
 ;inhomogeneities so we should try to correct for them
 
@@ -342,6 +343,7 @@ wrongpa:
            print,'These are the pa and incl of the inhomogenieties'
            print,pa_in, incl_in
         endif
+           
         tmp=WHERE(map NE 0.)
         bright_in=MEAN(in_map[tmp])
         map=map-in_map
@@ -353,23 +355,30 @@ wrongpa:
         corrected_map++
         goto,use_corrected
      ENDIF 
-  endif
+  endif 
+  
 ;If we looked for inhomogeneties we want to correct
-  if corrected_map EQ 1 then begin
+  if corrected_map EQ 1  then begin
      IF keyword_set(debug) then begin
         print,'Before correcting for the inhomogeneities'
         print,pa,incl,pa_in,incl_in,bright,bright_in
      ENDIF
-     incl[0]=incl[0]+(incl[0]-incl_in)*bright_in/bright*2.
-     incl[1]=incl[1]+abs(incl[0]-incl_in)/2.
-     IF abs(pa[0]-pa_in) GT 90 then pa_in=pa_in-180.
-     pa[0]=pa[0]+(pa[0]-pa_in)*bright_in/bright*2.
-     pa[1]=pa[1]+abs(pa[0]-pa_in)/2.
-     IF keyword_set(debug) then begin
-        print,pa,incl,pa_in,incl_in,bright,bright_in
-     ENDIF
+     IF FINITE(TOTAL([PA_in,incl_in])) then begin
+        incl[0]=incl[0]+(incl[0]-incl_in)*bright_in/bright*2.
+        incl[1]=incl[1]+abs(incl[0]-incl_in)/2.
+        IF abs(pa[0]-pa_in) GT 90 then pa_in=pa_in-180.
+        pa[0]=pa[0]+(pa[0]-pa_in)*bright_in/bright*2.
+        pa[1]=pa[1]+abs(pa[0]-pa_in)/2.
+        IF keyword_set(debug) then begin
+           print,pa,incl,pa_in,incl_in,bright,bright_in
+        ENDIF
+     ENDIF ELSE BEGIN
+        pa[1]=pa[1]+5.
+        incl[1]=incl[1]+10.
+     ENDELSE
      
-  endif
+  endif 
+  
 
 
   IF FINITE(TOTAL([PA,incl])) EQ 0 then begin

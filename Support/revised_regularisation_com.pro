@@ -1,4 +1,4 @@
-Pro revised_regularisation_com,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixedringsin,REVERSE=rev,NOWEIGHT=noweight,Difference=DDivin,cutoff=cutoffin,arctan=arctanin,debug=debug,order=order,max_deviation=maxdevin,max_par=PAmaxin,min_par=PAminin,accuracy=accuracy,extending=extending,gdlidl=gdlidl,sloped=slopedrings,log=log
+Pro revised_regularisation_com,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixedringsin,REVERSE=rev,NOWEIGHT=noweight,Difference=DDivin,cutoff=cutoffin,arctan=arctanin,debug=debug,order=order,max_deviation=maxdevin,max_par=PAmaxin,min_par=PAminin,accuracy=accuracy,extending=extending,gdlidl=gdlidl,sloped=slopedrings,log=log,ring_spacing=ring_spacing
 
 ;+
 ; NAME:
@@ -16,8 +16,6 @@ Pro revised_regularisation_com,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
 ;        DIFFERENCE=DDivin, CUTOFF=cutoffin, ARCTAN=arctanin, /DEBUG,
 ;        /NOCENTRAL, ORDER=order, MAX_DEVIATION=maxdevin, MAX_PAR =
 ;        PAmaxin, MIN_PAR = PAminin, ACCURACY = accuracy, /EXTENDING
-;
-;
 ; INPUTS:
 ;       PAin =  the array of parameters as function of radius
 ;       SBRin = The Surface brightness profile going with the
@@ -126,6 +124,7 @@ Pro revised_regularisation_com,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
                                 ;2: for a smoothing of VROT
   If n_elements(arctanin) GT 0 then arctan=arctanin else arctan=1
   If n_elements(maxdevin) GT 0 then  maxdev=maxdevin
+  If n_elements(ring_spacing) EQ 0 then  ring_spacing=1.
   If n_elements(PAmaxin) GT 0 then PAmax=double(PAmaxin)
   If n_elements(PAminin) GT 0 then PAmin=double(PAminin)
   IF n_elements(accuracy) EQ 0 then accuracy=[1.,1.]
@@ -248,6 +247,8 @@ Pro revised_regularisation_com,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
      endfor
      PAsmooth[n_elements(PA[*,0])-1,i]=(PA[n_elements(PA[*,0])-2,i]+PA[n_elements(PA[*,0])-1,i])/2.
   endfor
+
+  
                                 ;If arctan is 1 then we only want smooth and return the new values
   IF arctan EQ 1 OR n_elements(PA[*,0]) LE 5 then begin
      newPA=dblarr(n_elements(PAin[*,0]),n_elements(PAin[0,*]))
@@ -257,7 +258,7 @@ Pro revised_regularisation_com,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
      IF n_elements(PAin[*,0]) LT 15 then begin
         for i=0,n_elements(PAin[0,*])-1 do begin
            newPA[*,i]=PAin[*,i]
-           errors[*,i]=ABS(PA[*,i]-PAsmooth[*,i])
+           errors[*,i]=ABS(PA[*,i]-PAsmooth[*,i])/2.
         endfor
         
      endif else begin
@@ -266,6 +267,7 @@ Pro revised_regularisation_com,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
            errors[*,i]=ABS(PA[*,i]-PAsmooth[*,i])
         endfor
      endelse
+     if fixedrings GT 1 then newPA[0:fixedrings-1]=MEAN(PAin[0:fixedrings-1])
      fitstat=-1.
      arctan=1
      finorder[*]=!values.f_nan
@@ -275,6 +277,30 @@ Pro revised_regularisation_com,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
                                
 restartall:
 
+                                ;let's check that the input is not already flat
+  inorder=[10,10]
+  for i=0,n_elements(PA[0,*])-1 do begin
+     maxdiff=MAX(ABS(PA[0,i]-PA[*,i]))
+     if maxdiff LT ddiv[i]/3. then inorder[i]=0.
+  endfor
+  if total(inorder) EQ 0 then begin
+     if keyword_set(debug) then print,'Both inpputs are flat'
+     newPA=dblarr(n_elements(PAin[*,0]),n_elements(PAin[0,*]))
+     errors=dblarr(n_elements(PAin[*,0]),n_elements(PAin[0,*]))
+                                ;We do not smooth small profiles as
+                                ;this supresseses warps too much
+    
+     for i=0,n_elements(PAin[0,*])-1 do begin
+        newPA[*,i]=PAin[0,i]
+        errors[*,i]=ddiv[i]        
+     endfor
+     arctan = 1
+     fitstat=1
+     finorder[*]=[0,0]
+     fixedrings=[fixedrings,fixedrings]
+     goto,cleanup
+  endif
+     
 ;IF we have maxdev then first we are going to do a small check on
 ;ridiculous outliers.
   
@@ -746,7 +772,10 @@ refit:
      erroradjusted=0
      newPAcoeff=0.
      tmp=WHERE(PA[0,par] EQ PA[*,par])
-     IF fixedrings[par] GE cutoffring+1 OR n_elements(tmp) EQ n_elements(PA[*,par]) then begin           
+     IF fixedrings[par] GE cutoffring+1  $
+        OR n_elements(tmp) EQ n_elements(PA[*,par]) $
+        OR inorder[par] EQ 0. $
+        OR (((fixedrings[par]+1.)/n_elements(PA[*,par])) GT 0.85 AND n_elements(PA[*,par]) GT 7)  then begin           
         IF keyword_set(debug) then begin
            print,'As all rings above the cutoff are fixed we fit a straight line'             
         ENDIF
@@ -757,14 +786,17 @@ refit:
         fixed[par]=1
         goto,allfixed
      ENDIF
+     
      endorder=ceil((n_elements(PA[*,par])-3.)/2.)
         
      IF keyword_set(debug) then begin
         print,'this is the fixedrings',fixedrings[par]
         print,'This is our endorder',endorder
      ENDIF
+     IF endorder GT n_elements(PA[*,par])-fixedrings[par]-2 then endorder = n_elements(PA[*,par])-fixedrings[par]-2
      IF endorder LT 2 then endorder=2
      IF endorder GT 5 then endorder=5
+     
      maxendorder=endorder
      
      fitPAoriginal=PA[*,par]
@@ -791,7 +823,7 @@ refit:
        
         newPAcoeff=FAT_FIT(RADII,fitPA,order,RCHI_SQR=tmp,errors=fiterrors,STATUS=fitstat,/Monte_Carlo,mc_iters=150000.,$
                            mc_errors=shifterrors,maximum_deviation=maxdev[par],accuracy=accuracy[par],fixedrings=fixedrings[par],$
-                           mc_y_min=pamin[par],mc_y_max=pamax[par],mc_maxfails=100.,log=log,newy=ReturnPA,/debug)
+                           mc_y_min=pamin[par],mc_y_max=pamax[par],mc_maxfails=100.,log=log,newy=ReturnPA)
       
         newPA[*,par]=fitPA[*]
                                 ;let's calculate how much our
@@ -1358,18 +1390,83 @@ refit:
      errincfact=1.
      goto,cleanup
   endif
+                                ;If our galaxies are smaller our
+                                ;errors increase, maybe this should be
+                                ;base on real size not no rings?
+  IF n_elements(newPA[*,0])*ring_spacing LT 8. then begin
+     for i=0,1 do begin
+        errors[*,i]=errors[*,i]*(8./(n_elements(newPA[*,i])*ring_spacing))^0.15
+     endfor
+  ENDIF
+
+
+
+  
                                 ;Finaaly we check how many values
                                 ;significantly deviate from the mean
                                 ;if it is one or less then 10% of the
                                 ;rings it is probably not a real
                                 ;deviation
-
-  for i=0,1 do begin
-     mean_par=MEAN(newPA[*,i])
-     dev_real=WHERE(newPA[*,i]+errors[*,i] LT mean_par OR newPA[*,i]-errors[*,i] GT mean_par)
-     IF n_elements(newPA[*,i]) LT 15 then limit=1 else limit = n_elements(newPA[*,i])*0.133333
-     IF n_elements(dev_real) LE limit then newPA[*,i]=mean_par
-  endfor
+  if arctan EQ 0 then begin
+     for i=0,1 do begin
+        mean_par=MEAN(newPA[*,i])
+        IF ABS(mean_par-newPA[0,i]) GT ddiv[i]*5. then mean_par=newPA[0,i]
+        if arctan EQ 0 then begin
+           cherr=errors[*,i]
+           tmp=WHERE(cherr GT  ddiv[i]*4.)
+           if tmp[0] NE -1 then cherr[tmp]=ddiv[i]*4.
+           dev_real=WHERE((ABS(newPA[*,i]-mean_par) GT cherr and newPA[*,i] NE newPA[0,i]))
+        endif else begin
+           dev_real=WHERE(ABS(newPA[*,i]-mean_par) GT errors[*,i]/1.5 and newPA[*,i] NE newPA[0,i])
+           IF n_elements(dev_real) LE 2 then dev_real=1.
+        endelse
+        IF n_elements(newPA[*,i]) LT 15 then limit=1 else limit = n_elements(newPA[*,i])*0.133333
+        IF n_elements(dev_real) LT limit OR dev_real[0] EQ -1  then begin
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              IF dev_real EQ -1 then $
+                 printf,66,linenumber()+'REVISED_REGULARISATION_COM: We found 0 rings deviating significantly from '+ strtrim(string(mean_par),2) else $
+                    printf,66,linenumber()+'REVISED_REGULARISATION_COM: We found '+strtrim(string(n_elements(dev_real)),2)+' rings deviating significantly from '+ strtrim(string(mean_par),2)
+              printf,66,linenumber()+'REVISED_REGULARISATION_COM: As we need at least '+ strtrim(string(limit),2)+' rings to deviate we flatten the parameter'
+              printf,66,linenumber()+'REVISED_REGULARISATION_COM: Deviating rings = '+STRJOIN(strtrim(string(dev_real),2),' ')
+              if i EQ 0 then $
+                 printf,66,linenumber()+'REVISED_REGULARISATION_COM: PA = '+STRJOIN(strtrim(string(newPA[*,i]),2),' ') else $
+                    printf,66,linenumber()+'REVISED_REGULARISATION_COM: INCL = '+STRJOIN(strtrim(string(newPA[*,i]),2),' ')
+              
+              printf,66,linenumber()+'REVISED_REGULARISATION_COM: Errors  = '+STRJOIN(strtrim(string(errors[*,i]),2),' ')
+              printf,66,linenumber()+'REVISED_REGULARISATION_COM: 4 x DDiv  = '+strtrim(string(ddiv[i]*4.),2)
+              close,66
+           ENDIF
+           if keyword_set(debug) then begin
+              print,'We are resetting this parameter to mean'
+              print,newPA[*,i],errors[*,i]
+              print,'Lets See'
+              print,ddiv[i]*2.5,errors[dev_real,i],limit,dev_real
+              print,i
+           ENDIF
+           newPA[*,i]=mean_par
+           finorder[i]=0.
+           if arctan EQ 0 then begin
+              coefffound[*,i]=0.
+              coefffound[0,i]=mean_par
+           endif
+        endif else BEGIN
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+'REVISED_REGULARISATION_COM: We found '+strtrim(string(n_elements(dev_real)),2)+' rings deviating from '+ strtrim(string(mean_par),2)
+              printf,66,linenumber()+'REVISED_REGULARISATION_COM: This is more or equal to  '+ strtrim(string(limit),2)+' hence we do not flatten the parameter'
+              printf,66,linenumber()+'REVISED_REGULARISATION_COM: Deviating rings = '+STRJOIN(strtrim(string(dev_real),2),' ')
+              if i EQ 0 then $
+                 printf,66,linenumber()+'REVISED_REGULARISATION_COM: PA = '+STRJOIN(strtrim(string(newPA[*,i]),2),' ') else $
+                    printf,66,linenumber()+'REVISED_REGULARISATION_COM: INCL = '+STRJOIN(strtrim(string(newPA[*,i]),2),' ')
+            
+              printf,66,linenumber()+'REVISED_REGULARISATION_COM: Errors  = '+STRJOIN(strtrim(string(errors[*,i]),2), ' ')
+              printf,66,linenumber()+'REVISED_REGULARISATION_COM: 4 x DDiv  = '+strtrim(string(ddiv[i]*4.),2)
+              close,66
+           ENDIF
+        ENDELSE
+     endfor
+  endif
   
 
   errorin=errors
@@ -1385,6 +1482,12 @@ refit:
   ENDIF
   tmp=WHERE(FINITE(Pain) EQ 0)
   IF tmp[0] NE -1 then stop
+  if keyword_set(debug) then begin
+     print,'This is the log we will write to'
+     print,log
+     print,'with this type'
+     print,size(log,/TYPE)
+  ENDIF
   IF size(log,/TYPE) EQ 7 then begin
      openu,66,log,/APPEND
      IF arctan EQ 0 then begin

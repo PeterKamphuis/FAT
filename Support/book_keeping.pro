@@ -1,4 +1,4 @@
-Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishafter=finishafter,debug=debug
+Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishafter=finishafter,debug=debug,fixedpars=fixedpars
   
 ;+
 ; NAME:
@@ -17,7 +17,7 @@ Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishaft
 ;
 ; INPUTS:
 ;      filenames = the names of the files that are variable the order
-;                  is [Cube,moment0,moment1,mask,noisemap,sofia_catalog,basicinfofilename].   
+;                  is [Cube,moment0,moment1,mask,noisemap,sofia_catalog,basicinfofilename,moment2].   
 ;        version = the requested amount of files. 0 just organize the
 ;                  output and keep all (This will also happen when a
 ;                  fit is unsuccesful); 1 remove optimized files, log
@@ -38,7 +38,7 @@ Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishaft
 ;            LOG = name of the tracing log.
 ;          noise = The noise used for the fitting.
 ;    finishafter = key for what kind of fitting was done.
-;
+;      fixedpars = triggers for which parameters were fixed
 ; KEYWORD PARAMETERS:
 ;         /DEBUG = Option for making the routine verbose.
 ;
@@ -76,8 +76,8 @@ Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishaft
      print,filenames
   endif
   IF version NE 5 AND finishafter NE 0 then create_residuals,filenames,version
-   organize_output,filenames,version, ['Optimized','Intermediate','Finalmodel','No_Warp','Moments','PV-Diagrams','Sofia_Output']
-  IF version NE 5 AND finishafter NE 0 then overview_plot,distance,gdlidl,noise=noise,finishafter=finishafter,filenames=filenames,version=version
+  organize_output,filenames,version, ['Optimized','Intermediate','Finalmodel','No_Warp','Moments','PV-Diagrams','Sofia_Output']
+  IF version NE 5 AND finishafter NE 0 then overview_plot,distance,gdlidl,noise=noise,finishafter=finishafter,filenames=filenames,version=version,fixedpars=fixedpars
   IF size(log,/TYPE) EQ 7 then begin
      openu,66,log,/APPEND
      printf,66,linenumber()+"BOOK_KEEPING: Removing the following files from "+currentdir

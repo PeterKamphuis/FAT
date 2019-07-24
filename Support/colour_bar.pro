@@ -138,15 +138,15 @@ PRO colour_bar, x, y, minval, maxval, TITLE=title, VERTICAL=dummy1,$
         IF not keyword_set(opposite_label) then begin
            if not keyword_set(dummy1) then begin
               XYOUTS,[(X[0]+x[1])/2.],[Y[0]-0.03],title,alignment=0.5, $
-                     /NORMAL, COLOR=legcolor,_EXTRA=ex
+                     /NORMAL, COLOR=legcolor,_EXTRA=ex,ORIENTATION=0.
            endif else begin
               XYOUTS,[X[1]-0.02],[(Y[0]+Y[1])/2.],title,alignment=0.5, $
                      /NORMAL, COLOR=legcolor,_EXTRA=ex,ORIENTATION=90
            endelse
         ENDIF ELSE BEGIN
            if not keyword_set(dummy1) then begin
-              XYOUTS,[(X[0]+x[1])/2.],[Y[1]+0.006],title,alignment=0.5, $
-                     /NORMAL, COLOR=legcolor,_EXTRA=ex
+              XYOUTS,[(X[0]+x[1])/2.],[Y[1]+0.01],title,alignment=0.5, $
+                     /NORMAL, COLOR=legcolor,ORIENTATION=180.
            endif else begin
               XYOUTS,[X[1]+0.02],[(Y[0]+Y[1])/2.],title,alignment=0.5, $
                      /NORMAL, COLOR=legcolor,_EXTRA=ex,ORIENTATION=90
@@ -156,15 +156,14 @@ PRO colour_bar, x, y, minval, maxval, TITLE=title, VERTICAL=dummy1,$
         IF not keyword_set(opposite_label) then begin
            if not keyword_set(dummy1) then begin
               XYOUTS,[(X[0]+x[1])/2.],[Y[0]-0.03],title,alignment=0.5, $
-                     /NORMAL, COLOR=legcolor,_EXTRA=ex
+                     /NORMAL, COLOR=legcolor,_EXTRA=ex,ORIENTATION=0.
            endif else begin
               XYOUTS,[X[0]-0.06],[(Y[0]+Y[1])/2.],title,alignment=0.5, $
                      /NORMAL, COLOR=legcolor,_EXTRA=ex,ORIENTATION=90
            endelse
         endif else begin
            if not keyword_set(dummy1) then begin
-              XYOUTS,[(X[0]+x[1])/2.],[Y[1]+0.025],title,alignment=0.5, $
-                     /NORMAL, COLOR=legcolor,_EXTRA=ex
+              XYOUTS,[(X[0]+x[1])/2.],[Y[1]+0.01],title,alignment=0.5, /NORMAL, COLOR=legcolor,_EXTRA=ex,ORIENTATION=180.
            endif else begin
               XYOUTS,[X[1]+0.06],[(Y[0]+Y[1])/2.],title,alignment=0.5, $
                      /NORMAL, COLOR=legcolor,_EXTRA=ex,ORIENTATION=90

@@ -1,4 +1,4 @@
-Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,AVINNER=avinner,START=start,CENTRALEXCLUDE=centralexclude,FINISH_AFTER=finish_after,slope=slope,debug=debug
+Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidth,AVINNER=avinner,START=start,CENTRALEXCLUDE=centralexclude,FINISH_AFTER=finish_after,slope=slope,debug=debug,fix=fix
 
 ;+
 ; NAME:
@@ -63,7 +63,7 @@ Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidt
                                 ;If the model is big we always want to
                                 ;fit a slope to the outer parts
   IF n_elements(slope) EQ 0 then slope=0
- 
+  IF n_elements(fix) EQ 0 then fix=1
   IF double(norings[0]) GT 15. then begin
      IF n_elements(finish_after) EQ 0 then finish_after=2.
      IF finish_after EQ 2.1 then begin
@@ -72,7 +72,9 @@ Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidt
         IF velconstused GT norings[0]-ceil(norings[0]/5.) then velconstused=norings[0]-ceil(norings[0]/5.)
      Endelse
   ENDIF
-  if n_elements(start) EQ 0 then start=3
+  if n_elements(start) EQ 0 then begin
+     start=floor(norings[0]/4.)
+  endif
   IF start LT 4 then start=4
   IF n_elements(centralexclude) EQ 0 then centralexclude=0 
                                 ;If we want to fit everything as slope
@@ -81,11 +83,12 @@ Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidt
   IF velconstused LT 5 then velconstused=5
   IF velconstused LT start+1 then velconstused=start+1
   avinner=0.
+ 
                                 ;set the fitting parameters for the rotation curve
   case (1) of
                                 ;If a small galaxy we fit the
                                 ;dispersion as 1
-     norings[0] LE 4 OR finish_after EQ 1.1:begin
+     norings[0] LE 4 OR finish_after EQ 1.1 OR fix EQ 0:begin
   ;      SDISinput1=['SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
   ;               ' SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
   ;               '25','5','1','0.1','0.5','0.05','3','70','70']    
@@ -113,14 +116,14 @@ Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidt
            else:begin
            end
         endcase
-        string1='!SDIS '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+$
+        string1='SDIS '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+$
                 ':'+strtrim(strcompress(string(norings[0]-2,format='(I3)')),1)+$
                 ' SDIS_2 '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+$
                 ':'+strtrim(strcompress(string(norings[0]-2,format='(I3)')),1)+$
                 ',!SDIS '+strtrim(strcompress(string(norings[0]-3,format='(I3)')),1)+':'$
-                +strtrim(strcompress(string(start,format='(I3)')),1)+' SDIS_2 '+$
+                +strtrim(strcompress(string(start+1,format='(I3)')),1)+' SDIS_2 '+$
                 strtrim(strcompress(string(norings[0]-3,format='(I3)')),1)+$
-                ':'+strtrim(strcompress(string(start,format='(I3)')),1)+', SDIS 1:3 SDIS_2 1:3'
+                ':'+strtrim(strcompress(string(start+1,format='(I3)')),1)+', SDIS 1:'+strtrim(strcompress(string(start,format='(I3)')),1)+' SDIS_2 1:'+strtrim(strcompress(string(start,format='(I3)')),1)
         string2=string(SDISmax)+' '+string(SDISmax)+' '+string(SDISmax)
         string3=string(SDISmin)+' '+string(SDISmin)+' '+string(avinner)
         string4=string(1.5*channelwidth)+' '+string(1.5*channelwidth)+' '+string(1.5*channelwidth)
@@ -129,8 +132,8 @@ Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidt
         string7=string(0.1*channelwidth)+' '+string(0.01*channelwidth)+' '+string(0.1*channelwidth)
         string8='3 3 3'
         string9='70 70 70'
-;        string10=' SDIS '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+' '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+' SDIS_2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+' '+strtrim(strcompress(string(norings[0],format='(I3)')),1)
-        string10=' SDIS '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+' SDIS_2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)
+        string10=' SDIS '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+' '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+' SDIS_2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+' '+strtrim(strcompress(string(norings[0],format='(I3)')),1)
+        ;string10=' SDIS '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+' SDIS_2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)
      End
                                 ;All other cases
      else:begin
@@ -147,14 +150,14 @@ Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidt
            end
         endcase
      
-        string1='!SDIS '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+':'+$
+        string1='SDIS '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+':'+$
                 strtrim(strcompress(string(velconstused,format='(I3)')),1)+' SDIS_2 '$
                 +strtrim(strcompress(string(norings[0],format='(I3)')),1)+':'$
                 +strtrim(strcompress(string(velconstused,format='(I3)')),1)+$
                 ', !SDIS '+strtrim(strcompress(string(velconstused-1,format='(I3)')),1)+$
-                ':'+strtrim(strcompress(string(start,format='(I3)')),1)+' SDIS_2 '$
+                ':'+strtrim(strcompress(string(start+1,format='(I3)')),1)+' SDIS_2 '$
                 +strtrim(strcompress(string(velconstused-1,format='(I3)')),1)+$
-                ':'+strtrim(strcompress(string(start,format='(I3)')),1)+', SDIS 1:3 SDIS_2 1:3'
+                ':'+strtrim(strcompress(string(start+1,format='(I3)')),1)+', SDIS 1:'+strtrim(strcompress(string(start,format='(I3)')),1)+' SDIS_2 1:'+strtrim(strcompress(string(start,format='(I3)')),1)
         string2=string(SDISmax)+' '+string(SDISmax)+' '+string(SDISmax)
         string3=string(avinner)+' '+string(SDISmin)+' '+string(SDISmin)
         string4=string(1.5*channelwidth)+' '+string(1.5*channelwidth)+' '+string(1.5*channelwidth)
@@ -163,9 +166,9 @@ Pro set_sdis,sdisinput1,SDISarr,velconstused,sdismax,sdismin,norings,channelwidt
         string7=string(0.1*channelwidth)+' '+string(0.01*channelwidth)+' '+string(0.1*channelwidth)
         string8='3 3 3'
         string9='70 70 70'
-        string10=' SDIS '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+$
+        string10=' SDIS '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+$
                  ':'+strtrim(strcompress(string(velconstused+1,format='(I3)')),1)+$
-                 ' SDIS_2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+$
+                 ' SDIS_2 '+strtrim(strcompress(string(norings[0],format='(I3)')),1)+$
                  ':'+strtrim(strcompress(string(velconstused+1,format='(I3)')),1)
      end
   endcase

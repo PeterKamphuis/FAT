@@ -126,6 +126,10 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
         satisf=0.
         gftim=0.
         check = 0
+        conv_limit=1e-2
+                                ;If we have lots of fixedrings p does
+                                ;really mean much so blow up the chisqr
+        IF n_elements(newy)-fixedrings LT order then blowup=1 else blowup=0
         WHILE iterno LT mc_iters-1 AND satisf NE 1 DO BEGIN
            IF iterno/10000. EQ fix(iterno/10000.) AND iterno GT 50000 then begin
                IF size(log,/TYPE) EQ 7 then begin
@@ -136,7 +140,8 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
                   ENDIF
                   printf,66,linenumber()+'FAT_FIT: We are currently at iteration number '+strtrim(string(iterno),2)
                   IF iterno GT 75000 then begin
-                     printf,66,linenumber()+'FAT_FIT: The current difference is '+strtrim(STRJOIN(div[*]/totp[*]*100.,' '),2)
+                     printf,66,linenumber()+'FAT_FIT: The current difference is '+strtrim(STRJOIN(ABS(div[*]/totp[*]*100.),' '),2)
+                     printf,66,linenumber()+'FAT_FIT: Where we should have '+strtrim(string(conv_limit),2)
                      printf,66,linenumber()+'FAT_FIT: And we have satisfied '+strtrim(string(gftim),2)+' times.'
                   ENDIF
                   close,66
@@ -147,7 +152,8 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
                   ENDIF
                   print,'FAT_FIT: We are currently at iteration number '+strtrim(string(iterno),2)
                   IF iterno GT 75000 then begin
-                     print,'FAT_FIT: The current difference is '+strtrim(STRJOIN(div[*]/totp[*]*100.,' '),2)
+                     print,'FAT_FIT: The current difference is '+strtrim(STRJOIN(ABS(div[*]/totp[*]*100.),' '),2)
+                     print,'FAT_FIT: Where we should have '+strtrim(string(conv_limit),2)
                      print,'FAT_FIT: And we have satisfied '+strtrim(string(gftim),2)+' times.'
                   ENDIF
                ENDELSE
@@ -166,8 +172,9 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
            ENDIF ELSE BeGIN
               newy[*]=p[0]
               for i=1,n_elements(p)-1 do newy[*]=newy[*]+p[i]*x[*]^i
- 
-              IF fixedrings GT 0. and order NE 0 then begin
+             
+              IF fixedrings GT 0. and order NE 0 and blowup NE 1 then begin
+        
                  IF n_elements(ddiv) EQ 0 then begin
                     IF fixedrings GT fix(n_elements(newy)/2.)-1 then begin
                        newy[0:fix(n_elements(newy)/2.)-1]=yor[0]
@@ -221,8 +228,11 @@ Function FAT_FIT,xin,yin,order,RCHI_SQR=rchisqr,newy=newy,CHI_SQR=chisqr,errors=
                     
                  ENDELSE
               ENDIF
-              
+             
               IF n_elements(errors) GT 0 then chisqr=TOTAL((newy - y)^2/sqerrors) else chisqr=TOTAL((newy - y)^2)
+             
+
+              
                                 ;If underdetermined do not penalize
               
               IF chisqr LT (n_elements(fitPA)-order) then goto,skippenalize
@@ -296,11 +306,12 @@ skippenalize:
               totp[*]=TOTAL(chiarr[0:iterno]#coeff[0:iterno,*],1)/TOTAL(chiarr[0:iterno])
             
               div=ABS(totp[*]-prevp[*])
+              conv_limit=0.9e-2*(n_elements(y)/(n_elements(y)-fixedrings))
+              if conv_limit LT 1e-2 then conv_limit = 1e-2
+              tmp=WHERE(ABS(div[*]/totp[*]*100.) LT conv_limit)
               
-              tmp=WHERE(ABS(div[*]/totp[*]*100.) LT 1e-2)
               
-              
-              IF n_elements(tmp) GE n_elements(totp)/2. AND TOTAL(ABS(div[*]/totp[*]*100.))/n_elements(totp) LT 1e-2 then begin
+              IF n_elements(tmp) GE n_elements(totp)/2. AND TOTAL(ABS(div[*]/totp[*]*100.))/n_elements(totp) LT conv_limit then begin
                  gftim++
                
                  IF gftim gt 1000 AND iterno GT 10000 then satisf=1
@@ -371,10 +382,10 @@ skippenalize:
            ENDELSE
         ENDIF
           
-           ;IF n_elements(errors) GT 0 then chisqr=TOTAL((newy - y)^2/(sqerrors)) else chisqr=TOTAL((newy - y)^2)
+        IF n_elements(errors) GT 0 then chisqr=TOTAL((newy - y)^2/(sqerrors)) else chisqr=TOTAL((newy - y)^2)
        
         ;rchisqr=chisqr/(n_elements(y)-order)
-        chisqr=TOTAL(chiarr[0:iterno-1])/n_elements(chiarr[0:iterno-1])
+        ;chisqr=TOTAL(chiarr[0:iterno-1])/n_elements(chiarr[0:iterno-1])
         rchisqr=chisqr/(n_elements(y)-order)
      ENDELSE
      chiarr=0.
