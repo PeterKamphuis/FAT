@@ -75,7 +75,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   
   arrays=1.
   IF gdlidl then SET_PLOT,'PS' else SET_PLOT, 'Z'
-  plotpara=['RADI','SBR','SBR_2','VROT','VROT_ERR','PA','PA_ERR','PA_2','PA_2_ERR','INCL','INCL_ERR','INCL_2','INCL_2_ERR','BMAJ','SDIS','XPOS','YPOS','VSYS','SDIS_ERR','Z0','Z0_2']
+  plotpara=['RADI','SBR','SBR_2','VROT','VROT_ERR','PA','PA_ERR','PA_2','PA_2_ERR','INCL','INCL_ERR','INCL_2','INCL_2_ERR','BMAJ','SDIS','XPOS','YPOS','VSYS','SDIS_ERR','Z0','Z0_2','RADI_2']
   plotstart=[[1,3,14,5,9],[2,3,14,7,11],[0,1,4,1,1]]
   Template=1.
   WriteNewToTemplate,Template,'Finalmodel/Finalmodel.def',ARRAYS=Arrays,VARIABLECHANGE=plotpara,/EXTRACT
@@ -256,8 +256,13 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         IF FILE_TEST('ModelInput.def') then begin
            oplot,ModArrays[*,0],ModArrays[*,1],thick=lthick,color='FF0010'x
            oplot,ModArrays[*,0],ModArrays[*,1],psym=8,color='FF0010'x,symsize=ssize
-           oplot,ModArrays[*,0],ModArrays[*,2],thick=lthick,color='00B4FF'x,linestyle=2
-           oplot,ModArrays[*,0],ModArrays[*,2],psym=8,color='00B4FF'x,linestyle=2,symsize=ssize
+           IF ModArrays[2,21] NE 0. then begin
+              oplot,ModArrays[*,21],ModArrays[*,2],thick=lthick,color='00B4FF'x,linestyle=2
+              oplot,ModArrays[*,21],ModArrays[*,2],psym=8,color='00B4FF'x,linestyle=2,symsize=ssize
+           endif else begin
+              oplot,ModArrays[*,0],ModArrays[*,2],thick=lthick,color='00B4FF'x,linestyle=2
+              oplot,ModArrays[*,0],ModArrays[*,2],psym=8,color='00B4FF'x,linestyle=2,symsize=ssize
+           endelse
         ENDIF
      ENDIF ELSE begin
         IF plotstart[i,0] NE plotstart[i,1] then begin
@@ -321,8 +326,13 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
            oplot,ModArrays[*,0],ModArrays[*,plotstart[i,0]],thick=lthick,color='FF0010'x
            oplot,ModArrays[*,0],ModArrays[*,plotstart[i,0]],psym=8,color='FF0010'x,symsize=ssize
            IF plotstart[i,0] NE plotstart[i,1] then begin
-              oplot,ModArrays[*,0],ModArrays[*,plotstart[i,1]],thick=lthick,color='00B4FF'x,linestyle=2
-              oplot,ModArrays[*,0],ModArrays[*,plotstart[i,1]],psym=8,color='00B4FF'x,linestyle=2,symsize=ssize
+              if ModArrays[2,21] NE 0 then begin
+                 oplot,ModArrays[*,21],ModArrays[*,plotstart[i,1]],thick=lthick,color='00B4FF'x,linestyle=2
+                 oplot,ModArrays[*,21],ModArrays[*,plotstart[i,1]],psym=8,color='00B4FF'x,linestyle=2,symsize=ssize
+              endif else begin
+                 oplot,ModArrays[*,0],ModArrays[*,plotstart[i,1]],thick=lthick,color='00B4FF'x,linestyle=2
+                 oplot,ModArrays[*,0],ModArrays[*,plotstart[i,1]],psym=8,color='00B4FF'x,linestyle=2,symsize=ssize
+              endelse
            ENDIF
         ENDIF
      ENDELSE
@@ -364,6 +374,21 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         XYOUTS,0.60,0.67,'In the model a scale height of '+strtrim(string(double(sclarcmod),format='(F10.1)'),2)+$
                ' arcsec ('+strtrim(string(double(sclkpcmod),format='(F10.1)'),2)+' pc) was inserted',/normal,color='000000'x
      ENDELSE
+     if ModArrays[2,21] Ne 0 then begin
+         tmp=WHERE(plotpara EQ 'XPOS_2')
+         RAmod=double(ModArrays[0,tmp])
+         tmp=WHERE(plotpara EQ 'YPOS_2')
+         DECmod=double(ModArrays[0,tmp])
+         convertradec,RAmod,DECmod
+         tmp=WHERE(plotpara EQ 'VSYS_2')
+         vsysmod=strtrim(string(double(ModArrays[0,tmp]),format='(F10.1)'),2)
+         
+         XYOUTS,0.60,0.65,' For the diskfit model we find the following central coordinate',/normal,alignment=0.,charthick=charthick,color='000000'x
+         XYOUTS,0.60,0.63,' RA = '+RAmod+'DEC= '+DECmod+' vsys = '+vsysmod+') km s!E-1',/normal,alignment=0.,charthick=charthick,color='000000'x
+      ENDIF
+         
+
+         
   ENDIF ELSE BEGIN
      XYOUTS,0.60,0.89,'Systemic Velocity= '+vsys+' km s!E-1',/normal,alignment=0.,charthick=charthick,color='000000'x
      XYOUTS,0.60,0.87,'R.A.= '+RA,/normal,alignment=0.,charthick=charthick,color='000000'x
