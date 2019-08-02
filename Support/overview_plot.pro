@@ -75,7 +75,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   
   arrays=1.
   IF gdlidl then SET_PLOT,'PS' else SET_PLOT, 'Z'
-  plotpara=['RADI','SBR','SBR_2','VROT','VROT_ERR','PA','PA_ERR','PA_2','PA_2_ERR','INCL','INCL_ERR','INCL_2','INCL_2_ERR','BMAJ','SDIS','XPOS','YPOS','VSYS','SDIS_ERR','Z0','Z0_2','RADI_2']
+  plotpara=['RADI','SBR','SBR_2','VROT','VROT_ERR','PA','PA_ERR','PA_2','PA_2_ERR','INCL','INCL_ERR','INCL_2','INCL_2_ERR','BMAJ','SDIS','XPOS','YPOS','VSYS','SDIS_ERR','Z0','Z0_2','RADI_2','VROT_2','XPOS_2','YPOS_2','VSYS_2']
   plotstart=[[1,3,14,5,9],[2,3,14,7,11],[0,1,4,1,1]]
   Template=1.
   WriteNewToTemplate,Template,'Finalmodel/Finalmodel.def',ARRAYS=Arrays,VARIABLECHANGE=plotpara,/EXTRACT
@@ -100,7 +100,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   buffer=dblarr(5)
   minvar[*]=100000
   maxvar[*]=-10000
-  for i=0,4 do begin  plotVariableErr=Arrays[tmp,plotstart[i,0]+plotstart[i,2]]
+  for i=0,4 do begin  
      if i GT 0 then begin
         tmpvals=[Arrays[*,plotstart[i,0]]+Arrays[*,plotstart[i,0]+plotstart[i,2]],$
                  Arrays[*,plotstart[i,0]]-Arrays[*,plotstart[i,0]+plotstart[i,2]],$
@@ -181,8 +181,8 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
      ssize=2.5
      DEVICE,SET_FONT='Times',/TT_FONT,SET_RESOLUTION=[scrdim[0],scrdim[1]],/DECOMPOSED,SET_PIXEL_DEPTH=24
   endelse
-  tmp=WHERE(plotpara EQ 'RADI')
-  plotradii=Arrays[*,tmp]
+  tmppos=WHERE(plotpara EQ 'RADI')
+  plotradii=Arrays[*,tmppos[0]]
   tmppos=WHERE(plotpara EQ 'SBR')
   tmp=WHERE(Arrays[*,tmppos[0]] GT 1.1E-16)
   tmppos=WHERE(plotpara EQ 'SBR_2')
@@ -254,15 +254,20 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         XYOUTs,0.08,0.95-4.5*ysize,varunits[plotstart[i,0]],/NORMAL,alignment=0.5,ORIENTATION=90,color='000000'x,charthick=charthick
         
         IF FILE_TEST('ModelInput.def') then begin
-           oplot,ModArrays[*,0],ModArrays[*,1],thick=lthick,color='FF0010'x
-           oplot,ModArrays[*,0],ModArrays[*,1],psym=8,color='FF0010'x,symsize=ssize
-           IF ModArrays[2,21] NE 0. then begin
-              oplot,ModArrays[*,21],ModArrays[*,2],thick=lthick,color='00B4FF'x,linestyle=2
-              oplot,ModArrays[*,21],ModArrays[*,2],psym=8,color='00B4FF'x,linestyle=2,symsize=ssize
-           endif else begin
-              oplot,ModArrays[*,0],ModArrays[*,2],thick=lthick,color='00B4FF'x,linestyle=2
-              oplot,ModArrays[*,0],ModArrays[*,2],psym=8,color='00B4FF'x,linestyle=2,symsize=ssize
-           endelse
+           IF TOTAL(ModArrays[*,1]) NE 0. then begin 
+              oplot,ModArrays[*,0],ModArrays[*,1],thick=lthick,color='FF0010'x
+              oplot,ModArrays[*,0],ModArrays[*,1],psym=8,color='FF0010'x,symsize=ssize
+           ENDIF
+           IF TOTAL(ModArrays[*,2]) NE 0. then begin
+              tmppos= WHERE(plotpara EQ 'RADI_2')
+              IF tmppos[0] NE -1 then begin
+                 oplot,ModArrays[*,tmppos[0]],ModArrays[*,2],thick=lthick,color='00B4FF'x,linestyle=2
+                 oplot,ModArrays[*,tmppos[0]],ModArrays[*,2],psym=8,color='00B4FF'x,linestyle=2,symsize=ssize
+              endif else begin
+                 oplot,ModArrays[*,0],ModArrays[*,2],thick=lthick,color='00B4FF'x,linestyle=2
+                 oplot,ModArrays[*,0],ModArrays[*,2],psym=8,color='00B4FF'x,linestyle=2,symsize=ssize
+              endelse
+           ENDIF
         ENDIF
      ENDIF ELSE begin
         IF plotstart[i,0] NE plotstart[i,1] then begin
@@ -323,17 +328,34 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
       
         ENDIF
         IF FILE_TEST('ModelInput.def') then begin
-           oplot,ModArrays[*,0],ModArrays[*,plotstart[i,0]],thick=lthick,color='FF0010'x
-           oplot,ModArrays[*,0],ModArrays[*,plotstart[i,0]],psym=8,color='FF0010'x,symsize=ssize
-           IF plotstart[i,0] NE plotstart[i,1] then begin
-              if ModArrays[2,21] NE 0 then begin
-                 oplot,ModArrays[*,21],ModArrays[*,plotstart[i,1]],thick=lthick,color='00B4FF'x,linestyle=2
-                 oplot,ModArrays[*,21],ModArrays[*,plotstart[i,1]],psym=8,color='00B4FF'x,linestyle=2,symsize=ssize
-              endif else begin
-                 oplot,ModArrays[*,0],ModArrays[*,plotstart[i,1]],thick=lthick,color='00B4FF'x,linestyle=2
-                 oplot,ModArrays[*,0],ModArrays[*,plotstart[i,1]],psym=8,color='00B4FF'x,linestyle=2,symsize=ssize
-              endelse
+           tmpmodarr=WHERE(ModArrays[*,plotstart[i,0]] NE 0.)
+           IF tmpmodarr[0] NE -1 then begin
+              oplot,ModArrays[tmpmodarr,0],ModArrays[tmpmodarr,plotstart[i,0]],thick=lthick,color='FF0010'x
+              oplot,ModArrays[tmpmodarr,0],ModArrays[tmpmodarr,plotstart[i,0]],psym=8,color='FF0010'x,symsize=ssize
            ENDIF
+           tmppos = WHERE(plotpara EQ 'RADI_2')
+           if TOTAL(ModArrays[*,tmppos[0]]) NE 0 then begin              
+              IF plotstart[i,0] EQ plotstart[i,1] then begin
+                 tmppos2=WHERE(plotpara EQ 'VROT_2')
+                 tmpmodarr = WHERE(ModArrays[*,tmppos2[0]] NE 0.)
+                 sets= tmppos2[0]
+              ENDIF else BEGIN
+                 tmpmodarr = WHERE(ModArrays[*,plotstart[i,1]] NE 0.)
+                 sets = plotstart[i,1]
+              ENDELSE
+              IF tmpmodarr[0] NE -1 then begin
+                 oplot,ModArrays[tmpmodarr,tmppos[0]],ModArrays[tmpmodarr,sets],thick=lthick,color='00B4FF'x,linestyle=2
+                 oplot,ModArrays[tmpmodarr,tmppos[0]],ModArrays[tmpmodarr,sets],psym=8,color='00B4FF'x,linestyle=2,symsize=ssize
+              ENDIF
+           endif else begin
+              IF plotstart[i,0] NE plotstart[i,1] then begin
+                 tmpmodarr = WHERE(ModArrays[*,plotstart[i,1]] NE 0.)
+                 IF tmpmodarr[0] NE -1 then begin
+                    oplot,ModArrays[tmpmodarr,0],ModArrays[tmpmodarr,plotstart[i,1]],thick=lthick,color='00B4FF'x,linestyle=2
+                    oplot,ModArrays[tmpmodarr,0],ModArrays[tmpmodarr,plotstart[i,1]],psym=8,color='00B4FF'x,linestyle=2,symsize=ssize
+                 ENDIF
+              ENDIF
+           ENDELSE
         ENDIF
      ENDELSE
   endfor
@@ -374,7 +396,8 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         XYOUTS,0.60,0.67,'In the model a scale height of '+strtrim(string(double(sclarcmod),format='(F10.1)'),2)+$
                ' arcsec ('+strtrim(string(double(sclkpcmod),format='(F10.1)'),2)+' pc) was inserted',/normal,color='000000'x
      ENDELSE
-     if ModArrays[2,21] Ne 0 then begin
+     tmppos = WHERE(plotpara EQ 'RADI_2')
+     if tmppos[0] NE -1 then begin
          tmp=WHERE(plotpara EQ 'XPOS_2')
          RAmod=double(ModArrays[0,tmp])
          tmp=WHERE(plotpara EQ 'YPOS_2')
@@ -383,7 +406,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
          tmp=WHERE(plotpara EQ 'VSYS_2')
          vsysmod=strtrim(string(double(ModArrays[0,tmp]),format='(F10.1)'),2)
          
-         XYOUTS,0.60,0.65,' For the diskfit model we find the following central coordinate',/normal,alignment=0.,charthick=charthick,color='000000'x
+         XYOUTS,0.60,0.65,' For the diskfit model we find the following central coordinates',/normal,alignment=0.,charthick=charthick,color='000000'x
          XYOUTS,0.60,0.63,' RA = '+RAmod+'DEC= '+DECmod+' vsys = '+vsysmod+') km s!E-1',/normal,alignment=0.,charthick=charthick,color='000000'x
       ENDIF
          

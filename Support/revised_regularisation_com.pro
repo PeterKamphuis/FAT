@@ -1424,7 +1424,7 @@ refit:
         IF n_elements(dev_real) LT limit OR dev_real[0] EQ -1  then begin
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              IF dev_real EQ -1 then $
+              IF dev_real[0] EQ -1 then $
                  printf,66,linenumber()+'REVISED_REGULARISATION_COM: We found 0 rings deviating significantly from '+ strtrim(string(mean_par),2) else $
                     printf,66,linenumber()+'REVISED_REGULARISATION_COM: We found '+strtrim(string(n_elements(dev_real)),2)+' rings deviating significantly from '+ strtrim(string(mean_par),2)
               printf,66,linenumber()+'REVISED_REGULARISATION_COM: As we need at least '+ strtrim(string(limit),2)+' rings to deviate we flatten the parameter'
