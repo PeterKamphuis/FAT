@@ -5366,45 +5366,46 @@ noconfig:
         stringSDIS='SDIS_2= '+STRJOIN(string(SDISarr[0:n_elements(SDISarr)-1]),' ') 
         tmppos=where('SDIS_2' EQ tirificsecondvars)
         tirificsecond[tmppos]=stringSDIS
-        IF finalsmooth EQ 1 AND velconstused LT norings[0] AND (norings[0]*ring_spacing LT 15 OR (polorder1[1] LT 4. AND polorder2[1] LT 4)) then begin
-           vrotslopinput=strarr(10)
-           start=3.+fix((norings[0]-3./ring_spacing)/5.)
-           set_vrotv6,vrotslopinput,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,start=start,centralexclude=centralexclude,finish_after=finishafter,slope=slope
+        
+        ;IF finalsmooth EQ 1 AND velconstused LT norings[0] AND (norings[0]*ring_spacing LT 15 OR (polorder1[1] LT 4. AND polorder2[1] LT 4)) then begin
+        ;   vrotslopinput=strarr(10)
+        ;   start=3.+fix((norings[0]-3./ring_spacing)/5.)
+        ;   set_vrotv6,vrotslopinput,VROTarr,velconstused,vrotmax,vrotmin,norings,channelwidth,avinner=avinner,start=start,centralexclude=centralexclude,finish_after=finishafter,slope=slope
            
-           INCLinputall=['INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' '+$
-                    'INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
-                         '90','5',string(0.5),string(0.1),string(0.5),string(0.1),'3','70','70']
-           SDISinputall=['SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' '+$
-                    'SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
-                         string(SDISmax),string(SDISmin),string(0.5*channelwidth),string(0.1*channelwidth),string(0.5*channelwidth),string(0.1*channelwidth),'3','70','70']
-           Writefittingvariables,tirificsecond,INCLinputall,vrotslopinput,SDISinputall
+        ;   INCLinputall=['INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' '+$
+        ;            'INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
+        ;                 '90','5',string(0.5),string(0.1),string(0.5),string(0.1),'3','70','70']
+        ;   SDISinputall=['SDIS 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' '+$
+        ;            'SDIS_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
+        ;                 string(SDISmax),string(SDISmin),string(0.5*channelwidth),string(0.1*channelwidth),string(0.5*channelwidth),string(0.1*channelwidth),'3','70','70']
+        ;   Writefittingvariables,tirificsecond,INCLinputall,vrotslopinput,SDISinputall
 
-           openw,1,maindir+'/'+catdirname[i]+'/tirific.def'
-           for index=0,n_elements(tirificsecond)-1 do begin
-              printf,1,tirificsecond[index]
-           endfor
-           close,1
+;           openw,1,maindir+'/'+catdirname[i]+'/tirific.def'
+ ;          for index=0,n_elements(tirificsecond)-1 do begin
+  ;            printf,1,tirificsecond[index]
+   ;        endfor
+    ;       close,1
                                 ;Perform tirific check with only changes as a whole to the parameters
-           IF size(log,/TYPE) EQ 7 then begin
-              openu,66,log,/APPEND
-              printf,66,linenumber()+"Starting slope adjustment in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
-              close,66
-           ENDIF
-           IF MEAN(VROTarr) GT 1000. then begin
-              print,'something has gone horribly wrong'
-              stop
-           ENDIF
-           print,linenumber()+"Starting slope adjustment in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
-           rename,'2ndfit.','2ndfittmp.'
-           gipsyfirst=strarr(1)
-           gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
-           spawn,gipsyfirst,isthere2
-           writenewtotemplate,tirificsecond,maindir+'/'+catdirname[i]+'/2ndfit.def',Arrays=secondfitvalues,VariableChange=secondfitvaluesnames,Variables=tirificsecondvars
-           rename,'2ndfit.','2ndfitslop.'
-           rename,'2ndfittmp.','2ndfit.'
-           tmppos=where('VROT' EQ secondfitvaluesnames)
-           VROTarr=secondfitvalues[*,tmppos]
-        ENDIF
+     ;      IF size(log,/TYPE) EQ 7 then begin
+      ;        openu,66,log,/APPEND
+      ;        printf,66,linenumber()+"Starting slope adjustment in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
+      ;        close,66
+      ;     ENDIF
+      ;     IF MEAN(VROTarr) GT 1000. then begin
+      ;        print,'something has gone horribly wrong'
+      ;        stop
+      ;     ENDIF
+      ;     print,linenumber()+"Starting slope adjustment in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
+      ;     rename,'2ndfit.','2ndfittmp.'
+      ;     gipsyfirst=strarr(1)
+      ;     gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
+      ;     spawn,gipsyfirst,isthere2
+      ;     writenewtotemplate,tirificsecond,maindir+'/'+catdirname[i]+'/2ndfit.def',Arrays=secondfitvalues,VariableChange=secondfitvaluesnames,Variables=tirificsecondvars
+      ;     rename,'2ndfit.','2ndfitslop.'
+      ;     rename,'2ndfittmp.','2ndfit.'
+      ;     tmppos=where('VROT' EQ secondfitvaluesnames)
+      ;     VROTarr=secondfitvalues[*,tmppos]
+      ;  ENDIF
 
 ;this is where we end this experiment
 
