@@ -1,4 +1,4 @@
-Function fat_savgol,SBRin,Radin,rings=rings,step=step
+Function fat_savgol,SBRin,Radin,rings=rings,step=step,half=half
 
 ;+
 ; NAME:
@@ -175,6 +175,8 @@ Function fat_savgol,SBRin,Radin,rings=rings,step=step
   IF n_elements(rings) GT 0 then begin
      IF rings[0]+1 LT n_elements(SBR) then SBRout[rings[0]+1:n_elements(SBRout)-1]=1e-16
   ENDIF
+
+  if keyword_set(half) then SBRout[0:fix(n_elements(SBRout)/2.]=  SBRin[0:fix(n_elements(SBRout)/2.]
   tmp=WHERE(SBRout LT 1e-8)
   if tmp[0] NE -1 then SBRout[tmp]=1e-16
 
@@ -182,8 +184,6 @@ Function fat_savgol,SBRin,Radin,rings=rings,step=step
                                 ;point again which we will merely
                                 ;extrapolate from the profile
  
-  neg_ind=WHERE(SBRout LT 0.)
-  if neg_ind[0] NE -1 then SBRout[neg_ind]=0.
   WHILE n_elements(SBRout) NE n_elements(SBRin) do begin
      IF n_elements(SBRout) LT n_elements(SBRin) then SBROut=[SBRout[0],SBRout]
      IF n_elements(SBRout) GT n_elements(SBRin) then SBROut=SBRout[0:n_elements(SBRin)-2]

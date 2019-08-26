@@ -184,9 +184,28 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   tmppos=WHERE(plotpara EQ 'RADI')
   plotradii=Arrays[*,tmppos[0]]
   tmppos=WHERE(plotpara EQ 'SBR')
-  tmp=WHERE(Arrays[*,tmppos[0]] GT 1.1E-16)
+  tmprev=WHERE(Arrays[*,tmppos[0]] LT 1.1E-16)
+                                ;check that this happens on the outside
+  if tmprev[0] NE -1 then begin
+     if tmprev[n_elements(tmprev)-1] NE n_elements(Arrays[*,tmppos[0]])-1 then tmp=findgen(n_elements(Arrays[*,tmppos[0]])-1) else begin
+        for i=n_elements(tmprev)-2,0,-1 do begin
+           if tmprev[i] NE tmprev[i+1]-1 then break
+        endfor
+        tmp=findgen(tmprev[i+1])
+     endelse
+  endif
+        
+     
   tmppos=WHERE(plotpara EQ 'SBR_2')
-  tmp2=WHERE(Arrays[*,tmppos[0]] GT 1.1E-16)
+  tmprev=WHERE(Arrays[*,tmppos[0]] LT 1.1E-16)
+  if tmprev[0] NE -1 then begin
+     if tmprev[n_elements(tmprev)-1] NE n_elements(Arrays[*,tmppos[0]])-1 then tmp2=findgen(n_elements(Arrays[*,tmppos[0]])-1) else begin
+        for i=n_elements(tmprev)-2,0,-1 do begin
+           if tmprev[i] NE tmprev[i+1]-1 then break
+        endfor
+        tmp2=findgen(tmprev[i+1])
+     endelse
+  endif
   
   maxradii=MAX([plotradii[tmp],plotradii[tmp2]])+(plotradii[n_elements(plotradii)-1]-plotradii[n_elements(plotradii)-2])/2.
   
@@ -329,8 +348,9 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
       
         ENDIF
         IF FILE_TEST('ModelInput.def') then begin
-           tmpmodarr=WHERE(ModArrays[*,plotstart[i,0]] NE 0.)
+           tmpmodarr=WHERE(ModArrays[*,plotstart[i,0]] NE 0.)           
            IF tmpmodarr[0] NE -1 then begin
+              if tmpmodarr[0] NE 0 then tmpmodarr=[0,tmpmodarr]
               oplot,ModArrays[tmpmodarr,0],ModArrays[tmpmodarr,plotstart[i,0]],thick=lthick,color='FF0010'x
               oplot,ModArrays[tmpmodarr,0],ModArrays[tmpmodarr,plotstart[i,0]],psym=8,color='FF0010'x,symsize=ssize
            ENDIF
@@ -339,9 +359,11 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
               IF plotstart[i,0] EQ plotstart[i,1] then begin
                  tmppos2=WHERE(plotpara EQ 'VROT_2')
                  tmpmodarr = WHERE(ModArrays[*,tmppos2[0]] NE 0.)
+                 if tmpmodarr[0] NE 0 then tmpmodarr=[0,tmpmodarr]
                  sets= tmppos2[0]
               ENDIF else BEGIN
                  tmpmodarr = WHERE(ModArrays[*,plotstart[i,1]] NE 0.)
+                 if tmpmodarr[0] NE 0 then tmpmodarr=[0,tmpmodarr]
                  sets = plotstart[i,1]
               ENDELSE
               IF tmpmodarr[0] NE -1 then begin
@@ -352,6 +374,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
               IF plotstart[i,0] NE plotstart[i,1] then begin
                  tmpmodarr = WHERE(ModArrays[*,plotstart[i,1]] NE 0.)
                  IF tmpmodarr[0] NE -1 then begin
+                    if tmpmodarr[0] NE 0 then tmpmodarr=[0,tmpmodarr]
                     oplot,ModArrays[tmpmodarr,0],ModArrays[tmpmodarr,plotstart[i,1]],thick=lthick,color='00B4FF'x,linestyle=2
                     oplot,ModArrays[tmpmodarr,0],ModArrays[tmpmodarr,plotstart[i,1]],psym=8,color='00B4FF'x,linestyle=2,symsize=ssize
                  ENDIF
