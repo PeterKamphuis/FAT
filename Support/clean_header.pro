@@ -1,4 +1,4 @@
-Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directory=dir
+Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directory=dir,dir_format=dirformat
 
 ;+
 ; NAME:
@@ -104,9 +104,11 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
      ENDIF ELSE BEGIN
         print,linenumber()+'CLEAN_HEADER: FREQUENCY IS NOT A SUPPORTED VELOCITY AXIS.'    
      ENDELSE
+     comment = 'The Cube has frequency as a velocity axis this is not supported'
+     commentlen='A'+strtrim(string(strlen(comment)),2)
      openu,1,outputcatalogue,/APPEND
-     printf,1,format='(A60,2A12,A120)',Dir,0.,0.,'The Cube has frequency as a velocity axis this is not supported'
-     close,1
+     printf,1,Dir,strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+     close,1   
      writecube=2 
      goto,finishup	 
   ENDIF
@@ -148,9 +150,11 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
            print,linenumber()+'CLEAN_HEADER: Your zaxis is a spatial axis not a velocity axis.'
            print,linenumber()+'CLEAN_HEADER: Please arrange your cube logically'
         ENDELSE
+        comment = 'The Cube is not arranged properly'
+        commentlen='A'+strtrim(string(strlen(comment)),2)
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,2A12,A120)',Dir,0.,0.,'The Cube is not arranged properly'
-        close,1
+        printf,1,Dir,strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+        close,1   
         writecube=2
         goto,finishup
      ENDIF   
@@ -222,9 +226,11 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
                ENDIF ELSE BEGIN
                   print,linenumber()+'CLEAN_HEADER: WE CANNOT FIND THE MAJOR AXIS FWHM IN THE HEADER'   
                ENDELSE
+               comment = 'The Cube has no major axis FWHM in the header.'
+               commentlen='A'+strtrim(string(strlen(comment)),2)
                openu,1,outputcatalogue,/APPEND
-               printf,1,format='(A60,2A12,A120)',Dir,0.,0.,'The Cube has no major axis FWHM in the header.'
-               close,1
+               printf,1,Dir,strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+               close,1   
                writecube=2
                goto,finishup
             ENDELSE
@@ -290,9 +296,11 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
      ENDIF
      print,linenumber()+'CLEAN_HEADER: !!!!!!!!!!Your cube is smaller than the beam major axis. !!!!!!!!!!!!!!!!!'
      print,linenumber()+'CLEAN_HEADER: !!!!!!!!!!         This will not work.          !!!!!!!!!!!!!!!!'
+     comment= 'The Cube is not arranged properly'
+     commentlen='A'+strtrim(string(strlen(comment)),2)
      openu,1,outputcatalogue,/APPEND
-     printf,1,format='(A60,2A12,A120)',Dir,0.,0.,'The Cube is not arranged properly'
-     close,1
+     printf,1,Dir,strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+     close,1   
      writecube=2
      goto,finishup
   ENDIF   

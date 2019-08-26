@@ -261,6 +261,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
            IF TOTAL(ModArrays[*,2]) NE 0. then begin
               tmppos= WHERE(plotpara EQ 'RADI_2')
               IF tmppos[0] NE -1 then begin
+                 if TOTAL(ModArrays[*,tmppos[0]]) EQ 0. then tmppos[0] = 0.
                  oplot,ModArrays[*,tmppos[0]],ModArrays[*,2],thick=lthick,color='00B4FF'x,linestyle=2
                  oplot,ModArrays[*,tmppos[0]],ModArrays[*,2],psym=8,color='00B4FF'x,linestyle=2,symsize=ssize
               endif else begin

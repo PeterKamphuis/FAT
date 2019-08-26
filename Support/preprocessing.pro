@@ -1,4 +1,4 @@
-Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=noise,name=name,directory=dir
+Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=noise,name=name,directory=dir,dir_format=dirformat
 
 
 ;+
@@ -123,9 +123,11 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
                  print,linenumber()+'PREPROCESSING: Your spatial axes are not correctly organised'
                  print,linenumber()+'PREPROCESSING: We found CTYPE1='+sxpar(header,'CTYPE1')+' CTYPE2='+sxpar(header,'CTYPE2')     
               ENDELSE
+              comment = 'The Cube has incorrect spatial axes'
+              commentlen='A'+strtrim(string(strlen(comment)),2)
               openu,1,outputcatalogue,/APPEND
-              printf,1,format='(A60,2A12,A120)',dir,0.,0.,'The Cube has incorrect spatial axes'
-              close,1
+              printf,1,dir,strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+              close,1   
               writecube=2
               goto,finishup
            ENDELSE
@@ -139,9 +141,11 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
               print,linenumber()+'PREPROCESSING: Your spatial axes are not correctly organised'
               print,linenumber()+'PREPROCESSING: We found CTYPE1='+sxpar(header,'CTYPE1')+' CTYPE2='+sxpar(header,'CTYPE2')     
            ENDELSE
+           comment = 'The Cube has incorrect spatial axes'
+           commentlen='A'+strtrim(string(strlen(comment)),2)
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,2A12,A120)',dir,0.,0.,'The Cube has incorrect spatial axes'
-           close,1
+           printf,1,dir,strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+           close,1   
            writecube=2
            goto,finishup
         ENDELSE
@@ -193,10 +197,12 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
               close,66
            ENDIF ELSE BEGIN
               printf,linenumber()+'PREPROCESSING: '+dir+'/'+name+'has too many blanked channels.'
-           ENDELSE         
+           ENDELSE
+           comment = 'The Cube has too many blanked channels'
+           commentlen='A'+strtrim(string(strlen(comment)),2)
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,2A12,A120)',dir,0.,0.,'The Cube has too many blanked channels'
-           close,1
+           printf,1,dir,strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+           close,1   
            writecube=2
            goto,finishup
         ENDIF
@@ -225,10 +231,12 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
               close,66
            ENDIF ELSE BEGIN
               printf,linenumber()+'PREPROCESSING: '+dir+'/'+name+'has too many blanked channels.'
-           ENDELSE         
+           ENDELSE
+           comment = 'The Cube has too many blanked channels'
+           commentlen='A'+strtrim(string(strlen(comment)),2)
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,2A12,A120)',dir,0.,0.,'The cube has too many blanked channels'
-           close,1    
+           printf,1,dir,strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+           close,1   
            writecube=2
            goto,finishup
         ENDIF
@@ -319,9 +327,11 @@ Pro preprocessing,cube,header,writecube,log=log,catalogue=outputcatalogue,noise=
               close,66
            ENDIF ELSE BEGIN
               print,linenumber()+'PREPROCESSING: '+dir+'/'+name+' has noise statistics that cannot be dealt with.'
-           ENDELSE         
+           ENDELSE
+           comment = 'The Cube has noise statistics that cannot be dealt with'
+           commentlen='A'+strtrim(string(strlen(comment)),2)
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,2A12,A120)',dir,0.,0.,'The Cube has noise statistics that cannot be dealt with'
+           printf,1,dir,strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
            close,1    
            writecube=2
            goto,finishup

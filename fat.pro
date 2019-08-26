@@ -357,7 +357,7 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   endif
   if keyword_set(new_agc) then begin
      spawn,'printenv FAT_TEST_DIR',fatmaintest
-     configfile=fatmaintest+'/New_Base_2/FAT_INPUT.config'
+     configfile=fatmaintest+'/Full_Database/FAT_INPUT.config'
   endif
   IF n_elements(configfile) EQ 0 then begin
      configfile='FAT_INPUT.config'
@@ -625,12 +625,7 @@ noconfig:
                                 ;start a log with current program name
   help,calls=cc
   print,linenumber()+"This is version "+version[0]+" of the program"
-                                ;Create a file to write the results to
-  If not FILE_TEST(outputcatalogue) OR strupcase(newresult) EQ 'Y' then begin
-     openw,1,outputcatalogue
-     printf,1,format='(A60,2A12,A120)','Name','AC1','AC2','Comments on Fit Result'
-     close,1
-  endif
+
  
                                 ;read the input catalogue
   openr,1,catalogue
@@ -699,6 +694,9 @@ noconfig:
         ENDIF
      ENDELSE
   ENDIF
+                             
+
+  
                                 ;Then read the actual input from the catalo
   h=' '
   counter=0
@@ -784,6 +782,28 @@ noconfig:
 
   endfor
   close,1
+   ;Let's get the longest dirname
+                                ;in the catalogue so we make
+                                ;sure it writes ok.
+  maxdirlen = 14
+  for i =0,n_elements(catDirname)-1 do begin
+     tmplen=strlen(catDirname[i])
+     if tmplen GT maxdirlen then maxdirlen=tmplen
+  endfor
+  dirformat='A-'+strtrim(string(maxdirlen),2)
+
+                                 ;Create a file to write the results to
+  If not FILE_TEST(outputcatalogue) OR strupcase(newresult) EQ 'Y' then begin
+
+     comment='Comments on Fit Result'
+     commentlen='A'+strtrim(string(strlen(comment)),2)
+     openw,1,outputcatalogue
+     printf,1,'Directory Name','AC1','AC2',comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+     close,1   
+   
+  endif
+ 
+  
                                 ;if our end galaxy is -1 then we want
                                 ;to fit the full catalog
   IF startgalaxy LT 0 then startgalaxy = 0
@@ -874,9 +894,12 @@ noconfig:
         cubext='.FITS'
         fitsexists=FILE_TEST(maindir+'/'+catdirname[i]+'/'+currentfitcube+cubeext)
      ENDIF
+  
      if fitsexists EQ 0 then begin
+        comment='This galaxy has no fits cube to work with, it is skipped.'
+        commentlen='A'+strtrim(string(strlen(comment)),2)
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,' This galaxy has no fits cube to work with, it is skipped.'
+        printf,1,catDirname[i],strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
         close,1   
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
@@ -916,12 +939,14 @@ noconfig:
            beam=[catmajbeam[i],catminbeam[i]]
         ENDIF ELSE beam=[1,1]
         noise=1
-        clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directory=catdirname[i]
+        clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directory=catdirname[i],dir_format=dirformat
+        print,writecube
         IF writecube EQ 2 then begin
+           print,'watskeburt'
            bookkeeping=5
            GOTO,FINISHTHISGALAXY
         ENDIF
-        preprocessing,dummy,header,writecube,catalogue=outputcatalogue,noise=noise,name=currentfitcube,directory=catdirname[i],log=log
+        preprocessing,dummy,header,writecube,catalogue=outputcatalogue,noise=noise,name=currentfitcube,directory=catdirname[i],log=log,dir_format=dirformat
         Case 1 of
            writecube EQ 0:begin
               IF size(log,/TYPE) EQ 7 then begin
@@ -1103,9 +1128,10 @@ noconfig:
            printf,66,linenumber()+errormessage[1]
            close,66
         ENDIF
+        commentlen='A'+strtrim(string(strlen(errormessage[1])),2)
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,errormessage[1]
-        close,1 
+        printf,1,catDirname[i],strtrim(string(0),2),strtrim(string(0),2),errormessage[1],format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+        close,1  
         bookkeeping=5
         goto,finishthisgalaxy
      endif
@@ -1474,9 +1500,11 @@ noconfig:
      maxbright=MAX(dummy[tmp])
      maxSN=maxbright/catnoise[i]
      IF maxSN LT 2.5 then begin
+        comment = 'The maximum Signal to Noise in this cube is '+strtrim(string(MaxSN),2)+' that is not enough for a fit.'
+        commentlen='A'+strtrim(string(strlen(comment)),2)
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,' The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit.'
-        close,1    
+        printf,1,catDirname[i],strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+        close,1   
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+catDirname[i]+' The maximum Signal to Noise in this cube is '+string(MaxSN)+' that is not enough for a fit.'
@@ -1545,9 +1573,11 @@ noconfig:
      obtain_pa_incl,moment0map,newPA,newinclination,[RApix[0],DECpix[0]],NOISE=momnoise,BEAM=catmajbeam[i]/(pixelsize*3600.),gdlidl=gdlidl,extent=noringspix
    
      IF TOTAL([newPA,newinclination]) EQ 0. then begin
+        comment = "No initial estimates. Likely the source is too faint."
+        commentlen='A'+strtrim(string(strlen(comment)),2)
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,"No initial estimates. Likely the source is too faint."
-        close,1
+        printf,1,catDirname[i],strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+        close,1  
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+"We are aborting this fit as we cannot establish proper initial estimates."
@@ -1772,9 +1802,11 @@ noconfig:
         ENDWHILE
      
         IF norings[0] LT 3. then begin
+           comment = "This Cube is too small"
+           commentlen='A'+strtrim(string(strlen(comment)),2)
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,"This Cube is too small"
-           close,1
+           printf,1,catDirname[i],strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+           close,1  
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
               printf,66,linenumber()+"We are aborting this fit as the located source is too small"
@@ -1979,14 +2011,16 @@ noconfig:
      close,1
 
      IF Totflux[0] LT 0. then begin
-         IF size(log,/TYPE) EQ 7 then begin
+        IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+"This galaxy has negative total flux. That will not work. Aborting "
            close,66
         ENDIF
+        comment = 'We found an initial negative total flux.'
+        commentlen='A'+strtrim(string(strlen(comment)),2)
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,'We found an initial negative total flux.'
-        close,1 
+        printf,1,catDirname[i],strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+        close,1  
         bookkeeping=5
         goto,finishthisgalaxy
      ENDIF
@@ -2003,10 +2037,12 @@ noconfig:
      ENDELSE
                                 ;break if we do not want to use tirific
      IF finishafter EQ 0. then begin
-        if setfinishafter NE 1 then begin 
+        if setfinishafter NE 1 then begin
+           comment = 'You have chosen to skip the fitting process after all preparations for the fit'
+           commentlen='A'+strtrim(string(strlen(comment)),2)
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,'You have chosen to skip the fitting process after all preparations for the fit'
-           close,1
+           printf,1,catDirname[i],strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+           close,1  
         ENDIF
         if optimized then begin
            tmp=str_sep(strtrim(strcompress(currentfitcube),2),'_opt')
@@ -3004,9 +3040,11 @@ noconfig:
            printf,66,linenumber()+"We are aborting this galaxy."
            close,66
         ENDIF
+        comment = 'We could not find a proper center.'
+        commentlen='A'+strtrim(string(strlen(comment)),2)
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,'We could not find a proper center.'
-        close,1 
+        printf,1,catDirname[i],strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+        close,1  
         bookkeeping=5
         goto,finishthisgalaxy
      ENDIF
@@ -3663,9 +3701,11 @@ noconfig:
               close,66
            ENDIF ELSE BEGIN
               print,linenumber()+"The fit diverged out of the boundaries set by the parameterization. That can't be good."
-           ENDELSE  
+           ENDELSE
+           comment = 'This galaxy diverged out of the set boundaries.'
+           commentlen='A'+strtrim(string(strlen(comment)),2)
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,2A12,A120)',catDirname[i],0.,0.,'This galaxy diverged out of the set boundaries.'
+           printf,1,catDirname[i],strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
            close,1   
            bookkeeping=5
            goto,finishthisgalaxy
@@ -3800,9 +3840,11 @@ noconfig:
      hedtmp1st=hedtmp1stcube
      tmpix=WHERE(tmpcube GT catnoise[i])
      IF tmpix[0] EQ -1 then begin
+        comment = 'The first fit does not have flux above the noise level, this means a mis fit.'
+        commentlen='A'+strtrim(string(strlen(comment)),2)
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,'The first fit does not have flux above the noise level, this means a mis fit.'
-        close,1
+        printf,1,catDirname[i],strtrim(string(fix(AC1)),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+        close,1  
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
            printf,66,linenumber()+"No flux in final fit, aborting."
@@ -3869,69 +3911,69 @@ noconfig:
            case tmpex[0] of
               0:begin
                  IF n_elements(sigmarot) LT newrings then sigmarot=replicate(channelwidth,newrings) 
-                    errs=dblarr(n_elements(sigmarot))
-                    errs=sigmarot
-                    ;/SIN(incarr1*!DtoR)
-                    errs[0]=double(channelwidth)
-                    tmpposv=WHERE(firstfitvaluesnames EQ 'VROT')
-                    avrot=TOTAL(firstfitvalues[1:n_elements(firstfitvalues[*,tmpposv])-1,tmpposv])/n_elements(firstfitvalues[1:n_elements(firstfitvalues[*,tmpposv])-1,tmpposv])  
-                    tmpavrot=WHERE(errs GT avrot/2.)
-                    
-                    IF tmpavrot[0] NE -1 AND avrot NE 0 then errs[WHERE(errs GT avrot/2.)]=avrot/2.
-                    tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(errs[0:newrings-1]))),' ')
-                 end
-                 1: begin
-                    IF n_elements(sigmarot) LT newrings then sigmarot=replicate(channelwidth,newrings)  
-                    errs=sigmarot
-                    errs[0]=double(channelwidth)
-                    tmpposv=WHERE(firstfitvaluesnames EQ 'VROT_2')
-                    avrot=TOTAL(firstfitvalues[1:n_elements(firstfitvalues[*,tmpposv])-1,tmpposv])/n_elements(firstfitvalues[1:n_elements(firstfitvalues[*,tmpposv])-1,tmpposv])
-                    tmpavrot=WHERE(errs GT avrot/2.)
-                    
-                    IF tmpavrot[0] NE -1 AND avrot NE 0 then errs[WHERE(errs GT avrot/2.)]=avrot/2.
-                    tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(errs[0:newrings-1]))),' ')
-                 end
-                 2: begin
-                    sigmapa1=replicate(1.,newrings)
-                    IF n_elements(sigmapa1) LT newrings then sigmapa1=replicate(2,newrings) 
-                    tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(sigmapa1[0:newrings-1]))),' ')
-                 end
-                 3: begin
-                    sigmapa2=replicate(1.,newrings)
-                    IF n_elements(sigmapa2) LT newrings then  sigmapa2=replicate(2,newrings)
-                    tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(sigmapa2[0:newrings-1]))),' ')
-                 end
-                 4: begin
-                    sigmaincl1=replicate(4.*exp(-catinc[i]^2.5/10^3.5)+1.5,newrings)
-                    IF n_elements(sigmaincl1) LT newrings then  sigmaincl1=replicate(4,newrings)
-                    tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(sigmaincl1[0:newrings-1]))),' ')
-                  end
-                 5: begin
-                    sigmaincl2=replicate(4.*exp(-catinc[i]^2.5/10^3.5)+1.5,newrings)
-                    IF n_elements(sigmaincl2) LT newrings then   sigmaincl2=replicate(4,newrings)
-                    tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(sigmaincl2[0:newrings-1]))),' ')
-                 end
-                 6: begin
-                    sigmasdis = replicate(channelwidth/2.,newrings)
-                    IF n_elements(sigmasdis) LT newrings then   sigmasdis=replicate(channelwidth/2.,newrings) 
-                    tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(sigmasdis[0:newrings-1]))),' ')
-                 end
-                 7: begin
-                    sigmasdis = replicate(channelwidth/2.,newrings)
-                    IF n_elements(sigmasdis) LT newrings then   sigmasdis=replicate(channelwidth/2.,newrings) 
-                    tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(sigmasdis[0:newrings-1]))),' ')
-                 end
-                 else:print,'odd'
-              endcase
-           endif else tmpfile[j+added]=tirificfirst[j]
-        endfor
-        tirificfirst=tmpfile
+                 errs=dblarr(n_elements(sigmarot))
+                 errs=sigmarot
+                                ;/SIN(incarr1*!DtoR)
+                 errs[0]=double(channelwidth)
+                 tmpposv=WHERE(firstfitvaluesnames EQ 'VROT')
+                 avrot=TOTAL(firstfitvalues[1:n_elements(firstfitvalues[*,tmpposv])-1,tmpposv])/n_elements(firstfitvalues[1:n_elements(firstfitvalues[*,tmpposv])-1,tmpposv])  
+                 tmpavrot=WHERE(errs GT avrot/2.)
+                 
+                 IF tmpavrot[0] NE -1 AND avrot NE 0 then errs[WHERE(errs GT avrot/2.)]=avrot/2.
+                 tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(errs[0:newrings-1]))),' ')
+              end
+              1: begin
+                 IF n_elements(sigmarot) LT newrings then sigmarot=replicate(channelwidth,newrings)  
+                 errs=sigmarot
+                 errs[0]=double(channelwidth)
+                 tmpposv=WHERE(firstfitvaluesnames EQ 'VROT_2')
+                 avrot=TOTAL(firstfitvalues[1:n_elements(firstfitvalues[*,tmpposv])-1,tmpposv])/n_elements(firstfitvalues[1:n_elements(firstfitvalues[*,tmpposv])-1,tmpposv])
+                 tmpavrot=WHERE(errs GT avrot/2.)
+                 
+                 IF tmpavrot[0] NE -1 AND avrot NE 0 then errs[WHERE(errs GT avrot/2.)]=avrot/2.
+                 tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(errs[0:newrings-1]))),' ')
+              end
+              2: begin
+                 sigmapa1=replicate(1.,newrings)
+                 IF n_elements(sigmapa1) LT newrings then sigmapa1=replicate(2,newrings) 
+                 tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(sigmapa1[0:newrings-1]))),' ')
+              end
+              3: begin
+                 sigmapa2=replicate(1.,newrings)
+                 IF n_elements(sigmapa2) LT newrings then  sigmapa2=replicate(2,newrings)
+                 tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(sigmapa2[0:newrings-1]))),' ')
+              end
+              4: begin
+                 sigmaincl1=replicate(4.*exp(-catinc[i]^2.5/10^3.5)+1.5,newrings)
+                 IF n_elements(sigmaincl1) LT newrings then  sigmaincl1=replicate(4,newrings)
+                 tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(sigmaincl1[0:newrings-1]))),' ')
+              end
+              5: begin
+                 sigmaincl2=replicate(4.*exp(-catinc[i]^2.5/10^3.5)+1.5,newrings)
+                 IF n_elements(sigmaincl2) LT newrings then   sigmaincl2=replicate(4,newrings)
+                 tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(sigmaincl2[0:newrings-1]))),' ')
+              end
+              6: begin
+                 sigmasdis = replicate(channelwidth/2.,newrings)
+                 IF n_elements(sigmasdis) LT newrings then   sigmasdis=replicate(channelwidth/2.,newrings) 
+                 tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(sigmasdis[0:newrings-1]))),' ')
+              end
+              7: begin
+                 sigmasdis = replicate(channelwidth/2.,newrings)
+                 IF n_elements(sigmasdis) LT newrings then   sigmasdis=replicate(channelwidth/2.,newrings) 
+                 tmpfile[j+added]='# '+tmp[0]+'_ERR='+STRJOIN(strtrim(strcompress(string(sigmasdis[0:newrings-1]))),' ')
+              end
+              else:print,'odd'
+           endcase
+        endif else tmpfile[j+added]=tirificfirst[j]
+     endfor
+     tirificfirst=tmpfile
                                 ;write the final file and produce the final model
-        openw,1,maindir+'/'+catdirname[i]+'/1stfit.def'
-        for index=0,n_elements(tirificfirst)-1 do begin
-           printf,1,tirificfirst[index]
-        endfor
-        close,1   
+     openw,1,maindir+'/'+catdirname[i]+'/1stfit.def'
+     for index=0,n_elements(tirificfirst)-1 do begin
+        printf,1,tirificfirst[index]
+     endfor
+     close,1   
 
 
 
@@ -3939,9 +3981,11 @@ noconfig:
 
      
      IF finishafter EQ 1 then begin
+        comment = 'You have chosen to skip the fitting process after the first fit'
+        commentlen='A'+strtrim(string(strlen(comment)),2)
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,'You have chosen to skip the fitting process after the first fit'
-        close,1
+        printf,1,catDirname[i],strtrim(string(fix(AC1)),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+        close,1  
         bookkeeping=bookkeeping+0.5
         goto,finishthisgalaxy
      ENDIF
@@ -4021,9 +4065,11 @@ noconfig:
            ENDWHILE
         
            IF norings[0] LT 3. then begin
+              comment = 'The first fit model is too small to fit variations.'
+              commentlen='A'+strtrim(string(strlen(comment)),2)
               openu,1,outputcatalogue,/APPEND
-              printf,1,format='(A60,A12,A12,A80)',catDirname[i],AC1,0,'The first fit model is too small to fit variations.'
-              close,1
+              printf,1,catDirname[i],strtrim(string(fix(AC1)),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+              close,1  
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
                  printf,66,linenumber()+'The first fit model is too small to fit variations.'
@@ -4071,9 +4117,11 @@ noconfig:
 
            
         endif else begin
+           comment = 'The first fit model is too small to fit variations.'
+           commentlen='A'+strtrim(string(strlen(comment)),2)
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,A12,A12,A80)',catDirname[i],AC1,0,'The first fit model is too small to fit variations.'
-           close,1
+           printf,1,catDirname[i],strtrim(string(fix(AC1)),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+           close,1  
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
               printf,66,linenumber()+'The first fit model is too small to fit variations.'
@@ -4595,10 +4643,12 @@ noconfig:
               printf,66,linenumber()+"The center shifted too often out of the set boundaries."
               printf,66,linenumber()+"Finished "+catDirname[i]+" which is galaxy #  "+strtrim(string(fix(i)),2)+" at "+systime()
               close,66
-           ENDIF   
+           ENDIF
+           comment = 'The first fit centre kept jumping away.'
+           commentlen='A'+strtrim(string(strlen(comment)),2)
            openu,1,outputcatalogue,/APPEND
-           printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,'The first fit centre kept jumping away.'
-           close,1 
+           printf,1,catDirname[i],strtrim(string(fix(AC1)),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+           close,1  
            bookkeeping=5
            goto,finishthisgalaxy
         ENDIF
@@ -6466,18 +6516,24 @@ noconfig:
                                 ;is failed
         case 1 of
            norings[0]*ring_spacing LE 5:begin
+              comment = 'The finalmodel is less than 8 beams in diameter. FAT is not necessarily reliable in this range.'
+              commentlen='A'+strtrim(string(strlen(comment)),2)
               openu,1,outputcatalogue,/APPEND
-              printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,' The finalmodel is less than 8 beams in diameter. FAT is not necessarily reliable in this range.'
-              close,1
+              printf,1,catDirname[i],strtrim(string(fix(AC1)),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+              close,1  
            end
            Basicinfovalues[0,4] LT 20:begin
+              comment = 'The final inclination is below 20 degrees. FAT is not necessarily reliable in this range.'
+              commentlen='A'+strtrim(string(strlen(comment)),2)
               openu,1,outputcatalogue,/APPEND
-              printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,' The final inclination is below 20 degrees. FAT is not necessarily reliable in this range.'
-              close,1
+              printf,1,catDirname[i],strtrim(string(fix(AC1)),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+              close,1  
            end
            else:begin
+              comment = ' You have chosen to skip the fitting process after the second fit'
+              commentlen='A'+strtrim(string(strlen(comment)),2)
               openu,1,outputcatalogue,/APPEND
-              printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,AC2,' You have chosen to skip the fitting process after the second fit'
+              printf,1,catDirname[i],strtrim(string(fix(AC1)),2),strtrim(string(fix(AC2)),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
               close,1  
            end
         endcase
@@ -6490,19 +6546,25 @@ noconfig:
                                 ;is failed
            case 1 of
               norings[0]*ring_spacing LE 5:begin
+                 comment = 'The finalmodel is less than 8 beams in diameter. FAT is not necessarily reliable in this range.'
+                 commentlen='A'+strtrim(string(strlen(comment)),2)
                  openu,1,outputcatalogue,/APPEND
-                 printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,'The finalmodel is less than 8 beams in diameter. FAT is not necessarily reliable in this range.'
-                 close,1
+                 printf,1,catDirname[i],strtrim(string(fix(AC1)),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+                 close,1  
               end
               Basicinfovalues[0,4] LT 20:begin
+                 comment = 'The final inclination is below 20 degrees. FAT is not necessarily reliable in this range.'
+                 commentlen='A'+strtrim(string(strlen(comment)),2)
                  openu,1,outputcatalogue,/APPEND
-                 printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,0.,'The final inclination is below 20 degrees. FAT is not necessarily reliable in this range.'
-                 close,1
+                 printf,1,catDirname[i],strtrim(string(fix(AC1)),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+                 close,1  
               end
               else:begin
+                 comment = 'As the galaxy radius is already halved we stop here'
+                 commentlen='A'+strtrim(string(strlen(comment)),2)
                  openu,1,outputcatalogue,/APPEND
-                 printf,1,format='(A60,2A12,A120)',catDirname[i],AC1,AC2,'As the galaxy radius is already halved we stop here'
-                 close,1
+                 printf,1,catDirname[i],strtrim(string(fix(AC1)),2),strtrim(string(fix(AC2)),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+                 close,1  
               end
            endcase
            goto,finishthisgalaxy
@@ -6519,9 +6581,11 @@ noconfig:
         ENDELSE
      ENDELSE
      IF AC1 EQ 0 AND AC2 EQ 0 then begin
+        comment = 'Both AC1 and AC2 could not get accepted. Aborting the fit.'
+        commentlen='A'+strtrim(string(strlen(comment)),2)
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,2A12,A80)',catDirname[i],AC1,AC2,'Both AC1 and AC2 could not get accepted. Aborting the fit.'
-        close,1
+        printf,1,catDirname[i],strtrim(string(fix(AC1)),2),strtrim(string(fix(AC2)),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+        close,1  
         goto,finishthisgalaxy
      ENDIF
      IF warpoutput then begin
