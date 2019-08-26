@@ -2975,7 +2975,7 @@ noconfig:
                                 ;every ring in the tirific file
      IF norings[0]*ring_spacing LT 7 then begin
         for j=norings[0],3,-1 do begin
-           string1=string1+','+'SBR '+strtrim(strcompress(string(j,format='(I3)')),1)+' SBR_2 '+strtrim(strcompress(string(j,format='(I3)')),1)
+           string1=string1+','+'SBR '+strtrim(strcompress(string(j,format='(I3)')),1)+', SBR_2 '+strtrim(strcompress(string(j,format='(I3)')),1)
            string2=string2+' 1'
            IF doubled then $
               string3=string3+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/4.,format='(E12.5)')),1) $
@@ -2986,7 +2986,7 @@ noconfig:
            string7=string7+' 3'       
         endfor
      ENDIF else begin
-        for j=norings[0],4,-1 do begin
+        for j=norings[0],3,-1 do begin
            string1=string1+','+'SBR '+strtrim(strcompress(string(j,format='(I3)')),1)+', SBR_2 '+strtrim(strcompress(string(j,format='(I3)')),1)
            string2=string2+' 1 1' 
            IF doubled then $
@@ -3002,7 +3002,7 @@ noconfig:
      
      SBRinput1=[string1,string2,string3,string4,string5,string6,string7]
                                 ;The inner rings should be fitted as one
-     SBRinput2=[' SBR 1 2 3 SBR_2 1 2 3',$
+     SBRinput2=[' SBR 1 2  SBR_2 1 2 ',$
                 strtrim(strcompress(string(ABS(SBRarr[2])*2.,format='(E12.5)'))) ,'0','1E-5','1E-6','5E-6','3']
      smoothrotation=0.
      keepcenter=0.
