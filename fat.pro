@@ -3731,8 +3731,11 @@ noconfig:
                                 ;smoothed rotation curve when all is well
      IF NOT smoothrotation then begin 
         smoothrotation=1
-        VROTarr=firstfitvalues[*,7]
-        SBRarrcom=(firstfitvalues[*,2]+firstfitvalues[*,8])/2.
+        tmppos=where('VROT' EQ VariablesWanted)
+        VROTarr=firstfitvalues[*,tmppos[0]]
+        sbrpos=where('SBR' EQ VariablesWanted)
+        sbrpos2=where('SBR_2' EQ VariablesWanted)
+        SBRarrcom=(firstfitvalues[*,sbrpos[0]]+firstfitvalues[*,sbrpos2])/2.
           ;We always want to smooth the surface brightnes. Added 16-06-2017
         SBRarrcom=fat_savgol(SBRarrcom,firstfitvalues[*,9])
         VROTarr[0]=0.
@@ -3757,7 +3760,15 @@ noconfig:
         tirificfirst[tmppos]='VROT= 0. '+STRJOIN(strtrim(string(VROTarr[1:n_elements(VROTarr[*])-1]),2),' ')
         tmppos=where('VROT_2' EQ tirificfirstvars)
         tirificfirst[tmppos]='VROT_2= 0. '+STRJOIN(strtrim(string(VROTarr[1:n_elements(VROTarr[*])-1]),2),' ')
-        sbr_check,tirificfirst, tirificfirstvars,sbrarr,sbrarr2,cutoff    
+                                ;We also want a full smoothing on the
+                                ;profile
+        tmppos=where('RADI' EQ VariablesWanted)
+        sbrarr=fat_savgol(firstfitvalues[*,sbrpos],firstfitvalues[*,tmppos])
+        sbrarr2=fat_savgol(firstfitvalues[*,sbrpos2],firstfitvalues[*,tmppos])
+        
+        sbr_check,tirificfirst, tirificfirstvars,sbrarr,sbrarr2,cutoff
+        
+        
         vrotinputoriginal=vrotinput1
         VROTinput1=['VROT 2:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+$
                     ' VROT_2 2:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
@@ -4029,17 +4040,17 @@ noconfig:
      tmppos=where('SBR_2' EQ firstfitvaluesnames)
      SBRarr2=firstfitvalues[*,tmppos]
                                 ;We always want to smooth the surface brightnes. Added 16-06-2017
-                                ;Ton make sure that we fit a warp we
+     SBRarr=fat_savgol(SBRarr,RADarr)
+     SBRarr2=fat_savgol(SBRarr2,RADarr)
+     SBRarr[0:1]=(SBRarr[0:1]+SBRarr2[0:1])/2.  
+     SBRarr2[0:1]=SBRarr[0:1]
+                                ;To make sure that we fit a warp we
                                 ;want to increase the brightness of
                                 ;the last two rings after the first
                                 ;fit
-     SBRarr[n_elements(SBRarr)-3:n_elements(SBRarr)-1]=SBRarr[n_elements(SBRarr)-3:n_elements(SBRarr)-1]*1.5
-     SBRarr2[n_elements(SBRarr2)-3:n_elements(SBRarr2)-1]=SBRarr[n_elements(SBRarr2)-3:n_elements(SBRarr2)-1]*1.5
-     
-     SBRarr=fat_savgol(SBRarr,RADarr,/half)
-     SBRarr2=fat_savgol(SBRarr2,RADarr,/half)
-     SBRarr[0:1]=(SBRarr[0:1]+SBRarr2[0:1])/2.  
-     SBRarr2[0:1]=SBRarr[0:1]
+     SBRarr[n_elements(SBRarr)-3:n_elements(SBRarr)-1]=SBRarr[n_elements(SBRarr)-3:n_elements(SBRarr)-1]*1.2
+     SBRarr2[n_elements(SBRarr2)-3:n_elements(SBRarr2)-1]=SBRarr[n_elements(SBRarr2)-3:n_elements(SBRarr2)-1]*1.2
+  
      tmppos=where('SBR' EQ tirificsecondvars)
      tirificsecond[tmppos]='SBR= '+STRJOIN(SBRarr[0:n_elements(SBRarr)-1],' ')
      tmppos=where('SBR_2' EQ tirificsecondvars)
@@ -4567,13 +4578,24 @@ noconfig:
      SBRarr2=secondfitvalues[*,tmppos]
      SBRarr2unmod=SBRarr2
                                 ;We always want to smooth the surface brightnes. Added 16-06-2017
-     if finalsmoothLT 1 then begin
-        SBRarr=fat_savgol(SBRarr,RADarr,/half)
-        SBRarr2=fat_savgol(SBRarr2,RADarr,/half)
-     endif else begin
-        SBRarr=fat_savgol(SBRarr,RADarr,/half)
-        SBRarr2=fat_savgol(SBRarr2,RADarr,/half)
-     endelse
+    ; IF finalsmooth GE 1 OR norings[0]*ring_spacing GT 4 then begin
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"Smoothing the full SBR profile."
+           Close,66
+        ENDIF    
+        SBRarr=fat_savgol(SBRarr,RADarr)
+        SBRarr2=fat_savgol(SBRarr2,RADarr)
+     ;endif else begin
+     ;   IF size(log,/TYPE) EQ 7 then begin
+     ;      openu,66,log,/APPEND
+     ;      printf,66,linenumber()+"Smoothing half the SBR profile."
+     ;      Close,66
+     ;   ENDIF 
+     ;   SBRarr=fat_savgol(SBRarr,RADarr,/Half)
+     ;   SBRarr2=fat_savgol(SBRarr2,RADarr,/Half)
+     ;endif
+     
      SBRarr[0]=(SBRarr[0]+SBRarr2[0])/2.  
      SBRarr2[0]=SBRarr[0]
      tmppos=where('SBR' EQ tirificsecondvars)

@@ -110,6 +110,8 @@ Function fat_savgol,SBRin,Radin,rings=rings,step=step,half=half
            end
            else:print,'This should never happen'
         endcase
+        tmp=WHERE(SBRout LT 1e-8)
+        if tmp[0] NE -1 then SBRout[tmp]=1e-16
         return,SBR
      end
      n_elements(SBRin) LT 10: begin
@@ -176,7 +178,7 @@ Function fat_savgol,SBRin,Radin,rings=rings,step=step,half=half
      IF rings[0]+1 LT n_elements(SBR) then SBRout[rings[0]+1:n_elements(SBRout)-1]=1e-16
   ENDIF
 
-  if keyword_set(half) then SBRout[0:fix(n_elements(SBRout)/2.]=  SBRin[0:fix(n_elements(SBRout)/2.]
+  if keyword_set(half) then SBRout[1:fix(n_elements(SBRout)/2.)]=  SBRin[1:fix(n_elements(SBRout)/2.)]
   tmp=WHERE(SBRout LT 1e-8)
   if tmp[0] NE -1 then SBRout[tmp]=1e-16
 
