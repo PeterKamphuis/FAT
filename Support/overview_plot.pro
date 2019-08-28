@@ -187,25 +187,25 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   tmprev=WHERE(Arrays[*,tmppos[0]] LT 1.1E-16)
                                 ;check that this happens on the outside
   if tmprev[0] NE -1 then begin
-     if tmprev[n_elements(tmprev)-1] NE n_elements(Arrays[*,tmppos[0]])-1 then tmp=findgen(n_elements(Arrays[*,tmppos[0]])-1) else begin
+     if tmprev[n_elements(tmprev)-1] NE n_elements(Arrays[*,tmppos[0]])-1 then tmp=findgen(n_elements(Arrays[*,tmppos[0]])) else begin
         for i=n_elements(tmprev)-2,0,-1 do begin
            if tmprev[i] NE tmprev[i+1]-1 then break
         endfor
-        tmp=findgen(tmprev[i+1])
+        tmp=indgen(tmprev[i+1]+1)
      endelse
-  endif
+  endif else tmp=indgen(n_elements(Arrays[*,tmppos[0]]))
         
      
   tmppos=WHERE(plotpara EQ 'SBR_2')
   tmprev=WHERE(Arrays[*,tmppos[0]] LT 1.1E-16)
   if tmprev[0] NE -1 then begin
-     if tmprev[n_elements(tmprev)-1] NE n_elements(Arrays[*,tmppos[0]])-1 then tmp2=findgen(n_elements(Arrays[*,tmppos[0]])-1) else begin
+     if tmprev[n_elements(tmprev)-1] NE n_elements(Arrays[*,tmppos[0]])-1 then tmp2=indgen(n_elements(Arrays[*,tmppos[0]])-1) else begin
         for i=n_elements(tmprev)-2,0,-1 do begin
            if tmprev[i] NE tmprev[i+1]-1 then break
         endfor
-        tmp2=findgen(tmprev[i+1])
+        tmp2=indgen(tmprev[i+1]+1)
      endelse
-  endif
+  endif else tmp2=indgen(n_elements(Arrays[*,tmppos[0]]))
   
   maxradii=MAX([plotradii[tmp],plotradii[tmp2]])+(plotradii[n_elements(plotradii)-1]-plotradii[n_elements(plotradii)-2])/2.
   
