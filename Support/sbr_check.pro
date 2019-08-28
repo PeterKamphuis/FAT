@@ -66,7 +66,6 @@ Pro sbr_check,template,templatevars,sbrarr,sbrarr2,cutoff,debug=debug
   ENDIF
   tmp=WHERE(SBRarr LT 0)
   IF tmp[0] NE -1 then begin
-     IF tmp[0] EQ 0. then SBRarr[0]=SBRarr[1] 
      for i=0,n_elements(tmp)-1 do begin
         IF tmp[i] NE 0 AND tmp[i] NE n_elements(SBRarr)-1 then SBRarr[tmp[i]]=(SBrarr[tmp[i]-1]+SBRarr[tmp[i]+1])/2.
         IF tmp[i] EQ 0 then SBRarr[tmp[i]]=SBRarr[tmp[i]+1]
@@ -77,7 +76,6 @@ Pro sbr_check,template,templatevars,sbrarr,sbrarr2,cutoff,debug=debug
   ENDIF
   tmp=WHERE(SBRarr2 LT 0)
   IF tmp[0] NE -1 then begin
-     IF tmp[0] EQ 0. then SBRarr2[0]=SBRarr2[1] 
      for i=0,n_elements(tmp)-1 do begin
         IF tmp[i] NE 0 AND tmp[i] NE n_elements(SBRarr2)-1 then SBRarr2[tmp[i]]=(SBrarr2[tmp[i]-1]+SBRarr2[tmp[i]+1])/2.
         IF tmp[i] EQ 0 then SBRarr2[tmp[i]]=SBRarr2[tmp[i]+1]
@@ -91,6 +89,12 @@ Pro sbr_check,template,templatevars,sbrarr,sbrarr2,cutoff,debug=debug
      SBRarr2[0]= SBRarr[1]
      trigger=1    
   ENDIF
+                                ;Rid the saw tooth in the first ring
+  sbrav=(SBRarr[0]+SBRarr[2])/2.
+  if sbrav LT SBRarr[1]/3. then SBRarr[1] = sbrav
+  sbrav2=(SBRarr2[0]+SBRarr2[2])/2.
+  if sbrav2 LT SBRarr2[1]/3. then SBRarr2[1] = sbrav2
+  
   
   SBRarr[0:1]=(SBRarr[0:1]+SBRarr2[0:1])/2.  
   SBRarr2[0:1]=SBRarr[0:1]
