@@ -275,8 +275,8 @@ wrongpa:
      endfor
      
      rot_map=dblarr(n_elements(dep_map[*,0]),n_elements(dep_map[0,*]))
-     for i=0,n_elements(rot_map[0,*])-1 do begin
-        for j=0,n_elements(rot_map[*,0])-1 do begin
+     for i=0,n_elements(rot_map[*,0])-1 do begin
+        for j=0,n_elements(rot_map[0,*])-1 do begin
            tmp=WHERE(maps[*,i,j] GT noise)
            IF tmp[0] NE -1 then rot_map[i,j]=MIN(maps[tmp,i,j])
         endfor
