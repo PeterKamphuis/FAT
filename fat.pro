@@ -390,6 +390,7 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
   RESOLVE_ROUTINE, 'fat_savgol',/IS_FUNCTION
   RESOLVE_ROUTINE, 'fat_ploterror'
   RESOLVE_ROUTINE, 'fat_smooth',/IS_FUNCTION
+  RESOLVE_ROUTINE, 'fat_spline',/IS_FUNCTION
   RESOLVE_ROUTINE, 'getdhi'
   RESOLVE_ROUTINE, 'get_fixedringsv9'
   RESOLVE_ROUTINE, 'get_newringsv9'
@@ -5101,6 +5102,7 @@ noconfig:
         tmpSBR=(SBRarror+SBRarr2or)/2.
         verror=MAX([5.,channelwidth/2.*(1.+vresolution)/SQRT(sin(catinc[i]*!DtoR))])
         IF double(VROTarr[1]) LT 120. AND  double(VROTarr[2]) LT 120. then begin
+   
            revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=1,order=polorder,error=sigmarot,log=log,max_par=VROTmax,min_par=channelwidth,ring_spacing=ring_spacing   
         ENDIF ELSE BEGIN
            revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=1,/NOCENTRAL,error=sigmarot,log=log,max_par=VROTmax,min_par=channelwidth,ring_spacing=ring_spacing    
@@ -5477,7 +5479,7 @@ noconfig:
                                 ;account otherwise not
         
         velprefunc=prefunc
-        IF double(VROTarr[1]) LT 120. AND  double(VROTarr[2]) LT 120. then begin
+        IF (double(VROTarr[1]) LT 120. AND  double(VROTarr[2]) LT 120.) then begin
            revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=velprefunc,order=polorder,max_par=tmphigh[0],min_par=tmplow[0],accuracy=accuracy,error=sigmarot,log=log,ring_spacing=ring_spacing  
         ENDIF ELSE BEGIN
            revised_regularisation_rot,VROTarr,tmpSBR, RADarr,/REVERSE,fixedrings=velfixrings,difference=verror,cutoff=cutoff,arctan=velprefunc,/NOCENTRAL,order=polorder,max_par=tmphigh[0],min_par=tmplow[0],accuracy=accuracy,error=sigmarot,log=log,ring_spacing=ring_spacing

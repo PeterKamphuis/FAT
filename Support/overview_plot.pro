@@ -75,6 +75,9 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
   
   arrays=1.
   IF gdlidl then SET_PLOT,'PS' else SET_PLOT, 'Z'
+ ; if ~keyword_set(splined) then begin
+ ;    if finishafter NE 1.1 then splined=1.
+ ; endif
   plotpara=['RADI','SBR','SBR_2','VROT','VROT_ERR','PA','PA_ERR','PA_2','PA_2_ERR','INCL','INCL_ERR','INCL_2','INCL_2_ERR','BMAJ','SDIS','XPOS','YPOS','VSYS','SDIS_ERR','Z0','Z0_2','RADI_2','VROT_2','XPOS_2','YPOS_2','VSYS_2']
   plotstart=[[1,3,14,5,9],[2,3,14,7,11],[0,1,4,1,1]]
   Template=1.
@@ -227,7 +230,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
               newrad[(h-1)*10:h*10-1]=findgen(10)*(plotradii[h]-plotradii[h-1])/10.+plotradii[h-1]
            endfor
            newrad[(h-1)*10]=plotradii[h-1]
-           newvar=spline(plotradii,plotVariable,newrad)
+           newvar=fat_spline(plotradii,plotVariable,newrad)
            oplot,newrad,newvar,color='000000'x,linestyle=0
         ENDIF ELSE oplot,plotradii,plotVariable,color='000000'x,linestyle=0     
         levelsrange=[minvar[i]-buffer[i],maxvar[i]+buffer[i]]*1000.
@@ -265,7 +268,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
         xerr=dblarr(n_elements(Arrays[tmp2,tmppos[0]]))
         fat_ploterror,plotradii,Arrays[tmp2,tmppos[0]],xerr,xerr,thick=lthick,color='0000FF'x,linestyle=2,ERRCOLOR = '0000FF'x, ERRTHICK=!p.thick*0.4,/over_plot,psym=8,symsize=ssize
         if keyword_set(splined) then begin
-           newvar=spline(plotradii,Arrays[tmp2,tmppos[0]],newrad)
+           newvar=fat_spline(plotradii,Arrays[tmp2,tmppos[0]],newrad)
            oplot,newrad,newvar,color='0000FF'x,linestyle=2
         ENDIF ELSE oplot,plotradii,Arrays[tmp2,tmppos[0]],thick=lthick,color='0000FF'x,linestyle=2
       
@@ -316,7 +319,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
            
         ENDELSE
         if keyword_set(splined) then begin
-           newvar=spline(plotradii,plotVariable,newrad)
+           newvar=fat_spline(plotradii,plotVariable,newrad)
            oplot,newrad,newvar,color='000000'x,linestyle=0,thick=lthick
         ENDIF ELSE oplot,plotradii,plotVariable,thick=lthick,color='000000'x,linestyle=0
       
@@ -342,7 +345,7 @@ Pro overview_plot,distance,gdlidl,noise=noise,finishafter = finishafter,filename
               fat_ploterror,plotradii,plotVariable,xerr,xerr,thick=lthick,color='0000FF'x,linestyle=2,ERRCOLOR = '0000FF'x, ERRTHICK=!p.thick*0.4,/over_plot,psym=8,symsize=ssize
            ENDELSE
            if keyword_set(splined) then begin
-              newvar=spline(plotradii,plotVariable,newrad)
+              newvar=fat_spline(plotradii,plotVariable,newrad)
               oplot,newrad,newvar,color='0000FF'x,linestyle=2
            ENDIF ELSE  oplot,plotradii,plotVariable,thick=lthick,color='0000FF'x,linestyle=2
       
