@@ -104,7 +104,7 @@ Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
 ;     
 ;-
   COMPILE_OPT IDL2 
-
+  ;arctanin=1
 ; First thing is to check all the input whether it is reasonable
   centralerrmult=1
   IF KEYWORD_SET(NOCENTRAL) then begin 
@@ -259,26 +259,27 @@ Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
 ;  calculate the smoothed profiles
   IF n_elements(PA) GT 15 then decline=0.9 else decline=0.8
   PAsmooth=dblarr(n_elements(PA[*]))
-  IF PA[0] EQ 0. then PAsmooth[0]=PA[0] else PAsmooth[0]=(PA[0]+PA[1])/2.                               
-  for j=1,n_elements(PA[*])-2 do begin         
-     PAsmooth[j]=(PA[j-1]+PA[j]+PA[j+1])/3
-     WHILE PAsmooth[j] LT PAsmooth[j-1]*decline do begin
-        IF keyword_set(debug) then begin
-           print,PA[j],PA[j-1],'increasing'
-        ENDIF
-        IF PAsmooth[j] LT 0. then begin
-           IF PAsmooth[j-1] GT 0. then PAsmooth[j]=PAsmooth[j-1] else begin
-              IF n_elements(PAmin) GT 0 then PAsmooth[j]=PAmin*2. else begin
-                 tmpind=WHERE(PAsmooth GT 0.)
-                 if tmpind[0] NE -1 then PAsmooth[j]=MEAN(PAsmooth[tmpind]) else PAsmooth[j]=1.
-              ENDELSE
-           ENDELSE
-           
-        endif else PAsmooth[j]=PAsmooth[j]*1.05
-     ENDWHILE
-  endfor
+  ;IF PA[0] EQ 0. then PAsmooth[0]=PA[0] else PAsmooth[0]=(PA[0]+PA[1])/2.                               
+  ;for j=1,n_elements(PA[*])-2 do begin         
+  ;   PAsmooth[j]=(PA[j-1]+PA[j]+PA[j+1])/3
+  ;   WHILE PAsmooth[j] LT PAsmooth[j-1]*decline do begin
+  ;      IF keyword_set(debug) then begin
+  ;         print,PA[j],PA[j-1],'increasing'
+  ;      ENDIF
+  ;      IF PAsmooth[j] LT 0. then begin
+  ;         IF PAsmooth[j-1] GT 0. then PAsmooth[j]=PAsmooth[j-1] else begin
+  ;            IF n_elements(PAmin) GT 0 then PAsmooth[j]=PAmin*2. else begin
+  ;               tmpind=WHERE(PAsmooth GT 0.)
+  ;               if tmpind[0] NE -1 then PAsmooth[j]=MEAN(PAsmooth[tmpind]) else PAsmooth[j]=1.
+  ;            ENDELSE
+  ;         ENDELSE
+  ;         
+  ;      endif else PAsmooth[j]=PAsmooth[j]*1.05
+  ;   ENDWHILE
+  ;endfor
   PAsmooth[n_elements(PA[*])-1]=(PA[n_elements(PA[*])-2]+PA[n_elements(PA[*])-1])/2.
-
+  PASmooth = fat_savgol(REVERSE(PA),REVERSE(RADII),/Rotation_Curve)
+  PASmooth = REVERSE(PAsmooth)
                                 ;If arctan is 1 then we only want smooth and return the new values
   IF arctan EQ 1 OR n_elements(PA) LE 5 then begin
      newPA=PAsmooth
