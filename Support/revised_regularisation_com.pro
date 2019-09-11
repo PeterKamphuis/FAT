@@ -289,10 +289,12 @@ restartall:
      errors=dblarr(n_elements(PAin[*,0]),n_elements(PAin[0,*]))
                                 ;We do not smooth small profiles as
                                 ;this supresseses warps too much
-    
+                                ;For small galaxies we want to increase the error
+     increase_factor=1.
+     if n_elements(Pain[*,0]) LT 8 then increase_factor=9./n_elements(Pain[*,0])
      for i=0,n_elements(PAin[0,*])-1 do begin
         newPA[*,i]=PAin[0,i]
-        errors[*,i]=ddiv[i]        
+        errors[*,i]=ddiv[i]*increase_factor        
      endfor
      arctan = 1
      fitstat=1
