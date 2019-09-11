@@ -1,4 +1,4 @@
-Function fat_savgol,SBRin,Radin,rings=rings,step=step,half=half,Rotation_Curve=RC
+Function fat_savgol,SBRin,Radin,rings=rings,step=step,half=half,Rotation_Curve=RC,PA= pa
 
 ;+
 ; NAME:
@@ -92,28 +92,35 @@ Function fat_savgol,SBRin,Radin,rings=rings,step=step,half=half,Rotation_Curve=R
 
   case 1 of
      n_elements(SBRin) LE 4:begin
-        SBR = SBRin
-        SBR[0]=(SBRin[0]+SBRin[1]*2.)/3.
+        if keyword_set(RC) or keyword_set(PA) then begin
+           sbr=sbrin
+           SBR[1]=(SBR[0]+SBR[2])/2.
+           SBR[2]=(SBR[1]+SBR[2]+SBR[3])/3.
+           SBR[3]=(SBR[2]+SBR[3])/2.
+        endif else begin
+           SBR = SBRin
+           SBR[0]=(SBRin[0]+SBRin[1]*2.)/3.
         
-        case  n_elements(SBRin) of
-           2:begin
-              SBR[1]=SBRin[1]
-           end
-           3:begin
-              SBR[1]=(SBRin[0]+SBRin[1]*2+SBRin[2]*2.)/5.
-              SBR[2]=(SBRin[1]+SBRin[2]*2)/3.
-           end
-           4:begin
-              SBR[1]=(SBRin[0]+SBRin[1]*2+SBRin[2]*2.)/5.
-              SBR[2]=(SBRin[1]+SBRin[2]+SBRin[3])/3.
-              SBR[3]=(SBRin[2]+SBRin[3]*2.)/3.
-           end
-           else:print,'This should never happen'
-        endcase
+           case  n_elements(SBRin) of
+              2:begin
+                 SBR[1]=SBRin[1]
+              end
+              3:begin
+                 SBR[1]=(SBRin[0]+SBRin[1]*2+SBRin[2]*2.)/5.
+                 SBR[2]=(SBRin[1]+SBRin[2]*2)/3.
+              end
+              4:begin
+                 SBR[1]=(SBRin[0]+SBRin[1]*2+SBRin[2]*2.)/5.
+                 SBR[2]=(SBRin[1]+SBRin[2]+SBRin[3])/3.
+                 SBR[3]=(SBRin[2]+SBRin[3]*2.)/3.
+              end
+              else:print,'This should never happen'
+           endcase
         
-        tmp=WHERE(SBR LT 1e-8)
-        if tmp[0] NE -1 then SBR[tmp]=1e-16   
-        return,SBR
+           tmp=WHERE(SBR LT 1e-8)
+           if tmp[0] NE -1 then SBR[tmp]=1e-16   
+           return,SBR
+        endelse
      end
      n_elements(SBRin) LT 10: begin
         points=3
@@ -149,14 +156,16 @@ Function fat_savgol,SBRin,Radin,rings=rings,step=step,half=half,Rotation_Curve=R
   ;interpolate the outer rings for raD
   for i=0,fix(points/2.) do begin
      extRAD[n_elements(SBR)+i+fix(points/2.+1)]=RAD[n_elements(SBR)-1]+(i+1)*(RAD[n_elements(SBR)-1]-RAD[n_elements(SBR)-2])
-     if ~keyword_set(RC) then $
-        extSBR[n_elements(SBR)+i+fix(points/2.+1)]=1E-16 else $
-           extSBR[n_elements(SBR)+i+fix(points/2.+1)]=SBR[n_elements(SBR)-1]+(i+1)*(SBR[n_elements(SBR)-1]-SBR[n_elements(SBR)-2])
+     if ~keyword_set(RC) and ~keyword_set(PA) then $
+        extSBR[n_elements(SBR)+i+fix(points/2.+1)]=1E-16 else begin
+        if keyword_set(RC) then extSBR[n_elements(SBR)+i+fix(points/2.+1)]=SBR[n_elements(SBR)-1]+(i+1)*(SBR[n_elements(SBR)-1]-SBR[n_elements(SBR)-2])
+        if keyword_set(PA) then extSBR[n_elements(SBR)+i+fix(points/2.+1)]=SBR[n_elements(SBR)-1]
+     endelse
   endfor
   
                                 ;profile tapers of nicely we pad we
                                 ;1E-16 the outer rings
-  if ~keyword_set(RC) then begin
+  if ~keyword_set(RC) and ~keyword_set(PA) then begin
      extSBR[fix(points/2.+1):n_elements(SBR)-1+fix(points/2.+1)]=SBR[*]
 ;If the inner to points are more then 1.5* point 3 than make them half
      IF extSBR[fix(points/2.+1)] GT extSBR[fix(points/2.+1)+2]*1.5 then begin
@@ -186,11 +195,11 @@ Function fat_savgol,SBRin,Radin,rings=rings,step=step,half=half,Rotation_Curve=R
   IF n_elements(rings) GT 0 then begin
      IF rings[0]+1 LT n_elements(SBR) then SBRout[rings[0]+1:n_elements(SBRout)-1]=1e-16
   ENDIF
-
-  if keyword_set(half) then SBRout[1:fix(n_elements(SBRout)/2.)]=  SBRin[1:fix(n_elements(SBRout)/2.)]
-  tmp=WHERE(SBRout LT 1e-8)
-  if tmp[0] NE -1 then SBRout[tmp]=1e-16
-
+  if ~keyword_set(RC) and ~keyword_set(PA) then begin
+     if keyword_set(half) then SBRout[1:fix(n_elements(SBRout)/2.)]=  SBRin[1:fix(n_elements(SBRout)/2.)]
+     tmp=WHERE(SBRout LT 1e-8)
+     if tmp[0] NE -1 then SBRout[tmp]=1e-16
+  endif
                                 ;Finally we need to add the central
                                 ;point again which we will merely
                                 ;extrapolate from the profile

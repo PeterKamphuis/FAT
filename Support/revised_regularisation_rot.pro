@@ -277,7 +277,7 @@ Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
   ;      endif else PAsmooth[j]=PAsmooth[j]*1.05
   ;   ENDWHILE
   ;endfor
-  PAsmooth[n_elements(PA[*])-1]=(PA[n_elements(PA[*])-2]+PA[n_elements(PA[*])-1])/2.
+  ;PAsmooth[n_elements(PA[*])-1]=(PA[n_elements(PA[*])-2]+PA[n_elements(PA[*])-1])/2.
   PASmooth = fat_savgol(REVERSE(PA),REVERSE(RADII),/Rotation_Curve)
   PASmooth = REVERSE(PAsmooth)
                                 ;If arctan is 1 then we only want smooth and return the new values

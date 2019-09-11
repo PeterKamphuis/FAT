@@ -240,12 +240,17 @@ Pro revised_regularisation_com,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
                                 ;value we strip the PA Not for PA and INCL
 ;  calculate the smoothed profiles
   PAsmooth=dblarr(n_elements(PA[*,0]),N_elements(PA[0,*]))
+  ;for i=0,n_elements(PA[0,*])-1 do begin
+  ;   IF PA[0,i] EQ 0. then PAsmooth[0,i]=PA[0,i] else PAsmooth[0,i]=(PA[0,i]+PA[1,i])/2.                               
+  ;   for j=1,n_elements(PA[*,0])-2 do begin         
+  ;      PAsmooth[j,i]=(PA[j-1,i]+PA[j,i]+PA[j+1,i])/3           
+  ;   endfor
+  ;   PAsmooth[n_elements(PA[*,0])-1,i]=(PA[n_elements(PA[*,0])-2,i]+PA[n_elements(PA[*,0])-1,i])/2.
+  ;endfor
+                                ;Let's attempt sav_gol smoothing here as well
   for i=0,n_elements(PA[0,*])-1 do begin
-     IF PA[0,i] EQ 0. then PAsmooth[0,i]=PA[0,i] else PAsmooth[0,i]=(PA[0,i]+PA[1,i])/2.                               
-     for j=1,n_elements(PA[*,0])-2 do begin         
-        PAsmooth[j,i]=(PA[j-1,i]+PA[j,i]+PA[j+1,i])/3           
-     endfor
-     PAsmooth[n_elements(PA[*,0])-1,i]=(PA[n_elements(PA[*,0])-2,i]+PA[n_elements(PA[*,0])-1,i])/2.
+     tmp =FAT_savgol(PA[*,i],RADII,/PA)
+     PAsmooth[*,i] = tmp
   endfor
 
   
