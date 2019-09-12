@@ -64,10 +64,10 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
   if allnew GE 2 then goto,skipallsofia
   read_template,supportdirchecked+'/sofiainput.txt',sofia,sofiatriggers,/SOFIA
   CD,new_dir,CURRENT=old_dir
-  velkern=['0,'+string(39B)+'b'+string(39B),'2,'+string(39B)+'b'+string(39B),'4,'+string(39B)+'b'+string(39B),$
-           '8,'+string(39B)+'b'+string(39B),'16,'+string(39B)+'b'+string(39B)]
-  threshold= 7.
-  counter=1.
+  ;velkern=['0,'+string(39B)+'b'+string(39B),'2,'+string(39B)+'b'+string(39B),'4,'+string(39B)+'b'+string(39B),$
+  ;         '8,'+string(39B)+'b'+string(39B),'16,'+string(39B)+'b'+string(39B)]
+  threshold= 5.
+  counter=3.
   lowthresagain:
   sofia[sofiatriggers[0]]='import.inFile = '+currentfitcube+'.fits'
   sofia[sofiatriggers[1]]='steps.doReliability             =       false'

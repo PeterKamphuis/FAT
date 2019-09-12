@@ -965,7 +965,7 @@ refit:
      print,'The estimated  errors before the end'
      print,errors
   ENDIF
-  
+  smoothonly:
   tmp=WHERE(FINITE(newPA) EQ 0.)
   IF tmp[0] NE -1 then newPA[WHERE(FINITE(newPA) EQ 0.)]=PAin[WHERE(FINITE(newPA) EQ 0.)]
   IF n_elements(pamin) gt 0 then tmp=WHERE(PA[*]-errors[*] LT pamin) else tmp=-1
@@ -985,7 +985,7 @@ refit:
      
   order=finorder
  
-  smoothonly:
+
   PAin=REVERSE(newPA)
   IF KEYWORD_SET(NOCENTRAL) then begin
      PAin=[PA0,PAin]
