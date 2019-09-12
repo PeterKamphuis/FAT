@@ -2974,19 +2974,19 @@ noconfig:
                                 ;The minimum is based on the cutoff
                                 ;values and therefore we need to set
                                 ;every ring in the tirific file
-     IF norings[0]*ring_spacing LT 7 then begin
-        for j=norings[0],3,-1 do begin
-           string1=string1+','+'SBR '+strtrim(strcompress(string(j,format='(I3)')),1)+', SBR_2 '+strtrim(strcompress(string(j,format='(I3)')),1)
-           string2=string2+' 1'
-           IF doubled then $
-              string3=string3+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/4.,format='(E12.5)')),1) $
-              else string3=string3+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/2.,format='(E12.5)')),1)
-           string4=string4+' '+startstep
-           string5=string5+' '+minstep
-           string6=string6+' '+strtrim(strcompress(string(satlevel,format='(E8.1)')),1)
-           string7=string7+' 3'       
-        endfor
-     ENDIF else begin
+     ;IF norings[0]*ring_spacing LT 7 then begin
+     ;   for j=norings[0],3,-1 do begin
+     ;      string1=string1+','+'SBR '+strtrim(strcompress(string(j,format='(I3)')),1)+' SBR_2 '+strtrim(strcompress(string(j,format='(I3)')),1)
+     ;      string2=string2+' 1 '
+     ;      IF doubled then $
+     ;         string3=string3+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/4.,format='(E12.5)')),1) $
+     ;         else string3=string3+' '+strtrim(strcompress(string(cutoff[fix(j-1)]/2.,format='(E12.5)')),1)
+     ;      string4=string4+' '+startstep
+     ;      string5=string5+' '+minstep
+     ;      string6=string6+' '+strtrim(strcompress(string(satlevel,format='(E8.1)')),1)
+     ;      string7=string7+' 3'       
+     ;   endfor
+     ;ENDIF else begin
         for j=norings[0],3,-1 do begin
            string1=string1+','+'SBR '+strtrim(strcompress(string(j,format='(I3)')),1)+', SBR_2 '+strtrim(strcompress(string(j,format='(I3)')),1)
            string2=string2+' 1 1' 
@@ -2998,7 +2998,7 @@ noconfig:
            string6=string6+' '+strtrim(strcompress(string(satlevel,format='(E8.1)')),1)+' '+strtrim(strcompress(string(satlevel,format='(E8.1)')),1)
            string7=string7+' 3 3'
         endfor
-     ENDELSE
+     ;ENDELSE
      string1 = STRMID(string1,1,STRLEN(string1)-1)
      
      SBRinput1=[string1,string2,string3,string4,string5,string6,string7]
@@ -3631,6 +3631,7 @@ noconfig:
                  print,linenumber()+"We cut a ring! lastcut"+string(lastcutrings)+" lastadd "+string(lastaddrings)+" new "+strtrim(string(fix(newrings)),2)+" old "+string(oldrings)
               ENDELSE
               lastcutrings=norings[0]
+              changeradii,tirificfirst,norings[0]  
               fluxadjust=0.
               sbr_check,tirificfirst, tirificfirstvars,sbrarr,sbrarr2,cutoff           
               countsbr++

@@ -94,9 +94,19 @@ Function fat_savgol,SBRin,Radin,rings=rings,step=step,half=half,Rotation_Curve=R
      n_elements(SBRin) LE 4:begin
         if keyword_set(RC) or keyword_set(PA) then begin
            sbr=sbrin
-           SBR[1]=(SBR[0]+SBR[2])/2.
-           SBR[2]=(SBR[1]+SBR[2]+SBR[3])/3.
-           SBR[3]=(SBR[2]+SBR[3])/2.
+           case n_elements(sbr) of
+              3:begin             
+                 SBR[1]=(SBR[0]+SBR[2])/2.
+                 SBR[2]=(SBR[1]+SBR[2])/2.
+              end
+              4:begin
+                 SBR[1]=(SBR[0]+SBR[2])/2.
+                 SBR[2]=(SBR[1]+SBR[2]+SBR[3])/3.
+                 SBR[3]=(SBR[2]+SBR[3])/2.
+              end
+           endcase
+           
+           return,sbr
         endif else begin
            SBR = SBRin
            SBR[0]=(SBRin[0]+SBRin[1]*2.)/3.
@@ -203,7 +213,10 @@ Function fat_savgol,SBRin,Radin,rings=rings,step=step,half=half,Rotation_Curve=R
                                 ;Finally we need to add the central
                                 ;point again which we will merely
                                 ;extrapolate from the profile
- 
+                                ;to maintain a rapid rise in the RC we
+                                ;do not smooth the inner  3 points of
+                                ;the rc
+  if keyword_set(RC) then SBR[0:2]=SBRin[0:2]
   WHILE n_elements(SBRout) NE n_elements(SBRin) do begin
      IF n_elements(SBRout) LT n_elements(SBRin) then SBROut=[SBRout[0],SBRout]
      IF n_elements(SBRout) GT n_elements(SBRin) then SBROut=SBRout[0:n_elements(SBRin)-2]

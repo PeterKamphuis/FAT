@@ -283,12 +283,12 @@ Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
                                 ;If arctan is 1 then we only want smooth and return the new values
   IF arctan EQ 1 OR n_elements(PA) LE 5 then begin
      newPA=PAsmooth
-     if fixedrings GT 1 then newPA[0:fixedrings-1]=PA[fixedrings]
+     if fixedrings GT 1 then newPA[0:fixedrings-1]=PA[fixedrings-1]
      errors=ABS(PA[*]-PAsmooth[*])
      fitstat=-1.
      arctan=1
      finorder=!values.f_nan
-     goto,cleanup
+     goto,smoothonly
   ENDIF        
                                 ;Then we will calculate the
                                 ;errors. The base for this is the
@@ -985,7 +985,7 @@ refit:
      
   order=finorder
  
-  
+  smoothonly:
   PAin=REVERSE(newPA)
   IF KEYWORD_SET(NOCENTRAL) then begin
      PAin=[PA0,PAin]
