@@ -145,7 +145,9 @@ wrongpa:
         miss = 1
        
         goto,wrongpa
-     endif 
+     endif else begin
+        goto,failedattempt
+     endelse
         
   ENDIF
   
@@ -382,6 +384,7 @@ wrongpa:
 
 
   IF FINITE(TOTAL([PA,incl])) EQ 0 then begin
+     failedattempt:
      pa=[0.,0.]
      incl=[0.,0.]
   ENDIF
