@@ -96,14 +96,17 @@ Function fat_savgol,SBRin,Radin,rings=rings,step=step,half=half,Rotation_Curve=R
            sbr=sbrin
            case n_elements(sbr) of
               3:begin             
-                 SBR[1]=(SBR[0]+SBR[2])/2.
-                 SBR[2]=(SBR[1]+SBR[2])/2.
+                 SBR[1]=(SBRin[0]+SBRin[2])/2.
+                 SBR[2]=(SBRin[1]+SBRin[2])/2.
               end
               4:begin
-                 SBR[1]=(SBR[0]+SBR[2])/2.
-                 SBR[2]=(SBR[1]+SBR[2]+SBR[3])/3.
-                 SBR[3]=(SBR[2]+SBR[3])/2.
+                 SBR[1]=(SBRin[0]+SBRin[2])/2.
+                 SBR[2]=(SBRin[1]+SBRin[2]+SBRin[3])/3.
+                 SBR[3]=(SBRin[2]+SBRin[3])/2.
               end
+              else: begin
+                 SBR[1]=(SBRin[0]+SBRin[1])/2.
+              endelse
            endcase
            
            return,sbr
