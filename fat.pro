@@ -1976,7 +1976,7 @@ noconfig:
      totflux[0]=totflux[0]/pixperbeam
      IF FINITE(totflux[0]) NE 1 then begin
         tmp=WHERE(FINITE(moment0map)) 
-        totflux=TOTAL(moment0map[tmp])/pixperbeam
+        totflux=TOTAL(moment0map[tmp])/pixperbeam/ABS(channelwidth)
      ENDIF
      HIMASS=2.36E5*catDistance[i]^2*totflux*ABS(channelwidth)
      convertradec,RAhr,DEChr
