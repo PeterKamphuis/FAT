@@ -168,6 +168,18 @@ wrongpa:
      ENDIF
      goto, wrongpa
   ENDIF
+  if indexmin[0] GT n_elements(ratios)-2 and miss NE 1 then begin
+     IF keyword_set(debug) then begin
+        print,indexmin[0]
+        print,pa
+     ENDIF
+     pa=pa[0]+space
+     IF keyword_set(debug) then begin
+        print,'weird'
+        print,pa
+     ENDIF
+     goto, wrongpa
+  ENDIF
   if n_elements(indexmin) GT 1 then indexmin=indexmin[fix(n_elements(indexmin)/2.)]
   pa=dblarr(2)
   incl=dblarr(2)
