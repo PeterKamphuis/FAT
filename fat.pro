@@ -941,9 +941,7 @@ noconfig:
         ENDIF ELSE beam=[1,1]
         noise=1
         clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directory=catdirname[i],dir_format=dirformat
-        print,writecube
         IF writecube EQ 2 then begin
-           print,'watskeburt'
            bookkeeping=5
            GOTO,FINISHTHISGALAXY
         ENDIF
@@ -1005,7 +1003,7 @@ noconfig:
      cubecdelt=(ABS(sxpar(header,'CDELT1'))+ABS(sxpar(header,'CDELT2')))/2.
      cubecrvalDEC=sxpar(header,'CRVAL2')
      channelwidth=ABS(sxpar(header,'CDELT3'))   
-     veltype=strtrim(strcompress(sxpar(header,'CUNIT3')))
+     veltype=STRUPCASE(strtrim(strcompress(sxpar(header,'CUNIT3'))))
      pixfwhm=beam[0]/(cubecdelt*3600.)
      catmajbeam[i]=beam[0]
      catminbeam[i]=beam[1]
@@ -1183,9 +1181,9 @@ noconfig:
         IF veltype EQ 'M/S' then channelwidthkm=channelwidth/1000. else channelwidthkm=channelwidth
         noisemap=fltarr(n_elements(mask[*,0,0]),n_elements(mask[0,*,0]))
         for j=0,n_elements(mask[0,0,*])-1 do begin
-           noisemap=noisemap+(mask[*,*,j]*catnoise[i]*channelwidthkm)^2
+           noisemap=noisemap+mask[*,*,j]
         endfor
-        noisemap=SQRT(noisemap)
+        noisemap=SQRT(noisemap)*catnoise[i]*channelwidthkm
         headernoisemap=header
         sxdelpar,headernoisemap,'CUNIT3'
         sxdelpar,headernoisemap,'CTYPE3'

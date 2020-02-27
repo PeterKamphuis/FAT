@@ -100,7 +100,7 @@ use_corrected:
   space=5
   angles=findgen(fix(180/space))*space
   ratios = obtain_ratios(angles,map,center=center,gdlidl=gdlidl,noise=noise,beam=beam)
-
+  IF TOTAL(ratios) EQ 0 then goto,failedattempt
 
   tmp=WHERE(ratios GT 0.)
   maxrat=MAX(ratios[tmp],min=minrat)
@@ -110,11 +110,18 @@ use_corrected:
   IF keyword_set(debug) then begin
      print,'indexmin'
      print,indexmin
+     print,'And the ratios'
+     print,ratios
   ENDIF
   pamax=angles[indexmax]-90
   tmp=WHERE(pamax LT 0.)
   IF tmp[0] NE -1 then pamax[tmp]=pamax[tmp]+180.
-  IF keyword_set(debug) then print,pamax,angles[indexmin]
+  IF keyword_set(debug) then begin
+     print,'PA max'
+     print,pamax
+     print,'And the angles'
+     print,angles[indexmin]
+  ENDIF
   pa=MEAN([pamax,angles[indexmin]])
   inipa=pa
   IF keyword_set(debug) then begin
