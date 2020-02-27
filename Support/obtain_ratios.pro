@@ -24,59 +24,29 @@ FUNCTION obtain_ratios,angles,map,center=center,MAJ_AXIS=tmpwidth,gdlidl=gdlidl,
 ;       - 
 ;
 ; KEYWORD PARAMETERS:
-;       EXTEND = If set this will return the mean with of the profiles
-;       in pixels (Yes it is misspelled)
-;       NOISE = noise in the momentmap (This is required)
-;       BEAM = Beam of the observations in pixels. If unset it is thought to be
+;      center = central coordinates in pixels  
+;      NOISE = noise in the momentmap (This is required)
+;      BEAM = Beam of the observations in pixels. If unset it is thought to be
 ;       1 pixel beam, if a single value a circular beam is assumed
-;       /DEBUG - flag for getting additional output to screen
+;      GDLIDL = Ar we doing idl or gdl  
+;      /DEBUG - flag for getting additional output to screen
 ;
 ; OUTPUTS:
-;       inclination = the determined inclination. A 2D array with
-;       inclination and the error on the inclination
+;      MAJ_AXIS = the major axis width in pixels
 ;
 ; OPTIONAL OUTPUTS:
 ;       -
 ; 
 ; PROCEDURES CALLED:
-;       INT_PROFILEV2, INTERPOLATE, GAUSSFIT()
+;       INT_PROFILEV2, INTERPOLATE, GAUSSFIT(), FAT_GAUSS
 ;
 ; EXAMPLE:
 ;      
 ;
-; MODIFICATION HISTORY:
-;       21-12-2018 P.Kamphuis; Added a condition where if the Final
-;                              products are non-finite we set the output to 0.  
-;       05-10-2018 P.Kamphuis; Starts from obtain_inclinationv8  
-;       09-05-2017 P.Kamphuis; If no values could be found the code
-;                              would add random values to the errors.
-;                              This introduced a randomness on the
-;                              error leading to wildly varying cutoff
-;                              values. Have changed this to set the
-;                              errors in this case with a wide spread
-;                              thus increasing the final error towards
-;                              90.  
-;       02-05-2017 P.Kamphuis; There was a bug where the profile was
-;                              determined every tenth of a pixel but
-;                              the beam correction was still the beam
-;                              in normal pixels. Hence the estimates
-;                              for small galaxies were far off. Additionally,
-;                              as the beam smearing leads to lower
-;                              inclinations already we do not apply the
-;                              -2 correction to small galaxies.      
-;       28-04-2017 P.Kamphuis; In case of a failed fit we now take a
-;                              inclination from the ratio of the shape
-;                              of the moment 0 map.  
-;       02-06-2016 P.Kamphuis; Added GDL compatibility by replacing
-;                              GAUSSFIT with MPFITFUN   
-;       18-02-2016 P.Kamphuis; Replaced sigma with STDDEV   
-;       Written 01-01-2015 P.Kamphuis v1.0
+; MODIFICATION HISTORY: 
+;       Written 01-01-2019 P.Kamphuis v1.0
 ;
-; NOTE:
-;       please note that at low inclinations e.g < 10 deg there is a
-;       random element to the determination due to the axis width
-;       falling into the same pixels.
-;     
+; NOTE:   
 ;-
 
   IF n_elements(beam) EQ 0. then beam = [1.,1]
