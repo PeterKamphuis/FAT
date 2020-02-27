@@ -286,7 +286,7 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
         print, ' '
         print,'Unfortunately GDL does not provide trace back information in help'
         print,'In order to fix this error please open FAT.pro and '
-        print,'uncomment line 182 (goto,skipcatch).'
+        print,'uncomment line 273 (goto,skipcatch).'
         print, ' '
         print,'Then reproduce the error with trace back information '
         print, 'and submit an issue at:'
