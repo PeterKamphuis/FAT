@@ -1202,7 +1202,7 @@ noconfig:
            close,66
         ENDIF ELSE BEGIN
            print,linenumber()+"We have created the noise moment map."
-        Endelse 
+        Endelse
      ENDIF ELSE BEGIN
                                 ;Else we read it in
         noisemap=readfits(noisemapname+'.fits',headernoisemap,/NOSCALE,/SILENT)
