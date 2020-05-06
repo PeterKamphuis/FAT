@@ -10,14 +10,14 @@ Pro buildaxii,header,xaxis,yaxis,ZAXIS=zaxis
 ;
 ; CATEGORY:
 ;       Support
-; 
+;
 ; CALLING SEQUENCE:
 ;       BUILDAXII,header,xaxis,yaxis,ZAXIS=zaxis
 ;
 ;
 ; INPUTS:
 ;       header = header of the fits file for which the axii need to be
-;       build 
+;       build
 ;
 ; OPTIONAL INPUTS:
 ;       -
@@ -26,8 +26,8 @@ Pro buildaxii,header,xaxis,yaxis,ZAXIS=zaxis
 ;       -
 ;
 ; OUTPUTS:
-;       xaxis = the variable that will hold the output x-axis 
-;       yaxis = the variable that will hold the output y-axis 
+;       xaxis = the variable that will hold the output x-axis
+;       yaxis = the variable that will hold the output y-axis
 ;
 ;
 ; OPTIONAL OUTPUTS:
@@ -42,15 +42,15 @@ Pro buildaxii,header,xaxis,yaxis,ZAXIS=zaxis
 ; MODIFICATION HISTORY:
 ;     8-2-2011 modified so that it now builds a proper RA axis if present
 ;     18-11-2010 added axis from cd matrix
-;     Written by P.Kamphuis 01-01-2010 
+;     Written by P.Kamphuis 01-01-2010
 ; NOTE:
 ;     BUILDAXII will always build 3 axii in case of a 3 dimensional
 ;     cube and 2 in case of a 2 dimensional cube. It is just optional
 ;     whether you want the third axis returned.
 ;-
-  COMPILE_OPT IDL2 
+  COMPILE_OPT IDL2
   CATCH,Error_status
-  IF  Error_status NE 0. THEN BEGIN  
+  IF  Error_status NE 0. THEN BEGIN
      print, 'BUILDAXII: Oops the following went wrong:'
      print, !ERROR_STATE.MSG
      print, 'BUILDAXII: Use buildaxii in this way'
@@ -60,18 +60,24 @@ Pro buildaxii,header,xaxis,yaxis,ZAXIS=zaxis
      print, 'BUILDAXII:     header       array with the header keywords from the fits file'
      print, 'BUILDAXII:      xaxis       name of the first axis '
      print, 'BUILDAXII:      yaxis       name of the second axis '
-     print, 'BUILDAXII:      ZAXIS=      name of a third axis '  
+     print, 'BUILDAXII:      ZAXIS=      name of a third axis '
      goto,ending
   ENDIF
   numaxii=sxpar(header,'NAXIS')
   xsize=sxpar(header,'NAXIS1')
   cdelt1=sxpar(header,'CDELT1')
-  crval1=sxpar(header,'CRVAl1')
+  ;crval1=sxpar(header,'CRVAl1')
   crpix1=sxpar(header,'CRPIX1')
   ysize=sxpar(header,'NAXIS2')
+  ;crval2=sxpar(header,'CRVAl2')
+  crpix2=sxpar(header,'CRPIX2')
   cdelt2=sxpar(header,'CDELT2')
   ctype1=sxpar(header,'CTYPE1')
   ctype2=sxpar(header,'CTYPE2')
+  ;As we do not do projections accurately let's make sure our crpix is set to the accurate center of the image
+  crpix1=xsize/2.
+  crpix2=ysize/2.
+  xyad,header,crpix1,crpix2,crval1,crval2
   tmp=str_sep(strtrim(strcompress(ctype1),2),'---')
   ctype1=tmp[0]
   tmp=str_sep(strtrim(strcompress(ctype2),2),'---')
@@ -90,8 +96,7 @@ Pro buildaxii,header,xaxis,yaxis,ZAXIS=zaxis
         goto,ending
      endif
   endif
-  crval2=sxpar(header,'CRVAl2')
-  crpix2=sxpar(header,'CRPIX2')
+
   IF numaxii GE 3. then begin
      zsize=sxpar(header,'NAXIS3')
      cdelt3=sxpar(header,'CDELT3')
@@ -121,8 +126,8 @@ Pro buildaxii,header,xaxis,yaxis,ZAXIS=zaxis
      zaxis=dblarr(zsize)
      bla=dblarr(zsize)
      bla=findgen(zsize)
-     zaxis[*]=crval3+(bla[*]-crpix3+1)*(cdelt3) 
+     zaxis[*]=crval3+(bla[*]-crpix3+1)*(cdelt3)
   endif
-  
+
 ending:
 end

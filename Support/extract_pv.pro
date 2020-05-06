@@ -8,11 +8,11 @@ Pro extract_pv,Cube,header,pa,xv,CENTER=center,XVHEADER=new_header
 ;       Program to extract a PV diagram along a Position Angle from a
 ;       Line emission cube. The strip width along which to extract the
 ;       XV-diagram is the beam's major axis FWHM  if stated in
-;       the header else a single pixel is used. 
+;       the header else a single pixel is used.
 ;
 ; CATEGORY:
 ;       Support
-; 
+;
 ; CALLING SEQUENCE:
 ;       EXTRACT_PV,Cube,header,pa,xv,CENTER=center,XVHEADER=new_header
 ;
@@ -24,7 +24,7 @@ Pro extract_pv,Cube,header,pa,xv,CENTER=center,XVHEADER=new_header
 ;       north east wards
 ;
 ; OPTIONAL INPUTS:
-;       - 
+;       -
 ;
 ; KEYWORD PARAMETERS:
 ;       CENTER = if set the rotation will happen around this center,
@@ -37,35 +37,35 @@ Pro extract_pv,Cube,header,pa,xv,CENTER=center,XVHEADER=new_header
 ;
 ; OPTIONAL OUTPUTS:
 ;       -
-; 
+;
 ; PROCEDURES CALLED:
 ;       REVERSE(),ROT(),SXADDPAR,SXPAR(),SXDELPAR,TOTAL()
 ;
 ; EXAMPLE:
-;      
+;
 ;
 ; MODIFICATION HISTORY:
 ;       11-07-2018 P.Kamphuis; Replaced bitwise operator not with
 ;                              logical operator ~
 ;       07-01-2016 P.Kamphuis; Replaced SUM commands with the proper
-;       TOTAL commands reducing the need for outside routines.  
-;       05-01-2016 P.Kamphuis; Updated NAXIS1 in new header  
-;       Written by P.Kamphuis 01-01-2015 
+;       TOTAL commands reducing the need for outside routines.
+;       05-01-2016 P.Kamphuis; Updated NAXIS1 in new header
+;       Written by P.Kamphuis 01-01-2015
 ;
 ; NOTE:
-;     
+;
 ;-
-  COMPILE_OPT IDL2 
+  COMPILE_OPT IDL2
   inheader=header
   if n_elements(center) EQ 0 then center=[sxpar(inheader,'CRVAL1'), sxpar(inheader,'CRVAL2')]
   if n_elements(width) EQ 0 then begin
      IF ~(sxpar(inheader,'BMAJ')) then begin
         width=0.
      ENDIF else width=sxpar(inheader,'BMAJ')
-  endif    
+  endif
   xv=dblarr(n_elements(Cube[*,0,0]),n_elements(Cube[0,0,*]))
-  ypix=sxpar(inheader,'CRPIX2')+(center[1]-sxpar(inheader,'CRVAL2'))/sxpar(inheader,'CDELT2')
-  xpix=sxpar(inheader,'CRPIX1')+(center[0]-sxpar(inheader,'CRVAL1'))/sxpar(inheader,'CDELT1')*COS(center[1]*!DtoR)
+  ;Doing this on your own become to inaccurate when distortions are large.
+  adxy,inheader,center[0],center[1],xpix,ypix
   xrange=[-xpix,sxpar(inheader,'NAXIS1')-xpix]
   IF xpix GT sxpar(inheader,'NAXIS1')-xpix-1 then xsize=floor(sxpar(inheader,'NAXIS1')-xpix-1) else xsize=floor(xpix)
   xv=dblarr(fix(2*xsize),n_elements(Cube[0,0,*]))
@@ -78,7 +78,7 @@ Pro extract_pv,Cube,header,pa,xv,CENTER=center,XVHEADER=new_header
   ENDIF ELSE BEGIN
      centrpix=xpix
      istart=fix(xpix-xsize)
-     
+
      IF istart lt 0 then begin
         istart=0
      ENDIF
@@ -108,7 +108,7 @@ Pro extract_pv,Cube,header,pa,xv,CENTER=center,XVHEADER=new_header
   sxaddpar,new_header,'CRVAL2',sxpar(inheader,'CRVAL3')
   sxaddpar,new_header,'CRPIX2',sxpar(inheader,'CRPIX3')
   sxaddpar,new_header,'CTYPE2',sxpar(inheader,'CTYPE3')
-  sxaddpar,new_header,'NAXIS2',sxpar(inheader,'NAXIS3') 
+  sxaddpar,new_header,'NAXIS2',sxpar(inheader,'NAXIS3')
   sxdelpar,new_header,['NAXIS3','CDELT3','CRPIX3','CRVAL3','CTYPE3','LTYPE']
   IF sxpar(inheader,'CUNIT3') then begin
      sxaddpar,new_header,'CUNIT2',sxpar(inheader,'CUNIT3'),after='CTYPE2'
@@ -123,11 +123,5 @@ Pro extract_pv,Cube,header,pa,xv,CENTER=center,XVHEADER=new_header
      sxaddpar,new_header,'CRVAL2',sxpar(new_header,'CRVAL2')/1000.
      sxaddpar,new_header,'CUNIT2','KM/S'
   ENDIF
-   
+
 end
-
-
-
-
-
-

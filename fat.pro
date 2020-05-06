@@ -1136,10 +1136,16 @@ noconfig:
         goto,finishthisgalaxy
      endif
                                 ;Convert pixel coordinates to Degrees
-     DECdeg=sxpar(header,'CRVAL2')+(DECpix[0]-sxpar(header,'CRPIX2')+1)*sxpar(header,'CDELT2')
-     RAdeg=sxpar(header,'CRVAL1')+(RApix[0]-sxpar(header,'CRPIX1')+1)*sxpar(header,'CDELT1')/COS(DECdeg*(!pi/180.))
-     DECboundeg=sxpar(header,'CRVAL2')+(DECpix[1:2]-sxpar(header,'CRPIX2')+1)*sxpar(header,'CDELT2')
-     RAboundeg=sxpar(header,'CRVAL1')+((RApix[1:2]-sxpar(header,'CRPIX1')+1)*sxpar(header,'CDELT1'))/COS(DECboundeg*(!pi/180.))
+                                ;Use the more accurate astrolib functions
+     xyad,header,RApix[0],DECpix[0],RAdeg,DECdeg
+     xyad,header,RApix[1],DECpix[1],RAlow,DEClow
+     xyad,header,RApix[2],DECpix[2],RAhigh,DEChigh
+     DECboundeg=[DEClow,DEChigh]
+     RAboundeg=[RAlow,RAhigh]
+     ;DECdeg=sxpar(header,'CRVAL2')+(DECpix[0]-sxpar(header,'CRPIX2')+1)*sxpar(header,'CDELT2')
+     ;RAdeg=sxpar(header,'CRVAL1')+(RApix[0]-sxpar(header,'CRPIX1')+1)*sxpar(header,'CDELT1')/COS(DECdeg*(!pi/180.))
+     ;DECboundeg=sxpar(header,'CRVAL2')+(DECpix[1:2]-sxpar(header,'CRPIX2')+1)*sxpar(header,'CDELT2')
+     ;RAboundeg=sxpar(header,'CRVAL1')+((RApix[1:2]-sxpar(header,'CRPIX1')+1)*sxpar(header,'CDELT1'))/COS(DECboundeg*(!pi/180.))
      RAboundeg=RAboundeg[SORT(RAboundeg)]
      DECboundeg=DECboundeg[SORT(DECboundeg)]
      IF strupcase(veltype) EQ 'M/S' then begin
@@ -2057,7 +2063,7 @@ noconfig:
         goto,finishthisgalaxy
      ENDIF
                                 ;build up moment 0 axis
-     buildaxii,headermap,xaxmom0,yaxmom0
+     ;buildaxii,headermap,xaxmom0,yaxmom0
                                 ;some counters for keeping track
      prevmodification=0.
      overwrite=0.
