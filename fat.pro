@@ -1153,6 +1153,8 @@ noconfig:
      ENDELSE
      ;if the distance is -1 we assume Hubble follow
      if catDistance[i] EQ -1 then catDistance[i] = catVSYS[i]/H_0
+     ;Let.s ensure it is not less than 0.5 Mpc to  avoid crashes
+     if catDistance[i] LT 0.5 then catDistance[i] = 0.5
 
      mask=readfits(maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'.fits',headermask,/NOSCALE,/SILENT)
                                 ;let's make sure our cube and mask have the same size
