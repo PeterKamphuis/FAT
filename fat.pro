@@ -1116,11 +1116,32 @@ noconfig:
         end
      endcase
      mismatchedmoments:
-
-     run_sofia,allnew,new_dir,currentfitcube,catcatalogname[i],supportdirchecked,pixfwhm,header,errormessage,VSYSpix,RApix,DECpix,Totflux,log=log
+     ;Identify fully flagged channels in the cube
+     tmp_channels=dblarr(n_elements(dummy[0,0,*]))
+     for j=0,n_elements(dummy[0,0,*])-1 do begin
+       tmp = WHERE(FINITE(dummy[*,*,j]) NE 1.)
+       if n_elements(tmp) EQ n_elements(dummy[*,*,j]) then begin
+            IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"Channel "+strtrim(string(j))+" is fully flagged blanking it in SoFiA."
+              close,66
+            ENDIF
+            tmp_channels[j]=1.
+       ENDIF
+     ENDFOR
+     IF TOTAL(tmp_channels) NE 0. then blank_channels = WHERE(tmp_channels EQ 1) else blank_channels = -1
+     beams_in_cube = (n_elements(dummy[*,0,0])+n_elements(dummy[0,*,0]))/(2.*pixfwhm*10.)
+     run_sofia,allnew,new_dir,currentfitcube,catcatalogname[i],supportdirchecked,pixfwhm,header,errormessage,VSYSpix,RApix,DECpix,Totflux,log=log,beams_in_cube = beams_in_cube
 
      catCatalogname[i]=currentfitcube+'_cat.ascii'
      catmaskname[i]=currentfitcube+'_binmask'
+     IF blank_channels[0] NE -1 then begin
+       mask=readfits(maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'.fits',headermask,/NOSCALE,/SILENT)
+       for j=0,n_elements(blank_channels)-1 do begin
+          mask[*,*,blank_channels[j]] = 0.
+       ENDFOR
+       writefits,maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'.fits',mask,headermask
+     ENDIF
      skipallsofia:
      if fix(errormessage[0]) EQ 5 then begin
         IF size(log,/TYPE) EQ 7 then begin
@@ -1230,6 +1251,7 @@ noconfig:
         tmpmask[WHERE(mask GT 0.)]=dummy[WHERE(mask GT 0.)]
         headermap=header
                                 ;Same as in gipsy
+        writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_testcub.fits',float(tmpmask),header
         momentsv2,tmpmask,moment0map,headermap,0.
         writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_mom0.fits',float(moment0map),headermap
                                 ;reset the mom0 map to the one just created

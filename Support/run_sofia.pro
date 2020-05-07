@@ -1,4 +1,4 @@
-Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pixfwhm,header,errormessage,VSYSpix,RApix,DECpix,Totflux,log=log
+Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pixfwhm,header,errormessage,VSYSpix,RApix,DECpix,Totflux,log=log,flagchannels=flagchannels,beams_in_cube =beams_in_cube
 ;+
 ; NAME:
 ;       RUN_SOFIA
@@ -8,9 +8,9 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
 ;
 ; CATEGORY:
 ;       Support
-; 
+;
 ; CALLING SEQUENCE:
-;       RUN_SOFIA,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pixfwhm,header,errormessage,VSYSpix,RApix,DECpix,Totflux,log=log 
+;       RUN_SOFIA,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pixfwhm,header,errormessage,VSYSpix,RApix,DECpix,Totflux,log=log
 ;
 ;
 ; INPUTS:
@@ -18,7 +18,7 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
 ;                     or use provided output.
 ;           new_dir = Current working directory.
 ;    currentfitcube = Currently used cube.
-;     catcatlogname = Name of the catalog with SoFiA output.          
+;     catcatlogname = Name of the catalog with SoFiA output.
 ; supportdirchecked = Name of support directory without spaces.
 ;           pixfwhm = FWHM of major axis beam in pixels.
 ;            header = header of the input cube.
@@ -30,10 +30,11 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
 ;                     and its boundaries.
 ;            DECpix = 3-elements array containg the central DEC pixel
 ;                     and its boundaries.
-;           Totflux = variable containing the total fluyx found in the source.  
-;     
+;           Totflux = variable containing the total fluyx found in the source.
+;      flagchannels = channels to be flagged before running SoFiA
+;
 ; OPTIONAL INPUTS:
-;       LOG = name of the tracing log 
+;       LOG = name of the tracing log
 ;
 ; KEYWORD PARAMETERS:
 ;       -
@@ -42,23 +43,23 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
 ;
 ; OPTIONAL OUTPUTS:
 ;       -
-; 
+;
 ; PROCEDURES CALLED:
 ;       FILE_TEST(),READ_FITS(),READ_TEMPLATE,SPAWN
 ;
 ; EXAMPLE:
-;      
+;
 ;
 ; MODIFICATION HISTORY:
 ;       07-03-2017 P.Kamphuis; Setup such that SoFiA output now goes
-;                              to the Log file instead of the screen. 
+;                              to the Log file instead of the screen.
 ;       06-03-2017 P.Kamphuis; Made sure that when there is a central
 ;                              source and nan is found in the output
-;                              file that source is selected.  
+;                              file that source is selected.
 ;       Written 22-02-2017 P.Kamphuis v1.0
 ;
 ; NOTE:
-;     
+;
 ;-
   errormessage=['0','All Good']
   if allnew GE 2 then goto,skipallsofia
@@ -68,19 +69,34 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
   ;         '8,'+string(39B)+'b'+string(39B),'16,'+string(39B)+'b'+string(39B)]
   threshold= 5.
   counter=3.
+  ;We want to take out any fully blanked channels
+  ;if flagchannels[0] NE -1 then begin
+  ;  sofia[sofiatriggers[5]]='steps.doFlag = True'
+;    flag_regions = '['
+;    for j=0,n_elements(flagchannels)-1 do begin
+;      flag_regions = flag_regions+"[0,'',0,'',"+STRTRIM(string(flagchannels[j]))+','+STRTRIM(string(flagchannels[j]))+'],'
+;    ENDFOR
+;    flag_regions = STRMID(flag_regions,0,strlen(flag_regions)-1)+']'
+
+;    sofia[sofiatriggers[6]]='flag.regions = '+flag_regions
+;  ENDIF
+
   lowthresagain:
   sofia[sofiatriggers[0]]='import.inFile = '+currentfitcube+'.fits'
   sofia[sofiatriggers[1]]='steps.doReliability             =       false'
-  sofia[sofiatriggers[2]]='parameters.dilatePixMax	= '+string(fix(pixfwhm*counter))
+  sofia[sofiatriggers[2]]='parameters.dilatePixMax	= '+string(fix(pixfwhm/4*beams_in_cube*counter))
   sofia[sofiatriggers[3]]='SCfind.threshold	=' +string(threshold)
-                                ;   sofia[sofiatriggers[2]]='SCfind.kernels= [[ 0, 0, 0,'+string(39B)+'b'+string(39B)+'],[ 0, 0, 2,'+string(39B)+'b'+string(39B)+$
-                                ;                         '],[ 0, 0, 4,'+string(39B)+'b'+string(39B)+'],[ 0, 0, 8,'+string(39B)+'b'+string(39B)+'],[ 0, 0,16,'$
-                                ;                        +string(39B)+'b'+string(39B)+'],'$
-                                ;                       +STRJOIN(string('['+strtrim(string(fix(pixfwhm/2.)),2)+','+strtrim(string(fix(pixfwhm/2.)),2)+','+velkern[*]+']'),',')+','$
-                                ;                      +STRJOIN(string('['+strtrim(string(fix(pixfwhm)),2)+','+strtrim(string(fix(pixfwhm)),2)+','+velkern[*]+']'),',')+','$
-                                ;                     +STRJOIN(string('['+strtrim(string(fix(pixfwhm*2.)),2)+','+strtrim(string(fix(pixfwhm*2.)),2)+','+velkern[*]+']'),',')+']'
-                         
-  
+  sofia[sofiatriggers[4]]="SCfind.kernels= [[ 0, 0, 0,'b'],[ 0, 0, 2,'b'],[ 0, 0, 4,'b'],[ 0, 0, 8,'b'],"+$
+                         '['+strtrim(string(fix(pixfwhm)),2)+','+strtrim(string(fix(pixfwhm)),2)+",0,'b'],"+$
+                         '['+strtrim(string(fix(pixfwhm)),2)+','+strtrim(string(fix(pixfwhm)),2)+",2,'b'],"+$
+                         '['+strtrim(string(fix(pixfwhm)),2)+','+strtrim(string(fix(pixfwhm)),2)+",4,'b'],"+$
+                         '['+strtrim(string(fix(pixfwhm)),2)+','+strtrim(string(fix(pixfwhm)),2)+",8,'b'],"+$
+                         '['+strtrim(string(fix(pixfwhm)*2),2)+','+strtrim(string(fix(pixfwhm)*2),2)+",0,'b'],"+$
+                         '['+strtrim(string(fix(pixfwhm)*2),2)+','+strtrim(string(fix(pixfwhm)*2),2)+",2,'b'],"+$
+                         '['+strtrim(string(fix(pixfwhm)*2),2)+','+strtrim(string(fix(pixfwhm)*2),2)+",4,'b'],"+$
+                         '['+strtrim(string(fix(pixfwhm)*2),2)+','+strtrim(string(fix(pixfwhm)*2),2)+",8,'b']]"
+
+
                                 ;We run sofia to get a bunch of initial estimates
   openw,1,'sofia_input.txt'
   for index=0,n_elements(sofia)-1 do begin
@@ -91,7 +107,7 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
   IF FILE_TEST(currentfitcube+'_cont.png') then spawn,'rm -f '+currentfitcube+'_cont.png'
   IF FILE_TEST(currentfitcube+'_mask.fits') then spawn,'rm -f '+currentfitcube+'_mask.fits'
   IF FILE_TEST(currentfitcube+'_scat.png') then spawn,'rm -f '+currentfitcube+'_scat.png'
-  print,linenumber()+'Running SoFiA.'    
+  print,linenumber()+'Running SoFiA.'
   spawn,'python '+supportdirchecked+'/sofia_pipeline.py sofia_input.txt ',sofiaoutput
   IF size(log,/TYPE) EQ 7 then begin
      openu,66,log,/APPEND
@@ -101,7 +117,7 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
      endfor
      close,66
   ENDIF
-  
+
   IF not FILE_TEST(currentfitcube+'_cat.ascii') then begin
      IF threshold GT 4 then begin
         IF size(log,/TYPE) EQ 7 then begin
@@ -121,7 +137,7 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
   catCatalogname=currentfitcube+'_cat.ascii'
   catmaskname=currentfitcube+'_mask' ;first clean up the cat
   skipallsofia:
-                                ;We need to read the sofia output file     
+                                ;We need to read the sofia output file
   openr,1,catCatalogname
                                 ;get the number of lines
   paralines=FILE_LINES(catCatalogname)
@@ -153,7 +169,7 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
   endfor
                                 ;reset file pointer to the beginning of the file
   point_lun,1,0
-  
+
                                 ;find the number 1 source
   WHILE ID NE 1 and counter LT paralines do begin
                                 ;create a skip array
@@ -214,13 +230,13 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
      for j=0,n_elements(catvals[0,*])-1 do begin
         voxratio[j]=maxvoxel/catvals[sofia_locations[13],j]
      endfor
-    
+
      rmp=WHERE(voxratio LT 3 AND voxratio GT 0)
-    
-     
+
+
      IF rmp[0] EQ -1 then begin
         vals=catvals[*,n_elements(catvals[0,*])-1]
-     ENDIF ELSE BEGIN        
+     ENDIF ELSE BEGIN
         diff=dblarr(n_elements(rmp))
         for j=0,n_elements(rmp)-1 do begin
            diff[j]=SQRT((sxpar(header,'CRPIX1')-catvals[sofia_locations[1],rmp[j]])^2+(sxpar(header,'CRPIX2')-catvals[sofia_locations[4],rmp[j]])^2)
@@ -239,11 +255,11 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
      printf,66,linenumber()+"We picked the "+string(vals[sofia_locations[0]])+" object of the parameter list."
      close,66
   ENDIF
-  
-                                ;If not using preprocessed stuff then we make logical names 
+
+                                ;If not using preprocessed stuff then we make logical names
   IF allnew LT 2 then begin
      nummask=readfits(catmaskname+'.fits',hedmasknotproper,/SILENT,/NOSCALE)
-     tmp=where(nummask NE double(vals[sofia_locations[0]])) 
+     tmp=where(nummask NE double(vals[sofia_locations[0]]))
      IF tmp[0] NE -1 then begin
         nummask[tmp]=0.
      ENDIF
@@ -254,10 +270,10 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
                                 ;We want to expand this mask as it is
                                 ;usually a bit tight
      ;pixelsizeRA=ABS(sxpar(header,'CDELT1'))
-     
+
                                 ;newmask=fat_smooth(nummask,catmajbeam[i]/(pixelsizeRA*3600.),/MASK)
-     
-     
+
+
      sxaddpar,header,'BITPIX',-32
      writefits,currentfitcube+'_binmask.fits',float(nummask),header
      nummask=0.
@@ -265,14 +281,14 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
      catmaskname=currentfitcube+'_binmask'
      IF FILE_TEST(currentfitcube+'_cont.png') then spawn,'rm -f '+currentfitcube+'_cont.png'
      IF FILE_TEST(currentfitcube+'_mask.fits') then spawn,'rm -f '+currentfitcube+'_mask.fits'
-     IF FILE_TEST(currentfitcube+'_scat.png') then spawn,'rm -f '+currentfitcube+'_scat.png'  
+     IF FILE_TEST(currentfitcube+'_scat.png') then spawn,'rm -f '+currentfitcube+'_scat.png'
   ENDIF
                                 ;Read the centre values and make sure
                                 ;they fall inside the cube
-     
+
   RApix=[double(vals[sofia_locations[1]]),double(vals[sofia_locations[2]]),double(vals[sofia_locations[3]])]
                                 ;IF we read the small cube this needs to be corrected
-  
+
                                 ;RApixboun=[double(vals[sofia_locations[2]]),double(vals[sofia_locations[3]])]
   IF allnew EQ 3 then begin
      newsize=sxpar(header,'NAXIS1')-1
@@ -280,7 +296,7 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
      RApix[0]=floor(newsize/2.)+(Rapix[0]-floor(RApix[0]))
      pixshift=Old-RApix[0]
      RApix[1:2]=RApixboun[1:2]-pixshift
-  ENDIF    
+  ENDIF
   IF RApix[0] GT sxpar(header,'NAXIS1')-10 then BEGIN
      RApix[0]=double(sxpar(header,'NAXIS1')/2.)
      RApix[1:2]=[double(sxpar(header,'NAXIS1')/4.),double(sxpar(header,'NAXIS1')/4.)*3.]
@@ -293,7 +309,7 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
      DECpix[0]=floor(newsize/2.)+(DECpix[0]-floor(DECpix[0]))
      pixshift=Old-DECpix[0]
      DECpix[1:2]=DECpix[1:2]-pixshift
-  ENDIF    
+  ENDIF
   IF DECpix[0] GT sxpar(header,'NAXIS2')-10 then begin
      DECpix[0]=fix( sxpar(header,'NAXIS2')/2.)
      DECpix[1:2]=[double(sxpar(header,'NAXIS2')/4.),double(sxpar(header,'NAXIS2')/4.)*3.]
@@ -312,7 +328,7 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
      VSYSpix[0]=double(vals[sofia_locations[12]])
   ENDIF
   Totflux=[double(vals[sofia_locations[13]])] ;Jy/beam
-  
+
   endSoFiA:
   cd,old_dir
 end

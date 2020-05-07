@@ -10,13 +10,13 @@ Pro momentsv2,Cube,Momentmap,header,map,BLANK_VALUE=blanked,gdlidl=gdlidl
 ;
 ; CATEGORY:
 ;       Support
-; 
+;
 ; CALLING SEQUENCE:
 ;       momentsv2,Cube,Momentmap,header,map
 ;
 ;
 ; INPUTS:
-;       Cube = A 3D-array containing the values of the cube 
+;       Cube = A 3D-array containing the values of the cube
 ;       header = The fits header of the data cube
 ;       map = 1 or 0 indicating the requested moment
 ;
@@ -33,35 +33,35 @@ Pro momentsv2,Cube,Momentmap,header,map,BLANK_VALUE=blanked,gdlidl=gdlidl
 ;
 ; OPTIONAL OUTPUTS:
 ;       -
-; 
+;
 ; PROCEDURES CALLED:
 ;       STR_SEP(), STRTRIM(), STRCOMPRESS(), TOTAL(), SXADDPAR(),
 ;       SXPAR(), SXDELPAR()
 ;
 ; EXAMPLE:
-;      
+;
 ;
 ; MODIFICATION HISTORY:
 ;       20-08-2017 P.Kamphuis; Rebin is broken on the mac 0.9.7 hence
 ;                              we have added a condition to rebin in
 ;                              loop when running GDL. This is only
 ;                              used for velocity fields so no need to
-;                              add to intergrated moment map  
+;                              add to intergrated moment map
 ;       12-05-2017 P.Kamphuis; In the  maps the blanks should
-;                              propagate.   
+;                              propagate.
 ;       16-11-2016 P.Kamphuis; Now dealing with the (non-)presence of
-;                              CUNIT3 properly   
+;                              CUNIT3 properly
 ;       01-06-2016 P.Kamphuis; Added a condition to check that datamax
-;                              and datamin are finite.   
+;                              and datamin are finite.
 ;       07-01-2016 P.Kamphuis; Replaced SUM commands with the proper
-;       TOTAL commands reducing the need for outside routines.  
+;       TOTAL commands reducing the need for outside routines.
 ;       Modified to deal with existing CUNIT3 without error message 12-08-2015 P. Kamphuis v2
 ;       Modified to deal with missing CUNIT3  29-07-2015 P. Kamphuis v2
 ;       Modified to use SUM which is much faster 25-05-2015 P. Kamphuis v2
 ;       Written 15-07-2010 P.Kamphuis v1.0
 ;
 ; NOTE:
-;     
+;
 ;-
 
 
@@ -69,8 +69,8 @@ Pro momentsv2,Cube,Momentmap,header,map,BLANK_VALUE=blanked,gdlidl=gdlidl
 
   IF map EQ 0 then begin
      ;In the case of moment 0 we want blanks to propagate through.
-;   blank=WHERE(FINITE(Cube) NE 1.)
-;   IF blank[0] NE -1 then Cube[blank]=0
+   ;blank=WHERE(FINITE(Cube) NE 1.)
+   ;IF blank[0] NE -1 then Cube[blank]=0
    Momentmap=fltarr(n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]))
    Momentmap[*,*]=TOTAL(Cube,3)*ABS(sxpar(header,'CDELT3'))
    IF ~(sxpar(header,'CUNIT3')) then begin
@@ -89,8 +89,8 @@ Pro momentsv2,Cube,Momentmap,header,map,BLANK_VALUE=blanked,gdlidl=gdlidl
 endif
 IF map GE 1 then begin
    buildaxii,header,xaxis,yaxis,zaxis=zaxis
-;   blank=WHERE(FINITE(Cube) NE 1.)
-;   IF blank[0] NE -1 then Cube[blank]=0  
+   ;blank=WHERE(FINITE(Cube) NE 1.)
+   ;IF blank[0] NE -1 then Cube[blank]=0
    IF ~(sxpar(header,'CUNIT3')) then begin
       IF sxpar(header,'CDELT3') GT 500. then sxaddpar,header,'CUNIT3','M/S' else sxaddpar,header,'CUNIT3','KM/S'
    ENDIF
@@ -99,7 +99,7 @@ IF map GE 1 then begin
       zaxis=zaxis/1000.
    ENDIF
    Momentmap=fltarr(n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]))
-  
+
    if gdlidl then begin
                                 ;this is necessary for gdl as rebin is
                                 ;broken in gdl on the mac. This seems
@@ -111,7 +111,7 @@ IF map GE 1 then begin
       endfor
    endif else begin
       c=rebin(reform(zaxis,1,1,n_elements(zaxis)),n_elements(Cube[*,0,0]),n_elements(Cube[0,*,0]),n_elements(Cube[0,0,*]))
-   endelse    
+   endelse
    Momentmap=TOTAL(c*Cube,3)/TOTAL(Cube,3)
    IF map GE 2 then begin
       if gdlidl then begin
@@ -147,5 +147,3 @@ sxdelpar,header,'CRPIX3'
 sxaddpar,header,'NAXIS',2
 
 end
-
-
