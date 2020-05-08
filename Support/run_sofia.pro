@@ -1,4 +1,4 @@
-Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pixfwhm,header,errormessage,VSYSpix,RApix,DECpix,Totflux,log=log,flagchannels=flagchannels,beams_in_cube =beams_in_cube
+Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pixfwhm,header,errormessage,VSYSpix,RApix,DECpix,Totflux,log=log,flagchannels=flagchannels,beams_in_cube =beams_in_cube,channels_in_cube=channels_in_cube
 ;+
 ; NAME:
 ;       RUN_SOFIA
@@ -32,7 +32,8 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
 ;                     and its boundaries.
 ;           Totflux = variable containing the total fluyx found in the source.
 ;      flagchannels = channels to be flagged before running SoFiA
-;
+;     beams_in_cube = The amount of beams that fit in a cube. Used as a proxy for the galaxy size.
+;  channels_in_cube = The amount of the channels in a cube. Used as a proxy for the velocity width of the cube.
 ; OPTIONAL INPUTS:
 ;       LOG = name of the tracing log
 ;
@@ -84,17 +85,44 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
   lowthresagain:
   sofia[sofiatriggers[0]]='import.inFile = '+currentfitcube+'.fits'
   sofia[sofiatriggers[1]]='steps.doReliability             =       false'
-  sofia[sofiatriggers[2]]='parameters.dilatePixMax	= '+string(fix(pixfwhm/4*beams_in_cube*counter))
+  sofia[sofiatriggers[2]]='parameters.dilatePixMax	= '+string(fix(pixfwhm/4*beams_in_cube/10.*counter))
   sofia[sofiatriggers[3]]='SCfind.threshold	=' +string(threshold)
-  sofia[sofiatriggers[4]]="SCfind.kernels= [[ 0, 0, 0,'b'],[ 0, 0, 2,'b'],[ 0, 0, 4,'b'],[ 0, 0, 8,'b'],"+$
-                         '['+strtrim(string(fix(pixfwhm)),2)+','+strtrim(string(fix(pixfwhm)),2)+",0,'b'],"+$
-                         '['+strtrim(string(fix(pixfwhm)),2)+','+strtrim(string(fix(pixfwhm)),2)+",2,'b'],"+$
-                         '['+strtrim(string(fix(pixfwhm)),2)+','+strtrim(string(fix(pixfwhm)),2)+",4,'b'],"+$
-                         '['+strtrim(string(fix(pixfwhm)),2)+','+strtrim(string(fix(pixfwhm)),2)+",8,'b'],"+$
-                         '['+strtrim(string(fix(pixfwhm)*2),2)+','+strtrim(string(fix(pixfwhm)*2),2)+",0,'b'],"+$
-                         '['+strtrim(string(fix(pixfwhm)*2),2)+','+strtrim(string(fix(pixfwhm)*2),2)+",2,'b'],"+$
-                         '['+strtrim(string(fix(pixfwhm)*2),2)+','+strtrim(string(fix(pixfwhm)*2),2)+",4,'b'],"+$
-                         '['+strtrim(string(fix(pixfwhm)*2),2)+','+strtrim(string(fix(pixfwhm)*2),2)+",8,'b']]"
+  sofia_kernels = "[ 0, 0, 0,'g'],[ 0, 0, 2,'g'],[ 0, 0, 4,'g'],[ 0, 0, 8,'g'],"+$
+                  '['+strtrim(string(fix(pixfwhm)),2)+','+strtrim(string(fix(pixfwhm)),2)+",0,'g'],"+$
+                  '['+strtrim(string(fix(pixfwhm)),2)+','+strtrim(string(fix(pixfwhm)),2)+",3,'g'],"+$
+                  '['+strtrim(string(fix(pixfwhm)),2)+','+strtrim(string(fix(pixfwhm)),2)+",6,'g'],"+$
+                  '['+strtrim(string(fix(pixfwhm)),2)+','+strtrim(string(fix(pixfwhm)),2)+",12,'g'],"+$
+                  '['+strtrim(string(fix(pixfwhm)*2),2)+','+strtrim(string(fix(pixfwhm)*2),2)+",0,'g'],"+$
+                  '['+strtrim(string(fix(pixfwhm)*2),2)+','+strtrim(string(fix(pixfwhm)*2),2)+",3,'g'],"+$
+                  '['+strtrim(string(fix(pixfwhm)*2),2)+','+strtrim(string(fix(pixfwhm)*2),2)+",6,'g'],"+$
+                  '['+strtrim(string(fix(pixfwhm)*2),2)+','+strtrim(string(fix(pixfwhm)*2),2)+",12,'g']"
+  ;if the cube is very large we add an additional 3 beams scale
+  If beams_in_cube GT 30. then BEGIN
+    IF size(log,/TYPE) EQ 7 then begin
+      openu,66,log,/APPEND
+      printf,66,linenumber()+"RUN_SOFIA: Adding an extra kernel scale as the cube is more than 30 beams "
+      close,66
+    ENDIF
+    sofia_kernels = sofia_kernels+',['+strtrim(string(fix(pixfwhm)*3),2)+','+strtrim(string(fix(pixfwhm)*3),2)+",0,'g'],"+$
+                  '['+strtrim(string(fix(pixfwhm)*3),2)+','+strtrim(string(fix(pixfwhm)*3),2)+",3,'g'],"+$
+                  '['+strtrim(string(fix(pixfwhm)*3),2)+','+strtrim(string(fix(pixfwhm)*3),2)+",6,'g'],"+$
+                  '['+strtrim(string(fix(pixfwhm)*3),2)+','+strtrim(string(fix(pixfwhm)*3),2)+",12,'g']"
+  endif
+  If channels_in_cube GT 52 then begin
+    IF size(log,/TYPE) EQ 7 then begin
+      openu,66,log,/APPEND
+      printf,66,linenumber()+"RUN_SOFIA: Adding an extra kernel scale as the cube has more than 52 channels "
+      close,66
+    ENDIF
+    sofia_kernels = sofia_kernels+',['+strtrim(string(fix(pixfwhm)*0),2)+','+strtrim(string(fix(pixfwhm)*0),2)+",16,'g'],"+$
+                  '['+strtrim(string(fix(pixfwhm)*1),2)+','+strtrim(string(fix(pixfwhm)*1),2)+",16,'g'],"+$
+                  '['+strtrim(string(fix(pixfwhm)*2),2)+','+strtrim(string(fix(pixfwhm)*2),2)+",16,'g']"
+    If beams_in_cube GT 30. then BEGIN
+      sofia_kernels = sofia_kernels+',['+strtrim(string(fix(pixfwhm)*3),2)+','+strtrim(string(fix(pixfwhm)*3),2)+",16,'g']"
+    ENDIF
+  ENDIF
+
+  sofia[sofiatriggers[4]]="SCfind.kernels= ["+sofia_kernels+"]"
 
 
                                 ;We run sofia to get a bunch of initial estimates
@@ -107,11 +135,11 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
   IF FILE_TEST(currentfitcube+'_cont.png') then spawn,'rm -f '+currentfitcube+'_cont.png'
   IF FILE_TEST(currentfitcube+'_mask.fits') then spawn,'rm -f '+currentfitcube+'_mask.fits'
   IF FILE_TEST(currentfitcube+'_scat.png') then spawn,'rm -f '+currentfitcube+'_scat.png'
-  print,linenumber()+'Running SoFiA.'
+  print,linenumber()+'RUN_SOFIA: Running SoFiA.'
   spawn,'python '+supportdirchecked+'/sofia_pipeline.py sofia_input.txt ',sofiaoutput
   IF size(log,/TYPE) EQ 7 then begin
      openu,66,log,/APPEND
-     printf,66,linenumber()+'The Sofia Output'
+     printf,66,linenumber()+'RUN_SOFIA: The Sofia Output'
      for j=0,n_elements(sofiaoutput)-1 do begin
         printf,66,sofiaoutput[j]
      endfor
@@ -122,8 +150,8 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
      IF threshold GT 4 then begin
         IF size(log,/TYPE) EQ 7 then begin
            openu,66,log,/APPEND
-           printf,66,linenumber()+"We did not find a source at a threshold of "+string(threshold)
-           printf,66,linenumber()+"Lowering the threshold and trying again."
+           printf,66,linenumber()+"RUN_SOFIA: We did not find a source at a threshold of "+string(threshold)
+           printf,66,linenumber()+"RUN_SOFIA: Lowering the threshold and trying again."
            close,66
         ENDIF
         IF counter EQ 1 then counter=3 else counter++
@@ -158,12 +186,12 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
   for j=0,n_elements(sofia_parameters)-1 do begin
      sofia_locations[j]=WHERE(sofia_parameters[j] EQ sofia_column_ids)-1
      IF sofia_locations[j] EQ -2 then begin
-        print,'We cannot find the required column for '+sofia_parameters[i]+' in the sofia catalogue'
-        print,'This can happen because a) you have tampered with the sofiainput.txt file in the directory, '+supportdirchecked
-        print,'b) you are using an updated version of SoFiA where the names have changed and FAT is not yet updated.'
-        print,'   In this case please file a bug report at https://github.com/PeterKamphuis/FAT/issues/'
-        print,'c) You are using pre processed SoFiA output of your own and do not have all the output'
-        print,'   Required output is '+STRJOIN(sofia_parameters,',')
+        print,'RUN_SOFIA: We cannot find the required column for '+sofia_parameters[i]+' in the sofia catalogue'
+        print,'RUN_SOFIA: This can happen because a) you have tampered with the sofiainput.txt file in the directory, '+supportdirchecked
+        print,'RUN_SOFIA: b) you are using an updated version of SoFiA where the names have changed and FAT is not yet updated.'
+        print,'RUN_SOFIA:    In this case please file a bug report at https://github.com/PeterKamphuis/FAT/issues/'
+        print,'RUN_SOFIA: c) You are using pre processed SoFiA output of your own and do not have all the output'
+        print,'RUN_SOFIA:    Required output is '+STRJOIN(sofia_parameters,',')
         stop
      ENDIF
   endfor
@@ -252,7 +280,7 @@ Pro run_sofia,allnew,new_dir,currentfitcube,catcatalogname,supportdirchecked,pix
   ENDIF
   IF size(log,/TYPE) EQ 7 then begin
      openu,66,log,/APPEND
-     printf,66,linenumber()+"We picked the "+string(vals[sofia_locations[0]])+" object of the parameter list."
+     printf,66,linenumber()+"RUN_SOFIA: We picked the "+string(vals[sofia_locations[0]])+" object of the parameter list."
      close,66
   ENDIF
 

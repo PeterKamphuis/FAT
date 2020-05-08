@@ -107,7 +107,8 @@ Pro extract_pv,Cube,header,pa,xv,CENTER=center,XVHEADER=new_header
   sxaddpar,new_header,'CDELT2',sxpar(inheader,'CDELT3')
   sxaddpar,new_header,'CRVAL2',sxpar(inheader,'CRVAL3')
   sxaddpar,new_header,'CRPIX2',sxpar(inheader,'CRPIX3')
-  sxaddpar,new_header,'CTYPE2',sxpar(inheader,'CTYPE3')
+  sxaddpar,new_header,'CTYPE2','VELO'
+  ;sxpar(inheader,'CTYPE3')
   sxaddpar,new_header,'NAXIS2',sxpar(inheader,'NAXIS3')
   sxdelpar,new_header,['NAXIS3','CDELT3','CRPIX3','CRVAL3','CTYPE3','LTYPE']
   IF sxpar(inheader,'CUNIT3') then begin

@@ -1123,15 +1123,21 @@ noconfig:
        if n_elements(tmp) EQ n_elements(dummy[*,*,j]) then begin
             IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+"Channel "+strtrim(string(j))+" is fully flagged blanking it in SoFiA."
+              printf,66,linenumber()+"Channel "+strtrim(string(j))+" is fully flagged, blanking it in SoFiA."
               close,66
             ENDIF
             tmp_channels[j]=1.
        ENDIF
      ENDFOR
      IF TOTAL(tmp_channels) NE 0. then blank_channels = WHERE(tmp_channels EQ 1) else blank_channels = -1
-     beams_in_cube = (n_elements(dummy[*,0,0])+n_elements(dummy[0,*,0]))/(2.*pixfwhm*10.)
-     run_sofia,allnew,new_dir,currentfitcube,catcatalogname[i],supportdirchecked,pixfwhm,header,errormessage,VSYSpix,RApix,DECpix,Totflux,log=log,beams_in_cube = beams_in_cube
+     beams_in_cube = (n_elements(dummy[*,0,0])+n_elements(dummy[0,*,0]))/(2.*pixfwhm)
+     channels_in_cube =  n_elements(dummy[0,0,*])
+     IF size(log,/TYPE) EQ 7 then begin
+       openu,66,log,/APPEND
+       printf,66,linenumber()+"This cube fits on average "+strtrim(string(fix(beams_in_cube)))+" beams and has "+strtrim(string(channels_in_cube))+" channels"
+       close,66
+     ENDIF
+     run_sofia,allnew,new_dir,currentfitcube,catcatalogname[i],supportdirchecked,pixfwhm,header,errormessage,VSYSpix,RApix,DECpix,Totflux,log=log,beams_in_cube = beams_in_cube,channels_in_cube = channels_in_cube
 
      catCatalogname[i]=currentfitcube+'_cat.ascii'
      catmaskname[i]=currentfitcube+'_binmask'
