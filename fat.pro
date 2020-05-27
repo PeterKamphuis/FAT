@@ -2579,7 +2579,7 @@ noconfig:
            
            progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress1.txt')
            run_counter = 0
-           WHILE NOT progress_exits AND run_counter LT 2 DO BEGIN
+           WHILE NOT progress_exist AND run_counter LT 2 DO BEGIN
               spawn,gipsyfirst,isthere2
               progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress1.txt')
               run_counter = run_counter+1
@@ -2709,7 +2709,7 @@ noconfig:
         spawn,gipsyfirst,isthere2
         progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress1.txt')
         run_counter = 0
-        WHILE NOT progress_exits AND run_counter LT 2 DO BEGIN
+        WHILE NOT progress_exist AND run_counter LT 2 DO BEGIN
            spawn,gipsyfirst,isthere2
            progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress1.txt')
            run_counter = run_counter+1
@@ -2901,7 +2901,7 @@ noconfig:
 
         progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress1.txt')
         run_counter = 0
-        WHILE NOT progress_exits AND run_counter LT 2 DO BEGIN
+        WHILE NOT progress_exist AND run_counter LT 2 DO BEGIN
            spawn,gipsyfirst,isthere2
            progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress1.txt')
            run_counter = run_counter+1
@@ -3189,7 +3189,7 @@ noconfig:
      spawn,gipsyfirst,isthere2
      progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress1.txt')
      run_counter = 0
-     WHILE NOT progress_exits AND run_counter LT 2 DO BEGIN
+     WHILE NOT progress_exist AND run_counter LT 2 DO BEGIN
         spawn,gipsyfirst,isthere2
         progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress1.txt')
         run_counter = run_counter+1
@@ -4598,7 +4598,7 @@ noconfig:
      spawn,gipsyfirst,isthere2
      progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress2.txt')
      run_counter = 0
-     WHILE NOT progress_exits AND run_counter LT 2 DO BEGIN
+     WHILE NOT progress_exist AND run_counter LT 2 DO BEGIN
         spawn,gipsyfirst,isthere2
         progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress2.txt')
         run_counter = run_counter+1
@@ -6446,7 +6446,7 @@ noconfig:
      spawn,gipsyfirst,isthere2
      progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress2.txt')
      run_counter = 0
-     WHILE NOT progress_exits AND run_counter LT 2 DO BEGIN
+     WHILE NOT progress_exist AND run_counter LT 2 DO BEGIN
         spawn,gipsyfirst,isthere2
         progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress2.txt')
         run_counter = run_counter+1
