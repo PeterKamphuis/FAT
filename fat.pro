@@ -2567,12 +2567,39 @@ noconfig:
            ENDIF
 
            IF testing GE 1 then goto,testing1INCL
+
+                                ;remove the progress file
+           spawn,'rm -rf '+maindir+'/'+catdirname[i]+'/progress1.txt' 
+           
            print,linenumber()+"Starting tirific the INCL estimate in  "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
            gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
            spawn,gipsyfirst,isthere2
-           ; Let's check how we did in the fit
-           get_progress,maindir+'/'+catdirname[i]+'/progress1.txt',AC1,nopoints,loops,toymodels
 
+                                ;Check if we succesfully ran tirific
+           
+           progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress1.txt')
+           run_counter = 0
+           WHILE NOT progress_exits AND run_counter LT 2 DO BEGIN
+              spawn,gipsyfirst,isthere2
+              progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress1.txt')
+              run_counter = run_counter+1
+           ENDWHILE
+
+           IF NOT progress_exist THEN BEGIN
+               IF size(log,/TYPE) EQ 7 then begin
+                 openu,66,log,/APPEND
+                 printf,66,linenumber()+"Tirific stopped running for some reason"
+                 close,66
+              ENDIF
+              bookkeeping=5
+              goto,finishthisgalaxy
+           ENDIF
+               
+                                ; Let's check how we did in the fit
+           
+           
+           get_progress,maindir+'/'+catdirname[i]+'/progress1.txt',AC1,nopoints,loops,toymodels
+           
            ;If not accepted we try again
            IF AC1 EQ 0. and INCLest LT 5 then begin
               IF size(log,/TYPE) EQ 7 then begin
@@ -2675,9 +2702,28 @@ noconfig:
            close,66
         ENDIF
         IF testing GE 1 then goto,testing1PA
+
+        spawn,'rm -f '+maindir+'/'+catdirname[i]+'/progress1.txt'
         print,linenumber()+"Starting tirific the PA estimate in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
         gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
         spawn,gipsyfirst,isthere2
+        progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress1.txt')
+        run_counter = 0
+        WHILE NOT progress_exits AND run_counter LT 2 DO BEGIN
+           spawn,gipsyfirst,isthere2
+           progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress1.txt')
+           run_counter = run_counter+1
+        ENDWHILE
+
+        IF NOT progress_exist THEN BEGIN
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"Tirific stopped running for some reason"
+              close,66
+           ENDIF
+           bookkeeping=5
+           goto,finishthisgalaxy
+        ENDIF
                                 ;get the results
         get_progress,maindir+'/'+catdirname[i]+'/progress1.txt',AC1,nopoint,loops,toymodels
                                 ;If failed try again
@@ -2850,7 +2896,27 @@ noconfig:
         IF testing GE 1 then goto,testing1SBR
         gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
         testing1SBR:
+        spawn,'rm -f '+maindir+'/'+catdirname[i]+'/progress1.txt'
         spawn,gipsyfirst,isthere2
+
+        progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress1.txt')
+        run_counter = 0
+        WHILE NOT progress_exits AND run_counter LT 2 DO BEGIN
+           spawn,gipsyfirst,isthere2
+           progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress1.txt')
+           run_counter = run_counter+1
+        ENDWHILE
+
+        IF NOT progress_exist THEN BEGIN
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"Tirific stopped running for some reason"
+              close,66
+           ENDIF
+           bookkeeping=5
+           goto,finishthisgalaxy
+        ENDIF
+        
         VariablesWanted=['RADI','SBR','SBR_2','PA','PA_2','VROT','VROT_2']
         firstfitvalues=0.
         get_progress,maindir+'/'+catdirname[i]+'/progress1.txt',AC1,nopoints,loops,toymodels
@@ -3119,8 +3185,26 @@ noconfig:
      rename,'1stfit.','1stfitold.'
      gipsyfirst=strarr(1)
      gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
+     spawn,'rm -f '+maindir+'/'+catdirname[i]+'/progress1.txt'  
      spawn,gipsyfirst,isthere2
+     progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress1.txt')
+     run_counter = 0
+     WHILE NOT progress_exits AND run_counter LT 2 DO BEGIN
+        spawn,gipsyfirst,isthere2
+        progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress1.txt')
+        run_counter = run_counter+1
+     ENDWHILE
 
+     IF NOT progress_exist THEN BEGIN
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"Tirific stopped running for some reason"
+           close,66
+        ENDIF
+        bookkeeping=5
+        goto,finishthisgalaxy
+     ENDIF
+     
      testing1:
                                 ;Let's check if it is accepted
      get_progress,maindir+'/'+catdirname[i]+'/progress1.txt',AC1,nopoints,loops,toymodels
@@ -4510,7 +4594,25 @@ noconfig:
      rename,'2ndfit.','2ndfitold.'
      gipsyfirst=strarr(1)
      gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
+     spawn,'rm -f '+maindir+'/'+catdirname[i]+'/progress2.txt'
      spawn,gipsyfirst,isthere2
+     progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress2.txt')
+     run_counter = 0
+     WHILE NOT progress_exits AND run_counter LT 2 DO BEGIN
+        spawn,gipsyfirst,isthere2
+        progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress2.txt')
+        run_counter = run_counter+1
+     ENDWHILE
+
+     IF NOT progress_exist THEN BEGIN
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"Tirific stopped running for some reason"
+           close,66
+        ENDIF
+        bookkeeping=5
+        goto,finishthisgalaxy
+     ENDIF
 
      testing2:
                                 ;Then we check wether the fit is accepted if not we see if the PA and
@@ -6338,9 +6440,27 @@ noconfig:
      ENDIF
      print,linenumber()+"Starting tirific check of second estimate in "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
      rename,'2ndfit.','2ndfitunsmooth.'
+     spawn,'rm -f '+maindir+'/'+catdirname[i]+'/progress2.txt'
      gipsyfirst=strarr(1)
      gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
      spawn,gipsyfirst,isthere2
+     progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress2.txt')
+     run_counter = 0
+     WHILE NOT progress_exits AND run_counter LT 2 DO BEGIN
+        spawn,gipsyfirst,isthere2
+        progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress2.txt')
+        run_counter = run_counter+1
+     ENDWHILE
+
+     IF NOT progress_exist THEN BEGIN
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"Tirific stopped running for some reason"
+           close,66
+        ENDIF
+        bookkeeping=5
+        goto,finishthisgalaxy
+     ENDIF
      spawn,'cp tirific.def the_last_input.def'
      finalsmooth=2.
      overwrite=0.
