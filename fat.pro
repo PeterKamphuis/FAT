@@ -2641,13 +2641,15 @@ noconfig:
               VariablesWanted=['PA','PA_2','INCL','INCL_2','VROT','VROT_2','SBR','SBR_2']
               firstfitvalues=0.
               writenewtotemplate,tirificfirst,maindir+'/'+catdirname[i]+'/1stfit.def',Arrays=firstfitvalues,VariableChange=VariablesWanted
-
+              print,maxrotinincl
+              print,firstfitvalues[n_elements(firstfitvalues[*,0])-2,4]
+              print,catmaxrotdev[i]
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
                  printf,66,linenumber()+"Because of low inclination (<30) or small number of beams across minor axis (< 5):"
                  printf,66,linenumber()+"We have adjusted the PA from "+string(PAinincl)+" to "+string(firstfitvalues[0,0])+'+/-'+string(newPA[1])
                  printf,66,linenumber()+"The inclination from "+string(INCLinincl)+" to "+string(firstfitvalues[0,2])+'+/-'+string(newinclination[1])
-                 printf,66,linenumber()+"The max rotation from "+string(maxrotinincl)+" to "+string(firstfitvalues[n_elements(firstfitvalues[*,0])-2,4])+'+/-'+string(catmaxrotdev[1])
+                 printf,66,linenumber()+"The max rotation from "+string(maxrotinincl)+" to "+string(firstfitvalues[n_elements(firstfitvalues[*,0])-2,4])+'+/-'+string(catmaxrotdev[i])
                  printf,66,linenumber()+"We have adjusted the fit setting of the inclination and VROT."
                  close,66
               ENDIF
