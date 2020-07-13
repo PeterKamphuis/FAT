@@ -2641,9 +2641,6 @@ noconfig:
               VariablesWanted=['PA','PA_2','INCL','INCL_2','VROT','VROT_2','SBR','SBR_2']
               firstfitvalues=0.
               writenewtotemplate,tirificfirst,maindir+'/'+catdirname[i]+'/1stfit.def',Arrays=firstfitvalues,VariableChange=VariablesWanted
-              print,maxrotinincl
-              print,firstfitvalues[n_elements(firstfitvalues[*,0])-2,4]
-              print,catmaxrotdev[i]
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
                  printf,66,linenumber()+"Because of low inclination (<30) or small number of beams across minor axis (< 5):"
