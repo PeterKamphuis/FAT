@@ -135,8 +135,6 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
  
   IF STRUPCASE(strtrim(velproj,2)) NE 'VELO-HEL' AND $
      STRUPCASE(strtrim(velproj,2)) NE 'VELO-LSR' AND $
-     STRUPCASE(strtrim(velproj,2)) NE 'FELO-HEL' AND $
-     STRUPCASE(strtrim(velproj,2)) NE 'FELO-LSR' AND $
      STRUPCASE(strtrim(velproj,2)) NE 'VELO' AND $
      STRUPCASE(strtrim(velproj,2)) NE 'FREQ' then begin
      checkax=strtrim(strsplit(velproj,'-',/extract),2)
