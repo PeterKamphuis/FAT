@@ -2,7 +2,7 @@ LOGNAME= 1stfit.log
 NCORES= 4
 
 INSET= recentered-s30cl.fits
-BOX= 
+BOX=
 OUTSET=  1stfit.fits
 OUTCUBUP=  10000000.0
 PROGRESSLOG=progress1.txt
@@ -16,19 +16,19 @@ NDISKS= 2
 
 NUR= 8.00000
      RADI=0.0   18.9500       37.9000       56.8500       75.8000       94.7500        113.70000
-     VROT= 0.0        36.725000        73.450000        92.490000        100.30000 
+     VROT= 0.0        36.725000        73.450000        92.490000        100.30000
      Z0= 2.6909954
-     SBR= 0.0    0.00012639096    0.00012639096    0.00010003999    6.7393763e-05    3.6162507e-05    2.6300005e-05 
+     SBR= 0.0    0.00012639096    0.00012639096    0.00010003999    6.7393763e-05    3.6162507e-05    2.6300005e-05
      INCL= 43.670000
      PA= 286.17000
      XPOS= 2.26871
      YPOS= 25.6181
      VSYS= 4339.5000
      SDIS= 8.
-     AZ1W= +1.80000E+02 
-     VROT_2= 0.0        36.725000        73.450000        92.490000        100.30000 
+     AZ1W= +1.80000E+02
+     VROT_2= 0.0        36.725000        73.450000        92.490000        100.30000
      Z0_2= 2.6909954
-     SBR_2= 0.0    0.00012639096    0.00012639096    0.00010003999    6.7393763e-05    3.6162507e-05    2.6300005e-05 
+     SBR_2= 0.0    0.00012639096    0.00012639096    0.00010003999    6.7393763e-05    3.6162507e-05    2.6300005e-05
      INCL_2= 43.670000
      PA_2= 286.17000
      XPOS_2= 2.26871
@@ -58,38 +58,38 @@ MAXITER=
 CALLITE=70
 SIZE= 10
 
-VARINDX= 
-VARY=  XPOS 1:8 XPOS_2 1:8,  YPOS 1:8 YPOS_2 1:8, VSYS 1:8 VSYS_2 1:8, PA 1:8 PA_2 1:8, INCL 1:8 INCL_2 1:8, !SBR 2:8, !SBR_2 2:8, VROT 2:8, VROT_2 2:8, Z0 1:8  Z0_2 1:8 
+VARINDX=
+VARY=  XPOS 1:8 XPOS_2 1:8,  YPOS 1:8 YPOS_2 1:8, VSYS 1:8 VSYS_2 1:8, PA 1:8 PA_2 1:8, INCL 1:8 INCL_2 1:8, !SBR 2:8, !SBR_2 2:8, VROT 2:8, VROT_2 2:8, Z0 1:8  Z0_2 1:8
 PARMAX=		       360		     360		 5000		   360			 90	    1	        1	500	    500                30
 PARMIN=       	         0         	       0         	    0    	  -360         		 90	    0	    	0	  0	      0		        0
 MODERATE=     		 3 		       3 	  	    3       	     3 	       		  3 	    3	    	3	  3	      3			3
 DELSTART=  	      1E-3      	    1E-3 	  	    5 	  	     1	    		  1	  5E-5	     5E-5	 16	     16  		1
 DELEND=	   	      1E-5      	    1E-5 		  0.1 		   0.1	    		0.1	  1E-6	     1E-6	  8	      8 	      0.1
-MINDELTA=  	      1E-5      	    1E-5  		  0.1    	   0.1	    		0.1	  1E-6	     1E-6	  8	      8		      0.1	
+MINDELTA=  	      1E-5      	    1E-5  		  0.1    	   0.1	    		0.1	  1E-6	     1E-6	  8	      8		      0.1
 
 REGPARA=
 
-TABLE= 
+TABLE=
 DISTANCE= 76.650000
 REFRING= 5
-BIGTABLE= 
-FRACTION= 
+BIGTABLE=
+FRACTION=
 
 TIRDEF= 1stfit.def
-TIRSMO= 
+TIRSMO=
 TIRACC= 5
-TIRLEN= 
+TIRLEN=
 
-COOLGAL= 
-COOLBEAM= 
+COOLGAL=
+COOLBEAM=
 
-TILT= 
-BIGTILT= 
+TILT=
+BIGTILT=
 
-INCLINO= 
+INCLINO=
 IN_REFINE= 5
 
-GR_DEVICE= 1stfit.ps/vcps
+GR_DEVICE= 
 GR_PARMS= RADI VROT SDIS INCL PA SBR SBR_2
 GR_MR= 3
 GR_ML= 4.5

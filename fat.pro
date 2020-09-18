@@ -1257,7 +1257,7 @@ noconfig:
         tmpmask[WHERE(mask GT 0.)]=dummy[WHERE(mask GT 0.)]
         headermap=header
                                 ;Same as in gipsy
-        writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_testcub.fits',float(tmpmask),header
+        ;writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_testcub.fits',float(tmpmask),header
         momentsv2,tmpmask,moment0map,headermap,0.
         writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_mom0.fits',float(moment0map),headermap
                                 ;reset the mom0 map to the one just created
@@ -2569,14 +2569,14 @@ noconfig:
            IF testing GE 1 then goto,testing1INCL
 
                                 ;remove the progress file
-           spawn,'rm -rf '+maindir+'/'+catdirname[i]+'/progress1.txt' 
-           
+           spawn,'rm -rf '+maindir+'/'+catdirname[i]+'/progress1.txt'
+
            print,linenumber()+"Starting tirific the INCL estimate in  "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
            gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
            spawn,gipsyfirst,isthere2
 
                                 ;Check if we succesfully ran tirific
-           
+
            progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress1.txt')
            run_counter = 0
            WHILE NOT progress_exist AND run_counter LT 2 DO BEGIN
@@ -2594,12 +2594,12 @@ noconfig:
               bookkeeping=5
               goto,finishthisgalaxy
            ENDIF
-               
+
                                 ; Let's check how we did in the fit
-           
-           
+
+
            get_progress,maindir+'/'+catdirname[i]+'/progress1.txt',AC1,nopoints,loops,toymodels
-           
+
            ;If not accepted we try again
            IF AC1 EQ 0. and INCLest LT 5 then begin
               IF size(log,/TYPE) EQ 7 then begin
@@ -2915,7 +2915,7 @@ noconfig:
            bookkeeping=5
            goto,finishthisgalaxy
         ENDIF
-        
+
         VariablesWanted=['RADI','SBR','SBR_2','PA','PA_2','VROT','VROT_2']
         firstfitvalues=0.
         get_progress,maindir+'/'+catdirname[i]+'/progress1.txt',AC1,nopoints,loops,toymodels
@@ -3184,7 +3184,7 @@ noconfig:
      rename,'1stfit.','1stfitold.'
      gipsyfirst=strarr(1)
      gipsyfirst='tirific DEFFILE=tirific.def ACTION=1'
-     spawn,'rm -f '+maindir+'/'+catdirname[i]+'/progress1.txt'  
+     spawn,'rm -f '+maindir+'/'+catdirname[i]+'/progress1.txt'
      spawn,gipsyfirst,isthere2
      progress_exist=FILE_TEST(maindir+'/'+catdirname[i]+'/progress1.txt')
      run_counter = 0
@@ -3203,7 +3203,7 @@ noconfig:
         bookkeeping=5
         goto,finishthisgalaxy
      ENDIF
-     
+
      testing1:
                                 ;Let's check if it is accepted
      get_progress,maindir+'/'+catdirname[i]+'/progress1.txt',AC1,nopoints,loops,toymodels
