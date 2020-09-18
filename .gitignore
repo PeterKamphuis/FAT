@@ -9,6 +9,7 @@ Tests
 ###############
 *~
 Support/#*
+Support/sofia_pipeline.py
 #The star does not seem to work so make section for Installation check.
 Installation_Check/*
 
