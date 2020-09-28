@@ -3501,6 +3501,9 @@ noconfig:
                                 ;position as it determines many parameters
 
      newxpos=firstfitvalues[0,3]
+     if newxpos LT 0. then BEGIN
+          newxpos = newxpos+360.
+     ENDIF
      newypos=firstfitvalues[0,4]
      newvsys=firstfitvalues[0,5]
      IF doubled then beamfrac=0.3 else beamfrac=0.15
@@ -3537,10 +3540,13 @@ noconfig:
            IF    ABS(RADeg-newxpos) GT resetlimit OR ABS(DECDeg-newypos) GT resetlimit then begin
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
-                 printf,66,linenumber()+"The center shifted more than "+string(resetlimit*3600/catmajbeam[i])+" major beams. Not applying this shift."
+                 printf,66,linenumber()+"The center shifted more than "+string(resetlimit*3600./catmajbeam[i])+" major beams. Not applying this shift."
+                 printf,66,linenumber()+"The shift = "+string(ABS(RADeg-newxpos))+","+string(ABS(DECDeg-newypos))+"And the limit ="+string(resetlimit)
+                 printf,66,linenumber()+"Original = "+string(RADeg)+","+string(DECDeg)
+                 printf,66,linenumber()+"New = "+string(newxpos)+","+string(newypos)
                  close,66
               ENDIF ELSE BEGIN
-                 print,linenumber()+"The center shifted more than "+string(resetlimit*3600/catmajbeam[i])+" major beams. Not applying this shift."
+                 print,linenumber()+"The center shifted more than "+string(resetlimit*3600./catmajbeam[i])+" major beams. Not applying this shift."
               ENDELSE
               IF paraised then begin
                  tmppos=where('PA' EQ tirificfirstvars)
@@ -3921,6 +3927,7 @@ noconfig:
      writenewtotemplate,tirificfirst,maindir+'/'+catdirname[i]+'/1stfit.def',Arrays=Basicinfovalues,VariableChange=Basicinfovars,Variables=tirificfirstvars,/EXTRACT
      if testing EQ 1 then begin
         newxpos=Basicinfovalues[0,0]
+        if newxpos LT 0. then newxpos = 360.+newxpos
         newypos=Basicinfovalues[0,1]
      ENDIF
      RAhr=Basicinfovalues[0,0]
@@ -4140,6 +4147,7 @@ noconfig:
      writenewtotemplate,tirificsecond,maindir+'/'+catdirname[i]+'/1stfit.def',Arrays=firstfitvalues,VariableChange=firstfitvaluesnames,Variables=tirificsecondvars
      tmppos=where('XPOS' EQ firstfitvaluesnames)
      Final1stXPOS=firstfitvalues[0,tmppos]
+     if Final1stXPOS LT 0. then  Final1stXPOS =  Final1stXPOS+360.
      tmppos=where('YPOS' EQ firstfitvaluesnames)
      Final1stYPOS=firstfitvalues[0,tmppos]
 
@@ -4648,6 +4656,7 @@ noconfig:
      writenewtotemplate,tirificsecond,maindir+'/'+catdirname[i]+'/2ndfit.def',Arrays=secondfitvalues,VariableChange=secondfitvaluesnames,Variables=tirificsecondvars
      tmppos=where('XPOS' EQ secondfitvaluesnames)
      newXPOS=secondfitvalues[0,tmppos]
+     if newXPOS LT 0. then newXPOS = newXPOS+360.
      tmppos=where('YPOS' EQ secondfitvaluesnames)
      newYPOS=secondfitvalues[0,tmppos]
      tmppos=where('RADI' EQ secondfitvaluesnames)
