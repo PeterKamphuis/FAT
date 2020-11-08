@@ -308,7 +308,7 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
      stop
   ENDIF
   skipcatch:
-  version='v6.0'
+  version='V2.0'
                                 ;First thing we do is to check whether we run IDL or GDL
   DEFSYSV, '!GDL', EXISTS = gdlidl ;is 1 when running GDL
   if n_elements(supportdir) EQ 0 then supportdir='Support'
