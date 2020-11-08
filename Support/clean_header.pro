@@ -1,4 +1,4 @@
-Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directory=dir
+Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directory=dir,dir_format=dirformat
 
 ;+
 ; NAME:
@@ -10,7 +10,7 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
 ;
 ; CATEGORY:
 ;       Support
-; 
+;
 ; CALLING SEQUENCE:
 ;       CLEAN_HEADER,header,log=log
 ;
@@ -22,7 +22,7 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
 ;          log = the logging file
 ;
 ; OPTIONAL INPUTS:
-;       
+;
 ;
 ; KEYWORD PARAMETERS:
 ;       -
@@ -32,12 +32,12 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
 ;          present it will return [NaN,Nan] and FAT will abort
 ; OPTIONAL OUTPUTS:
 ;       -
-; 
+;
 ; PROCEDURES CALLED:
 ;       SXPAR(),SXDELPAR(),SXADDPAR(),STRUPCASE()
 ;
 ; EXAMPLE:
-;      
+;
 ;
 ; MODIFICATION HISTORY:
 ;       11-07-2018 P. Kamphuis; Replace the bitwise not with the
@@ -45,13 +45,13 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
 ;                               with even integers. Additionally added
 ;                               a check that there are more than 2
 ;                               pixels per beam and that the beam is
-;                               smaller than the cube.       
+;                               smaller than the cube.
 ;       12-06-2016 P. Kamphuis; Fixed the condition for detecting a
-;       frequency axis to exit cleanly and check both unit and type.  
+;       frequency axis to exit cleanly and check both unit and type.
 ;       Written 04-01-2016 P.Kamphuis v1.0
 ;
 ; NOTE:
-;     
+;
 ;-
 
   howmanyaxis=sxpar(header,'NAXIS')
@@ -74,7 +74,7 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
            close,66
         ENDIF ELSE BEGIN
            print,linenumber()+'CLEAN_HEADER: Your cube has no EPOCH keyword but we found EQUINOX.'
-           print,linenumber()+'CLEAN_HEADER: We have set EPOCH to '+string(sxpar(header,'EQUINOX'))   
+           print,linenumber()+'CLEAN_HEADER: We have set EPOCH to '+string(sxpar(header,'EQUINOX'))
         ENDELSE
         sxaddpar,header,'EPOCH',sxpar(header,'EQUINOX')
      ENDIF ELSE BEGIN
@@ -88,53 +88,53 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
            print,linenumber()+'CLEAN_HEADER: We assumed J2000'
         ENDELSE
         sxaddpar,header,'EPOCH',2000.
-     ENDELSE  
+     ENDELSE
      writecube=1
   ENDIF
-  
- 
-  channelwidth=ABS(sxpar(header,'CDELT3'))   
+
+
+  channelwidth=ABS(sxpar(header,'CDELT3'))
   veltype=strtrim(strcompress(sxpar(header,'CUNIT3')))
-  velproj=sxpar(header,'CTYPE3')	
+  velproj=sxpar(header,'CTYPE3')
   IF STRUPCASE(veltype) EQ 'HZ' OR  STRUPCASE(strtrim(velproj,2)) EQ 'FREQ' then begin
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+'CLEAN_HEADER: FREQUENCY IS NOT A SUPPORTED VELOCITY AXIS.'          
+        printf,66,linenumber()+'CLEAN_HEADER: FREQUENCY IS NOT A SUPPORTED VELOCITY AXIS.'
         close,66
      ENDIF ELSE BEGIN
-        print,linenumber()+'CLEAN_HEADER: FREQUENCY IS NOT A SUPPORTED VELOCITY AXIS.'    
+        print,linenumber()+'CLEAN_HEADER: FREQUENCY IS NOT A SUPPORTED VELOCITY AXIS.'
      ENDELSE
+     comment = 'The Cube has frequency as a velocity axis this is not supported'
+     commentlen='A'+strtrim(string(strlen(comment)),2)
      openu,1,outputcatalogue,/APPEND
-     printf,1,format='(A60,2A12,A120)',Dir,0.,0.,'The Cube has frequency as a velocity axis this is not supported'
+     printf,1,Dir,strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
      close,1
-     writecube=2 
-     goto,finishup	 
+     writecube=2
+     goto,finishup
   ENDIF
   IF ~(sxpar(header,'CUNIT3')) then begin
      IF channelwidth GT 100. then begin
         veltype='M/S'
         sxaddpar,header,'CUNIT3','M/S',after='CDELT3'
         writecube=1
-     endif else begin 
+     endif else begin
         veltype='KM/S'
         sxaddpar,header,'CUNIT3','KM/S',after='CDELT3'
         writecube=1
      endelse
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+'CLEAN_HEADER: Your header did not have a unit for the third axis, that is bad policy.'          
-        printf,66,linenumber()+'CLEAN_HEADER: We have set it to '+veltype+'. Please ensure that is correct.'          
+        printf,66,linenumber()+'CLEAN_HEADER: Your header did not have a unit for the third axis, that is bad policy.'
+        printf,66,linenumber()+'CLEAN_HEADER: We have set it to '+veltype+'. Please ensure that is correct.'
         close,66
      ENDIF ELSE BEGIN
-        print,linenumber()+'CLEAN_HEADER: Your header did not have a unit for the third axis, that is bad policy.'          
-        print,linenumber()+'CLEAN_HEADER: We have set it to '+veltype+'. Please ensure that is correct.'     
+        print,linenumber()+'CLEAN_HEADER: Your header did not have a unit for the third axis, that is bad policy.'
+        print,linenumber()+'CLEAN_HEADER: We have set it to '+veltype+'. Please ensure that is correct.'
      ENDELSE
   ENDIF
- 
+
   IF STRUPCASE(strtrim(velproj,2)) NE 'VELO-HEL' AND $
      STRUPCASE(strtrim(velproj,2)) NE 'VELO-LSR' AND $
-     STRUPCASE(strtrim(velproj,2)) NE 'FELO-HEL' AND $
-     STRUPCASE(strtrim(velproj,2)) NE 'FELO-LSR' AND $
      STRUPCASE(strtrim(velproj,2)) NE 'VELO' AND $
      STRUPCASE(strtrim(velproj,2)) NE 'FREQ' then begin
      checkax=strtrim(strsplit(velproj,'-',/extract),2)
@@ -148,29 +148,31 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
            print,linenumber()+'CLEAN_HEADER: Your zaxis is a spatial axis not a velocity axis.'
            print,linenumber()+'CLEAN_HEADER: Please arrange your cube logically'
         ENDELSE
+        comment = 'The Cube is not arranged properly'
+        commentlen='A'+strtrim(string(strlen(comment)),2)
         openu,1,outputcatalogue,/APPEND
-        printf,1,format='(A60,2A12,A120)',Dir,0.,0.,'The Cube is not arranged properly'
+        printf,1,Dir,strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
         close,1
         writecube=2
         goto,finishup
-     ENDIF   
+     ENDIF
      sxaddpar,header,'CTYPE3','VELO',after='CUNIT3'
      writecube=1
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+'CLEAN_HEADER: Your velocity projection is not standard. The keyword is changed to VELO (relativistic definition). This might be dangerous.'          
+        printf,66,linenumber()+'CLEAN_HEADER: Your velocity projection is not standard. The keyword is changed to VELO (relativistic definition). This might be dangerous.'
         close,66
      ENDIF ELSE BEGIN
-        print,linenumber()+'CLEAN_HEADER: Your velocity projection is not standard. The keyword is changed to VELO (relativistic definition). This might be dangerous.'   
+        print,linenumber()+'CLEAN_HEADER: Your velocity projection is not standard. The keyword is changed to VELO (relativistic definition). This might be dangerous.'
      ENDELSE
   ENDIF
   IF STRUPCASE(veltype) EQ 'KM/S' then begin
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+'CLEAN_HEADER: The channels in your input cube are in km/s. This sometimes leads to problems with wcs lib, hence we change it to m/s.'          
+        printf,66,linenumber()+'CLEAN_HEADER: The channels in your input cube are in km/s. This sometimes leads to problems with wcs lib, hence we change it to m/s.'
         close,66
      ENDIF ELSE BEGIN
-        printf,66,linenumber()+'CLEAN_HEADER: The channels in your input cube are in km/s. This sometimes leads to problems with wcs lib, hence we change it to m/s.'   
+        printf,66,linenumber()+'CLEAN_HEADER: The channels in your input cube are in km/s. This sometimes leads to problems with wcs lib, hence we change it to m/s.'
      ENDELSE
      sxaddpar,header,'CDELT3',sxpar(header,'CDELT3')*1000.
      sxaddpar,header,'CRVAL3',sxpar(header,'CRVAL3')*1000.
@@ -217,21 +219,23 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
             ENDIF ELSE BEGIN
                IF size(log,/TYPE) EQ 7 then begin
                   openu,66,log,/APPEND
-                  printf,66,linenumber()+'CLEAN_HEADER: WE CANNOT FIND THE MAJOR AXIS FWHM IN THE HEADER'          
+                  printf,66,linenumber()+'CLEAN_HEADER: WE CANNOT FIND THE MAJOR AXIS FWHM IN THE HEADER'
                   close,66
                ENDIF ELSE BEGIN
-                  print,linenumber()+'CLEAN_HEADER: WE CANNOT FIND THE MAJOR AXIS FWHM IN THE HEADER'   
+                  print,linenumber()+'CLEAN_HEADER: WE CANNOT FIND THE MAJOR AXIS FWHM IN THE HEADER'
                ENDELSE
+               comment = 'The Cube has no major axis FWHM in the header.'
+               commentlen='A'+strtrim(string(strlen(comment)),2)
                openu,1,outputcatalogue,/APPEND
-               printf,1,format='(A60,2A12,A120)',Dir,0.,0.,'The Cube has no major axis FWHM in the header.'
+               printf,1,Dir,strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
                close,1
                writecube=2
                goto,finishup
             ENDELSE
          ENDIF
      ENDELSE
-    
-  ENDIF 
+
+  ENDIF
   IF ~(sxpar(header,'BMIN')) then begin
      IF sxpar(header,'BMMIN') then begin
         sxaddpar,header,'BMIN',sxpar(header,'BMMIN')/3600.
@@ -242,7 +246,7 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
            writecube=1
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+'CLEAN_HEADER: We cannot find the minor axis FWHM. Assuming a circular beam.'          
+              printf,66,linenumber()+'CLEAN_HEADER: We cannot find the minor axis FWHM. Assuming a circular beam.'
               close,66
            ENDIF ELSE BEGIN
               print,linenumber()+'CLEAN_HEADER: We cannot find the minor axis FWHM. Assuming a circular beam.'
@@ -250,54 +254,59 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
         ENDIF ELSE BEGIN
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
-              printf,66,linenumber()+'CLEAN_HEADER: WE CANNOT FIND THE MINOR AXIS FWHM IN THE HEADER'          
+              printf,66,linenumber()+'CLEAN_HEADER: WE CANNOT FIND THE MINOR AXIS FWHM IN THE HEADER'
               close,66
            ENDIF ELSE BEGIN
-              print,linenumber()+'CLEAN_HEADER: WE CANNOT FIND THE MINOR AXIS FWHM IN THE HEADER'   
+              print,linenumber()+'CLEAN_HEADER: WE CANNOT FIND THE MINOR AXIS FWHM IN THE HEADER'
            ENDELSE
-           
+
         ENDELSE
      ENDELSE
   ENDIF
- 
+
   IF n_elements(sxpar(header,'HISTORY')) GT 10. then begin
      sxdelpar,header,'HISTORY'
      writecube=1
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
-        printf,66,linenumber()+'CLEAN_HEADER: Your cube has a significant history attached we are removing it for easier interpretation.'          
+        printf,66,linenumber()+'CLEAN_HEADER: Your cube has a significant history attached we are removing it for easier interpretation.'
         close,66
      ENDIF ELSE BEGIN
-        print,linenumber()+'CLEAN_HEADER:  Your cube has a significant history attached we are removing it for easier interpretation.'    
+        print,linenumber()+'CLEAN_HEADER:  Your cube has a significant history attached we are removing it for easier interpretation.'
      ENDELSE
   ENDIF
   IF ABS(sxpar(header,'BMAJ')/sxpar(header,'CDELT1')) LT 2. then begin
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         printf,66,linenumber()+'CLEAN_HEADER: !!!!!!!!!!Your cube has less than two pixels per beam major axis.!!!!!!!!!!!!!!!!!'
-        printf,66,linenumber()+'CLEAN_HEADER: !!!!!!!!!!           This will lead to bad results.              !!!!!!!!!!!!!!!!'     
+        printf,66,linenumber()+'CLEAN_HEADER: !!!!!!!!!!           This will lead to bad results.              !!!!!!!!!!!!!!!!'
         close,66
      ENDIF
      print,linenumber()+'CLEAN_HEADER: !!!!!!!!!!Your cube has less than two pixels per beam major axis.!!!!!!!!!!!!!!!!!'
-     print,linenumber()+'CLEAN_HEADER: !!!!!!!!!!           This will lead to bad results.              !!!!!!!!!!!!!!!!'     
+     print,linenumber()+'CLEAN_HEADER: !!!!!!!!!!           This will lead to bad results.              !!!!!!!!!!!!!!!!'
   ENDIF
   IF ABS(sxpar(header,'BMAJ')/sxpar(header,'CDELT1')) GT (sxpar(header,'NAXIS1')+sxpar(header,'NAXIS1'))/2. then begin
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         printf,66,linenumber()+'CLEAN_HEADER: !!!!!!!!!!Your cube is smaller than the beam major axis. !!!!!!!!!!!!!!!!!'
-        printf,66,linenumber()+'CLEAN_HEADER: !!!!!!!!!!         This will not work.          !!!!!!!!!!!!!!!!'     
+        printf,66,linenumber()+'CLEAN_HEADER: !!!!!!!!!!         This will not work.          !!!!!!!!!!!!!!!!'
         close,66
      ENDIF
      print,linenumber()+'CLEAN_HEADER: !!!!!!!!!!Your cube is smaller than the beam major axis. !!!!!!!!!!!!!!!!!'
      print,linenumber()+'CLEAN_HEADER: !!!!!!!!!!         This will not work.          !!!!!!!!!!!!!!!!'
+     comment= 'The Cube is not arranged properly'
+     commentlen='A'+strtrim(string(strlen(comment)),2)
      openu,1,outputcatalogue,/APPEND
-     printf,1,format='(A60,2A12,A120)',Dir,0.,0.,'The Cube is not arranged properly'
+     printf,1,Dir,strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
      close,1
      writecube=2
      goto,finishup
-  ENDIF   
-
-  
+  ENDIF
+  IF sxpar(header,'CRVAL1') LT 0. THEN BEGIN
+      print,linenumber()+'CLEAN_HEADER: your CRVAL1 is negative. this leads to problems adding 360. degrees'
+      sxaddpar,header,'CRVAL1',sxpar(header,'CRVAL1')+360.
+      writecube=1
+  ENDIF
   beam=[sxpar(header,'BMAJ')*3600,sxpar(header,'BMIN')*3600.]
   finishup:
 end

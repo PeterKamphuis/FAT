@@ -124,6 +124,8 @@ Pro organize_output,names,version,directories
            IF FILE_TEST(names[1]+'.fits') AND check[0] NE 'Moments' then spawn,'mv '+names[1]+'.fits'+' Moments/'
            check=str_sep(names[2],'/')
            IF FILE_TEST(names[2]+'.fits') AND check[0] NE 'Moments' then spawn,'mv '+names[2]+'.fits'+' Moments/'
+           check=str_sep(names[7],'/')
+           IF FILE_TEST(names[7]+'.fits') AND check[0] NE 'Moments' then spawn,'mv '+names[7]+'.fits'+' Moments/'
            check=str_sep(names[4],'/')
            IF FILE_TEST(names[4]+'.fits') AND check[0] NE 'Moments' then spawn,'mv '+names[4]+'.fits'+' Moments/'
            if fix(version) EQ version then begin
@@ -131,9 +133,12 @@ Pro organize_output,names,version,directories
               IF FILE_TEST('2ndfit_mom0.fits') then spawn,'mv 2ndfit_mom0.fits Moments/Finalmodel_mom0.fits'
               IF FILE_TEST('1stfit_mom1.fits') then spawn,'mv 1stfit_mom1.fits Moments/No_Warp_mom1.fits'
               IF FILE_TEST('2ndfit_mom1.fits') then spawn,'mv 2ndfit_mom1.fits Moments/Finalmodel_mom1.fits'
+              IF FILE_TEST('1stfit_mom2.fits') then spawn,'mv 1stfit_mom2.fits Moments/No_Warp_mom2.fits'
+              IF FILE_TEST('2ndfit_mom2.fits') then spawn,'mv 2ndfit_mom2.fits Moments/Finalmodel_mom2.fits'
            ENDIF ELSE begin
               IF FILE_TEST('1stfit_mom0.fits') then spawn,'mv 1stfit_mom0.fits Moments/Finalmodel_mom0.fits'
               IF FILE_TEST('1stfit_mom1.fits') then spawn,'mv 1stfit_mom1.fits Moments/Finalmodel_mom1.fits'
+              IF FILE_TEST('1stfit_mom2.fits') then spawn,'mv 1stfit_mom2.fits Moments/Finalmodel_mom2.fits'
            ENDELSE
            spawn,'ls Moments',filled
            IF filled[0] EQ '' then spawn,'rm -Rf Moments'

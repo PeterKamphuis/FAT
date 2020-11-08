@@ -1,6 +1,6 @@
 FUNCTION install_check,gdlidl
 
-  
+
 ;+
 ; NAME:
 ;       INSTALL_CHECK
@@ -11,8 +11,8 @@ FUNCTION install_check,gdlidl
 ;
 ; CATEGORY:
 ;       Support
-; 
-; CALLING SEQUENCE:	
+;
+; CALLING SEQUENCE:
 ;       result = install_check(gdlidl)
 ;
 ; INPUTS:
@@ -20,14 +20,14 @@ FUNCTION install_check,gdlidl
 ;         running GDL
 ;
 ; OPTIONAL INPUTS:
-;  
+;
 ; KEYWORD PARAMETERS:
 ;
 ; OUTPUTS:
 ;
 ; OPTIONAL OUTPUTS:
 ;       -
-; 
+;
 ; PROCEDURES CALLED:
 ;       WRITENEWTOTEMPLATE
 ;
@@ -35,12 +35,12 @@ FUNCTION install_check,gdlidl
 ;       Written 17-05-2017 P.Kamphuis v1.0
 ;
 ; NOTE:
-;     
+;
 ;-
 
   COMPILE_OPT IDL2
                                 ;IF anything goes wrong in this routine then the installation failed
-  CATCH,Error_status  
+  CATCH,Error_status
   IF  Error_status NE 0. THEN BEGIN
      print, ' '
      print, 'Oops the following went wrong:'
@@ -55,10 +55,10 @@ FUNCTION install_check,gdlidl
   endif
 
 
-  
+
                                 ;Let's first read in the newly fitted parameters
   checkpara=['RADI','SBR','SBR_2','VROT','VROT_2','PA','PA_2','INCL','INCL_2','BMAJ','SDIS','XPOS','XPOS_2','YPOS','VSYS']
-  limits=[0.05,5e-4,5e-4,1,1,1,1,1,1,1e-6,1,1e-4,1e-4,1e-4,0.1]
+  limits=[0.05,5e-4,5e-4,1,1,1,1,1,1,1e-6,1,5e-4,5e-4,5e-4,1.0]
   TemplateFit=1.
   WriteNewToTemplate,TemplateFit,'Installation_Check/Def_Files/Finalmodel.def',ARRAYS=ArraysFit,VARIABLECHANGE=checkpara,/EXTRACT
 
@@ -83,7 +83,7 @@ FUNCTION install_check,gdlidl
   endif else begin
      WriteNewToTemplate,TemplateFit,'Installation_Check/Finalmodel_IDL.def',ARRAYS=ArraysProvided,VARIABLECHANGE=checkpara,/EXTRACT
   ENDELSE
-  IF n_elements(ArraysFIT[*,0]) NE n_elements(ArraysProvided[*,0]) then return,2 
+  IF n_elements(ArraysFIT[*,0]) NE n_elements(ArraysProvided[*,0]) then return,2
   for i=0,n_elements(ArraysFit[0,*])-1 do begin
      diff=TOTAL(ArraysFit[*,i]-ArraysProvided[*,i])/n_elements(ArraysFit[*,0])
      IF diff GT limits[i] then begin
@@ -96,8 +96,8 @@ FUNCTION install_check,gdlidl
         print,' '
         return,2
      ENDIF
-  endfor  
+  endfor
+  ;Let's clean up after the run
+  spawn,'rm -Rf Installation_Check/Def_Files Installation_Check/Log.txt Installation_Check/BasicInfo_NGC_2903.txt Installation_Check/*preprocessed* Installation_Check/Output_N2903.txt Installation_Check/Prev_Log.txt Installation_Check/Overview_Prev.png'
   return,0
 end
-
-  

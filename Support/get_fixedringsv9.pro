@@ -289,7 +289,7 @@ Pro get_fixedringsv9,Parametersin,rings,smooth=smooth,debug=debug,warp_output=wa
                                 ; (iii) thetamut > 15 deg
   diff=ABS(thetain1[*]-thetamut1[*])
   found=0
-  mxdif=1
+  mxdif=1.
   IF  keyword_set(debug) then begin
      print,'This is the difference in disk1'
      print,diff
@@ -382,7 +382,7 @@ Pro get_fixedringsv9,Parametersin,rings,smooth=smooth,debug=debug,warp_output=wa
      close,1
      CD,old_dir
   ENDIF
-  if rings LT 3 then rings=3
+ 
  
   IF NOT keyword_set(smooth) then begin
      IF rings GT fix(n_elements(Parameters[*,0])/2.) then begin
@@ -402,5 +402,7 @@ Pro get_fixedringsv9,Parametersin,rings,smooth=smooth,debug=debug,warp_output=wa
         ENDIF ELSE rings=rings-1
      ENDIF
   ENDELSE
- 
+                                ;And then we always want to take one
+                                ;ring off unless it is smaller than 4
+  IF rings GE 4 then rings=rings-1 else rings=3
 end

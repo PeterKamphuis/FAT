@@ -5,7 +5,8 @@ Pro WriteNewToTemplate,Template,NewFileName,VARIABLES=TemplateVariables,ARRAYS=A
 ;
 ; PURPOSE:
 ;       Routine to write a tirific def file into the template used
-;
+;       !!!!!!!!!!!!!!!!!Be aware it will only write the variables
+;       indicated in VariableChange!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ; CATEGORY:
 ;       Support
 ; 
@@ -99,6 +100,13 @@ Pro WriteNewToTemplate,Template,NewFileName,VARIABLES=TemplateVariables,ARRAYS=A
         tmppos=where(string(VariableChange[varpos[0]]) EQ string(TemplateVariables))
         IF NOT keyword_set(extract) then Template[tmppos]=h
         arr=str_sep(strtrim(strcompress(tmp[1]),2),' ')
+                                ;If we have differing sizes for
+                                ;storing models we need to adapt the array
+        if n_elements(arr) GT n_elements(Arrays[*,varpos]) then begin
+           tmp_array=Arrays
+           Arrays=dblarr(n_elements(arr),n_elements(VariableChange))
+           Arrays[0:n_elements(tmp_array[*,0])-1,*]=tmp_array[*,*]
+        ENDIF
         IF isnumeric(arr[0]) then begin
            Arrays[0:n_elements(arr)-1,varpos]=double(arr)
         ENDIF

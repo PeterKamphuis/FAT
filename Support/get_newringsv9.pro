@@ -60,8 +60,9 @@ Pro get_newringsv9,SBR1in,SBR2in,cutoffin,newrings,INDIVIDUAL=individual,debug=d
   COMPILE_OPT IDL2
   SBR1=SBR1in
   SBR2=SBR2in
-  cutoff=cutoffin
-
+  factor=1.1
+  cutoff=cutoffin*1.25
+  
 
   newrings=n_elements(SBR1)
   toolow=WHERE(SBR1 LT cutoff)
@@ -144,8 +145,7 @@ Pro get_newringsv9,SBR1in,SBR2in,cutoffin,newrings,INDIVIDUAL=individual,debug=d
 
      IF newrings[0] LT 3 then newrings[0]=3
      IF newrings[1] LT 3 then newrings[1]=3 
-                                ; we want make sure that the last
-                                ; rings are not very bright as
+                               
                                 ; we want make sure that the last
                                 ; rings are not very bright as
      check=0                    ; we'll just end up adding rings 
@@ -238,7 +238,7 @@ Pro get_newringsv9,SBR1in,SBR2in,cutoffin,newrings,INDIVIDUAL=individual,debug=d
                                 ;if the low rings are in some other
                                 ;area of the model we do not want to cut
               else: begin
-                 print,linenumber()+'GET_NEWRINGSV9: Nothing to be done.'
+                ; print,linenumber()+'GET_NEWRINGSV9: Nothing to be done.'
               end
            endcase
 
@@ -338,6 +338,7 @@ Pro get_newringsv9,SBR1in,SBR2in,cutoffin,newrings,INDIVIDUAL=individual,debug=d
         ENDIF
      ENDELSE
   ENDELSE
+     
 end
 
 

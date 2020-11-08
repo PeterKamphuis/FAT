@@ -1,4 +1,4 @@
-Pro sbr_check,template,templatevars,sbrarr,sbrarr2,cutoff
+Pro sbr_check,template,templatevars,sbrarr,sbrarr2,cutoff,debug=debug
 
 ;+
 ; NAME:
@@ -40,6 +40,7 @@ Pro sbr_check,template,templatevars,sbrarr,sbrarr2,cutoff
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       15-03-2019 P. Kamphuis; Always write arrays back to template.            
 ;       Written 01-01-2015 P.Kamphuis v1.0
 ;
 ; NOTE:
@@ -65,7 +66,6 @@ Pro sbr_check,template,templatevars,sbrarr,sbrarr2,cutoff
   ENDIF
   tmp=WHERE(SBRarr LT 0)
   IF tmp[0] NE -1 then begin
-     IF tmp[0] EQ 0. then SBRarr[0]=SBRarr[1] 
      for i=0,n_elements(tmp)-1 do begin
         IF tmp[i] NE 0 AND tmp[i] NE n_elements(SBRarr)-1 then SBRarr[tmp[i]]=(SBrarr[tmp[i]-1]+SBRarr[tmp[i]+1])/2.
         IF tmp[i] EQ 0 then SBRarr[tmp[i]]=SBRarr[tmp[i]+1]
@@ -76,7 +76,6 @@ Pro sbr_check,template,templatevars,sbrarr,sbrarr2,cutoff
   ENDIF
   tmp=WHERE(SBRarr2 LT 0)
   IF tmp[0] NE -1 then begin
-     IF tmp[0] EQ 0. then SBRarr2[0]=SBRarr2[1] 
      for i=0,n_elements(tmp)-1 do begin
         IF tmp[i] NE 0 AND tmp[i] NE n_elements(SBRarr2)-1 then SBRarr2[tmp[i]]=(SBrarr2[tmp[i]-1]+SBRarr2[tmp[i]+1])/2.
         IF tmp[i] EQ 0 then SBRarr2[tmp[i]]=SBRarr2[tmp[i]+1]
@@ -88,13 +87,24 @@ Pro sbr_check,template,templatevars,sbrarr,sbrarr2,cutoff
   IF SBRarr[0] GT SBRarr[1] then begin
      SBRarr[0]= SBRarr[1]
      SBRarr2[0]= SBRarr[1]
-     trigger=1
-    
+     trigger=1    
   ENDIF
-  IF trigger then begin
-     tmppos=where('SBR' EQ templatevars)
-     template[tmppos]='SBR='+STRJOIN(strtrim(strcompress(string(SBRarr))),' ')
-     tmppos=where('SBR_2' EQ templatevars)
-     template[tmppos]='SBR_2='+STRJOIN(strtrim(strcompress(string(SBRarr2))),' ')
-  ENDIF
+                                ;Rid the saw tooth in the first ring
+  sbrav=(SBRarr[0]+SBRarr[2])/2.
+  if sbrav LT SBRarr[1]/3. then SBRarr[1] = sbrav
+  sbrav2=(SBRarr2[0]+SBRarr2[2])/2.
+  if sbrav2 LT SBRarr2[1]/3. then SBRarr2[1] = sbrav2
+  
+  
+  SBRarr[0:1]=(SBRarr[0:1]+SBRarr2[0:1])/2.  
+  SBRarr2[0:1]=SBRarr[0:1]
+  if keyword_set(debug) then begin
+     print,'!!!!!!!!!! How Does This Happen !!!!!!!!!!!!!!!!!!!!!'
+     print,SBRarr,SBRarr2
+     print,'!!!!!!!!!! How Does This Happen After !!!!!!!!!!!!!!!!!!!!!'
+  endif
+  tmppos=where('SBR' EQ templatevars)
+  template[tmppos]='SBR= '+STRJOIN(strtrim(strcompress(string(SBRarr))),' ')
+  tmppos=where('SBR_2' EQ templatevars)
+  template[tmppos]='SBR_2= '+STRJOIN(strtrim(strcompress(string(SBRarr2))),' ')
 end

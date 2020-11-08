@@ -1,4 +1,4 @@
-Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixedringsin,REVERSE=rev,NOWEIGHT=noweight,Difference=DDivin,cutoff=cutoffin,arctan=arctanin,debug=debug,nocentral=nocentral,order=order,max_deviation=maxdevin,max_par=PAmaxin,min_par=PAminin,accuracy=accuracy,extending=extending,gdlidl=gdlidl,log=log
+Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixedringsin,REVERSE=rev,NOWEIGHT=noweight,Difference=DDivin,cutoff=cutoffin,arctan=arctanin,debug=debug,nocentral=nocentral,order=order,max_deviation=maxdevin,max_par=PAmaxin,min_par=PAminin,accuracy=accuracy,extending=extending,gdlidl=gdlidl,log=log,ring_spacing=ring_spacing
 
 ;+
 ; NAME:
@@ -70,10 +70,15 @@ Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       25-10-2018 P.Kamphuis; Increased errors for small
+;                              galaxies. Minimum error now
+;                              ddiv/2. Increased the maximum allowed
+;                              endorder to 6.       
 ;       08-03-2017 P.Kamphuis; The reduction of the central point
 ;                              pulls down the central point too much. Hence we will not pull
 ;                              it down with the mean of the outer most point but by the
-;                              following 4 points (Or if less then 4 point the mean of all points  
+;                              following 4 points (Or if less then 4
+;                              point the mean of all points  
 ;       07-03-2017 P.Kamphuis; Improved the error constuction for the
 ;                              inner part of well resolved galaxies  
 ;       30-03-2016 P.Kamphuis; A complete overhaul of this routine
@@ -99,7 +104,7 @@ Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
 ;     
 ;-
   COMPILE_OPT IDL2 
-
+  ;arctanin=1
 ; First thing is to check all the input whether it is reasonable
   centralerrmult=1
   IF KEYWORD_SET(NOCENTRAL) then begin 
@@ -144,6 +149,7 @@ Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
   If n_elements(PAmaxin) GT 0 then PAmax=double(PAmaxin)
   If n_elements(PAminin) GT 0 then PAmin=double(PAminin)
   IF n_elements(accuracy) EQ 0 then accuracy=1.
+  IF n_elements(ring_spacing) EQ 0 then ring_spacing=1.
   IF n_elements(order) EQ 0 then order=dblarr(1)  
   IF accuracy LT 0.1 then accuracy=0.1
   if n_elements(fixedrings) GT 1 then fixedrings=fixedrings[0]
@@ -253,34 +259,36 @@ Pro revised_regularisation_rot,PAin,SBRin,RADIIin,error=errorin,fixedrings=fixed
 ;  calculate the smoothed profiles
   IF n_elements(PA) GT 15 then decline=0.9 else decline=0.8
   PAsmooth=dblarr(n_elements(PA[*]))
-  IF PA[0] EQ 0. then PAsmooth[0]=PA[0] else PAsmooth[0]=(PA[0]+PA[1])/2.                               
-  for j=1,n_elements(PA[*])-2 do begin         
-     PAsmooth[j]=(PA[j-1]+PA[j]+PA[j+1])/3
-     WHILE PAsmooth[j] LT PAsmooth[j-1]*decline do begin
-        IF keyword_set(debug) then begin
-           print,PA[j],PA[j-1],'increasing'
-        ENDIF
-        IF PAsmooth[j] LT 0. then begin
-           IF PAsmooth[j-1] GT 0. then PAsmooth[j]=PAsmooth[j-1] else begin
-              IF n_elements(PAmin) GT 0 then PAsmooth[j]=PAmin*2. else begin
-                 tmpind=WHERE(PAsmooth GT 0.)
-                 if tmpind[0] NE -1 then PAsmooth[j]=MEAN(PAsmooth[tmpind]) else PAsmooth[j]=1.
-              ENDELSE
-           ENDELSE
-           
-        endif else PAsmooth[j]=PAsmooth[j]*1.05
-     ENDWHILE
-  endfor
-  PAsmooth[n_elements(PA[*])-1]=(PA[n_elements(PA[*])-2]+PA[n_elements(PA[*])-1])/2.
-
+  ;IF PA[0] EQ 0. then PAsmooth[0]=PA[0] else PAsmooth[0]=(PA[0]+PA[1])/2.                               
+  ;for j=1,n_elements(PA[*])-2 do begin         
+  ;   PAsmooth[j]=(PA[j-1]+PA[j]+PA[j+1])/3
+  ;   WHILE PAsmooth[j] LT PAsmooth[j-1]*decline do begin
+  ;      IF keyword_set(debug) then begin
+  ;         print,PA[j],PA[j-1],'increasing'
+  ;      ENDIF
+  ;      IF PAsmooth[j] LT 0. then begin
+  ;         IF PAsmooth[j-1] GT 0. then PAsmooth[j]=PAsmooth[j-1] else begin
+  ;            IF n_elements(PAmin) GT 0 then PAsmooth[j]=PAmin*2. else begin
+  ;               tmpind=WHERE(PAsmooth GT 0.)
+  ;               if tmpind[0] NE -1 then PAsmooth[j]=MEAN(PAsmooth[tmpind]) else PAsmooth[j]=1.
+  ;            ENDELSE
+  ;         ENDELSE
+  ;         
+  ;      endif else PAsmooth[j]=PAsmooth[j]*1.05
+  ;   ENDWHILE
+  ;endfor
+  ;PAsmooth[n_elements(PA[*])-1]=(PA[n_elements(PA[*])-2]+PA[n_elements(PA[*])-1])/2.
+  PASmooth = fat_savgol(REVERSE(PA),REVERSE(RADII),/Rotation_Curve)
+  PASmooth = REVERSE(PAsmooth)
                                 ;If arctan is 1 then we only want smooth and return the new values
   IF arctan EQ 1 OR n_elements(PA) LE 5 then begin
      newPA=PAsmooth
+     if fixedrings GT 1 then newPA[0:fixedrings-1]=PA[fixedrings-1]
      errors=ABS(PA[*]-PAsmooth[*])
      fitstat=-1.
      arctan=1
      finorder=!values.f_nan
-     goto,cleanup
+     goto,smoothonly
   ENDIF        
                                 ;Then we will calculate the
                                 ;errors. The base for this is the
@@ -290,7 +298,7 @@ restartall:
   IF keyword_set(noweight) then begin
      errors[*]=ddiv[0]
   ENDIF ELSE BEGIN
-     IF n_elements(RADII) LT 15 then ratio=cutoff[0:n_elements(SBR)-1]/(SBR[*]*RADII[*]) else ratio=cutoff[0:n_elements(SBR)-1]/SBR
+     IF n_elements(RADII) LT 15 then ratio=cutoff[0:n_elements(SBR)-1]/(SQRT(SBR[*])*RADII[*]) else ratio=cutoff[0:n_elements(SBR)-1]/SBR
      tmp=MAX(ratio,min=norm)
      tmp=WHERE(ratio EQ norm)
      ratio=ratio/norm
@@ -325,26 +333,26 @@ restartall:
      ENDIF
                                 ;If there are rings that are fixed we
                                 ;will set the error to that of the
-                                ;last unfixed ring. adittionally if
+                                ;last unfixed ring/2.. adittionally if
                                 ;we have any errors less than ddiv
                                 ;they will also be set to ddiv
      if n_elements(fixedrings) GT 0 then begin
-       
-           errors[0:fixedrings-1]=errors[fixedrings]
+        
+        
                                 ;if the errors are less than ddiv in
                                 ;the inner half set them to ddiv in
                                 ;the outer half we average between the
                                 ;surrounding errors
-           tmp=WHERE(errors[0:fix(n_elements(errors[*])/2.)] LT DDiv)
-           IF tmp[0] NE -1 then errors[tmp]=DDiv
-           tmp=WHERE(errors[fix(n_elements(errors[*])/2.+1):n_elements(errors[*])-1] LT DDiv)
-           IF tmp[0] NE -1 then begin
-              tmp=tmp+fix(n_elements(errors[*])/2.+1)
-              for j=0,n_elements(tmp)-1 do begin
-                 IF tmp[j] LT n_elements(errors[*])-1 then errors[tmp[j]]=(errors[fix(tmp[j]-1)]+errors[fix(tmp[j]+1)])/2. else errors[tmp[j]]=errors[fix(tmp[j]-1)]
-              endfor
-           ENDIF
-       
+        tmp=WHERE(errors[0:fix(n_elements(errors[*])/2.)] LT DDiv)
+        IF tmp[0] NE -1 then errors[tmp]=DDiv
+        tmp=WHERE(errors[fix(n_elements(errors[*])/2.+1):n_elements(errors[*])-1] LT DDiv)
+        IF tmp[0] NE -1 then begin
+           tmp=tmp+fix(n_elements(errors[*])/2.+1)
+           for j=0,n_elements(tmp)-1 do begin
+              IF tmp[j] LT n_elements(errors[*])-1 then errors[tmp[j]]=(errors[fix(tmp[j]-1)]+errors[fix(tmp[j]+1)])/2. else errors[tmp[j]]=errors[fix(tmp[j]-1)]
+           endfor
+        ENDIF        
+        errors[0:fixedrings-1]=errors[fixedrings]/2.
         IF keyword_set(debug) then begin
            print,'The errors modified for the rings that are fixed'
            print,errors
@@ -539,8 +547,8 @@ restartall:
         IF tmp[0] NE -1 then errors[tmp]=3*maxdev[0]
      ENDIF
   ENDIF
-  tmp=WHERE(errors LT ddiv)
-  IF tmp[0] NE -1 then errors[tmp]=ddiv
+  tmp=WHERE(errors LT ddiv/2.)
+  IF tmp[0] NE -1 then errors[tmp]=ddiv/2.
   IF ~keyword_set(nocentral) then errors[n_elements(errors)-2:n_elements(errors)-1]=maxdev[0]/2.
   errors[n_elements(errors)-1]=errors[n_elements(errors)-1]*centralerrmult
   IF keyword_set(debug) then begin
@@ -669,10 +677,10 @@ refit:
         print,'This is our beginorder',beginorder
      ENDIF
   endif else begin
-     endorder=n_elements(PA[*])-2
+     endorder=n_elements(PA[*])-2-fixedrings
      maxendorder=endorder
      IF endorder LT 2 then endorder=2
-     IF endorder GT 5 then endorder=5
+     IF endorder GT 7 then endorder=7
      beginorder=2
      IF keyword_set(debug) then begin
         print,'this is the fixedrings',fixedrings
@@ -709,7 +717,7 @@ refit:
             
         mcerrors[*,order-beginorder]=shifterrors[*]
      endelse
-     IF order GT 5 then  Chi[order-beginorder]=tmp*order
+     IF order GE 5 then  Chi[order-beginorder]=tmp*(1.+(order/5.)/ABS(n_elements(fitPA)-6.))
      IF keyword_set(debug) then begin
         print,'Printing reduced chi, order, Reg red Chi'
         print,tmp,order,Chi[order-beginorder]
@@ -879,13 +887,13 @@ refit:
         newPA[*]= newPA[*]+newPAcoeff[i]*RADII[*]^i 
      endfor
      IF (TOTAL(newPA[n_elements(newPA)-2:n_elements(newPA)-1])/2. GT 150 AND newPA[n_elements(newPA)-1] GT newPA[n_elements(newPA)-2] AND newPA[n_elements(newPA)-1] GT newPA[n_elements(newPA)-3]) OR $
-        (MEAN(newPA[0:n_elements(newPA)-1]) GT 250.) then begin
+        (MEAN(newPA[0:n_elements(newPA)-1]) GT 200.) then begin
         x=0
         WHILE newPA[x] GT  newPA[x+1] AND x LT fix(n_elements(newPA)/2) DO x++
         IF x GT 0 then begin
            newPA[0:x]=newPA[x]       
         ENDIF ELSE BEGIN
-           IF MEAN(newPA[1:n_elements(newPA)-1]) GT 250. then begin
+           IF MEAN(newPA[1:n_elements(newPA)-1]) GT 200. then begin
               min=MAX(newPA)
               xind=0
               for x=0,fix(n_elements(newPA)/2)-1 do begin
@@ -902,7 +910,7 @@ refit:
         ENDELSE
      ENDIF
      locmax=WHERE(MAX(PA) EQ PA)
-     if locmax[n_elements(locmax)-1] GT n_elements(PA)/2. then newPA[0:fixedrings]=newPA[fixedrings+1]
+     if locmax[n_elements(locmax)-1] GT n_elements(PA)/2. then newPA[0:fixedrings]=newPA[fixedrings]
      endch=floor(n_elements(PA)/3.)
      IF endch GT 3 then endch=3
      decline=0
@@ -944,15 +952,20 @@ refit:
      ENDIF
   ENDIF
  
-  IF keyword_set(nocentral) AND n_elements(PAin) GT 15. then newPA[0:fixedrings]=newPA[fixedrings+1]
+  IF keyword_set(nocentral) then begin
+     if (newPA[n_elements(newPA)-1] LT newPA[n_elements(newPA)-2] or finorder LT 4) and newPA[n_elements(newPA)-1] GT PAin[1] then  newPA[n_elements(newPA)-1] = PAin[1] 
+     if n_elements(PAin) GT 15. then newPA[0:fixedrings]=newPA[fixedrings+1]
+  endif
  
-  for j=0,n_elements(PA[*])-1 do errors[j]=MAX([errors[j],ABS(PA[j]-newPA[j]),ddiv])
-  
+  for j=0,n_elements(PA[*])-1 do errors[j]=MAX([errors[j],ABS(PAin[j]-newPA[j]),ddiv])
+  IF n_elements(newPA)*ring_spacing LT 4. then begin
+       errors=errors*(5./(n_elements(newPA)*ring_spacing))^0.1
+  ENDIF
   if keyword_set(debug) then begin
      print,'The estimated  errors before the end'
      print,errors
   ENDIF
- 
+  smoothonly:
   tmp=WHERE(FINITE(newPA) EQ 0.)
   IF tmp[0] NE -1 then newPA[WHERE(FINITE(newPA) EQ 0.)]=PAin[WHERE(FINITE(newPA) EQ 0.)]
   IF n_elements(pamin) gt 0 then tmp=WHERE(PA[*]-errors[*] LT pamin) else tmp=-1
@@ -969,15 +982,16 @@ refit:
   errors[n_elements(errors)-1]= errors[n_elements(errors)-1]*centralerrmult
   If errors[0] LT errors[1] then errors[0]=errors[1]
   IF n_elements(errorin) NE 0 then errorin=REVERSE(errors)
-  
+     
   order=finorder
  
-  
+
   PAin=REVERSE(newPA)
   IF KEYWORD_SET(NOCENTRAL) then begin
      PAin=[PA0,PAin]
      IF n_elements(errorin) NE 0 then errorin=[errorin[0],errorin]
   ENDIF
+  PAin[0]=0.
    if keyword_set(debug) AND n_elements(errorin) NE 0  then begin
      print,'The estimated  errors'
      print,errorin

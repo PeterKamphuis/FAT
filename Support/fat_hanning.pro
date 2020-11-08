@@ -1,4 +1,4 @@
-Function fat_hanning,SBRin,rings=rings
+Function fat_hanning,SBRin,Radin,rings=rings
 
 ;+
 ; NAME:
@@ -35,6 +35,9 @@ Function fat_hanning,SBRin,rings=rings
 ;      
 ;
 ; MODIFICATION HISTORY:
+;       21-12-2018 P. Kamphuis ; Excluded the central point from
+;                                smoothing but extrapolate it from the
+;                                rest of profile.   
 ;       Written 16-06-2017 by P.Kamphuis, S. Kurapati
 ;
 ; NOTE:
@@ -42,8 +45,8 @@ Function fat_hanning,SBRin,rings=rings
 ;-
   COMPILE_OPT IDL2
   DEFSYSV, '!GDL', EXISTS = gdlidl ;is 1 when running GDL
- ;  goto,skipcatch
-  CATCH,Error_status  
+  goto,skipcatch
+  CATCH,Error_status
   IF  Error_status NE 0. THEN BEGIN
     
      print, ' '
@@ -79,7 +82,8 @@ Function fat_hanning,SBRin,rings=rings
      stop
   ENDIF
   skipcatch:
-  SBR=SBRin
+  ;We will initially ignore the central point.
+ 
                                 ;If we provide a number of valid rings
                                 ;then we want to set all rings outside
                                 ;that to 0.
@@ -87,12 +91,35 @@ Function fat_hanning,SBRin,rings=rings
 ;     IF rings[0] LT n_elements(SBR) then SBR[rings[0]-1:n_elements(SBR)-1]=0.
 ;  ENDIF
   
-  SBRout=dblarr(n_elements(SBR))
+
   case 1 of
-     n_elements(SBR) LE 3:return,SBR
-     n_elements(SBR) LT 15:points=5
-     else:points=7
+     n_elements(SBRin) LE 4:begin
+        SBR = SBRin
+        SBR[0]=(SBRin[0]+SBRin[1]*2.)/3.
+        
+        case  n_elements(SBRin) of
+           2:begin
+              SBR[1]=SBRin[1]
+           end
+           3:begin
+              SBR[1]=(SBRin[0]+SBRin[1]*2+SBRin[2]*2.)/5.
+              SBR[2]=(SBRin[1]+SBRin[2]*2)/3.
+           end
+           4:begin
+              SBR[1]=(SBRin[0]+SBRin[1]*2+SBRin[2]*2.)/5.
+              SBR[2]=(SBRin[1]+SBRin[2]+SBRin[3])/3.
+              SBR[3]=(SBRin[2]+SBRin[3]*2.)/3.
+           end
+           else:print,'This should never happen'
+        endcase
+        return,SBR
+     end
+     n_elements(SBRin) LT 15: points=5
+     else: points=7
   endcase
+  SBR=SBRin[0:n_elements(SBRin)-1]
+  IF SBR[0] GT SBR[1] then SBR[0]=(SBRin[0]+SBRin[1]*2.)/3.
+  SBRout=dblarr(n_elements(SBR))
   window=dblarr(points)
   xaxis=findgen(points)
   window=0.5*(1-Cos(!pi*2.*xaxis[*]/(points-1)))
@@ -114,6 +141,19 @@ Function fat_hanning,SBRin,rings=rings
   ENDIF
   tmp=WHERE(SBRout LT 1e-8)
   if tmp[0] NE -1 then SBRout[tmp]=1e-16
-  
+
+                                ;Finally we need to add the central
+                                ;point again which we will merely
+                                ;extrapolate from the profile
+  tmp=SBRout[1:n_elements(SBRin)-1]
+  SBRout=tmp
+  rad=radin[1:n_elements(SBRin)-1]
+  tmp=1
+  interpolate,SBRout,RAD,newradii=radin,output=tmp
+  SBRout=tmp
+  WHILE n_elements(SBRout) NE n_elements(SBRin) do begin
+     IF n_elements(SBRout) LT n_elements(SBRin) then SBROut=[SBRout[0],SBRout]
+     IF n_elements(SBRout) GT n_elements(SBRin) then SBROut=SBRout[1:n_elements(SBRin)-1]
+  ENDWHILE
   return,SBRout
 end
