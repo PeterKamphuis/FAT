@@ -10,13 +10,13 @@ Pro obtain_pa_incl,map,PA,incl,center,EXTENT=extent,NOISE=noise,BEAM=beam,DEBUG=
 ;
 ; CATEGORY:
 ;       Support
-; 
+;
 ; CALLING SEQUENCE:
 ;       OBTAIN_PA_INCL,map,inPA,inclination,center,extend=extend,noise=noise,beam=beam,/DEBUG
 ;
 ;
 ; INPUTS:
-;       map  = a moment 0 map of the galaxy for which to determine the inclination 
+;       map  = a moment 0 map of the galaxy for which to determine the inclination
 ;       inPA = The PA. It is taken from north counter clockwise in
 ;       degrees. Either a 1D to 2D array. In case of the latter the
 ;       second value should be the error on the PA if omitted an error
@@ -24,7 +24,7 @@ Pro obtain_pa_incl,map,PA,incl,center,EXTENT=extent,NOISE=noise,BEAM=beam,DEBUG=
 ;       center = center of the galaxy in pixels
 ;
 ; OPTIONAL INPUTS:
-;       - 
+;       -
 ;
 ; KEYWORD PARAMETERS:
 ;       EXTEND = If set this will return the mean with of the profiles
@@ -40,17 +40,17 @@ Pro obtain_pa_incl,map,PA,incl,center,EXTENT=extent,NOISE=noise,BEAM=beam,DEBUG=
 ;
 ; OPTIONAL OUTPUTS:
 ;       -
-; 
+;
 ; PROCEDURES CALLED:
 ;       INT_PROFILEV2, INTERPOLATE, GAUSSFIT()
 ;
 ; EXAMPLE:
-;      
+;
 ;
 ; MODIFICATION HISTORY:
 ;       21-12-2018 P.Kamphuis; Added a condition where if the Final
-;                              products are non-finite we set the output to 0.  
-;       05-10-2018 P.Kamphuis; Starts from obtain_inclinationv8  
+;                              products are non-finite we set the output to 0.
+;       05-10-2018 P.Kamphuis; Starts from obtain_inclinationv8
 ;       09-05-2017 P.Kamphuis; If no values could be found the code
 ;                              would add random values to the errors.
 ;                              This introduced a randomness on the
@@ -58,7 +58,7 @@ Pro obtain_pa_incl,map,PA,incl,center,EXTENT=extent,NOISE=noise,BEAM=beam,DEBUG=
 ;                              values. Have changed this to set the
 ;                              errors in this case with a wide spread
 ;                              thus increasing the final error towards
-;                              90.  
+;                              90.
 ;       02-05-2017 P.Kamphuis; There was a bug where the profile was
 ;                              determined every tenth of a pixel but
 ;                              the beam correction was still the beam
@@ -66,26 +66,29 @@ Pro obtain_pa_incl,map,PA,incl,center,EXTENT=extent,NOISE=noise,BEAM=beam,DEBUG=
 ;                              for small galaxies were far off. Additionally,
 ;                              as the beam smearing leads to lower
 ;                              inclinations already we do not apply the
-;                              -2 correction to small galaxies.      
+;                              -2 correction to small galaxies.
 ;       28-04-2017 P.Kamphuis; In case of a failed fit we now take a
 ;                              inclination from the ratio of the shape
-;                              of the moment 0 map.  
+;                              of the moment 0 map.
 ;       02-06-2016 P.Kamphuis; Added GDL compatibility by replacing
-;                              GAUSSFIT with MPFITFUN   
-;       18-02-2016 P.Kamphuis; Replaced sigma with STDDEV   
+;                              GAUSSFIT with MPFITFUN
+;       18-02-2016 P.Kamphuis; Replaced sigma with STDDEV
 ;       Written 01-01-2015 P.Kamphuis v1.0
 ;
 ; NOTE:
 ;       please note that at low inclinations e.g < 10 deg there is a
 ;       random element to the determination due to the axis width
 ;       falling into the same pixels.
-;     
+;
 ;-
+  IF keyword_set(debug) then begin
+     print,'We have started obtain_pa_incl'
 
+  ENDIF
 
   IF n_elements(gdlidl) EQ 0 then gdlidl=0
   IF n_elements(beam) EQ 0 then beam=1
-  IF n_elements(beam) EQ 1 then beam=[beam,beam] 
+  IF n_elements(beam) EQ 1 then beam=[beam,beam]
 
   corrected_map = 0.
   space2=1.
@@ -107,6 +110,7 @@ use_corrected:
 
   indexmax=WHERE(ratios EQ maxrat)
   indexmin=where(ratios EQ minrat)
+
   IF keyword_set(debug) then begin
      print,'indexmin'
      print,indexmin
@@ -150,14 +154,14 @@ wrongpa:
      if miss EQ 0 then begin
         pa = inipa
         miss = 1
-       
+
         goto,wrongpa
      endif else begin
         goto,failedattempt
      endelse
-        
+
   ENDIF
-  
+
   maxrat=MAX(ratios[tmp],min=minrat)
   indexmax=WHERE(ratios EQ maxrat)
   indexmin=where(ratios EQ minrat)
@@ -188,6 +192,7 @@ wrongpa:
      goto, wrongpa
   ENDIF
   if n_elements(indexmin) GT 1 then indexmin=indexmin[fix(n_elements(indexmin)/2.)]
+
   pa=dblarr(2)
   incl=dblarr(2)
 
@@ -196,6 +201,7 @@ wrongpa:
   IF N_elements(tmp) GT 3 then begin
      pa[1]=ABS(angles[tmp[n_elements(tmp)-1]]-angles[tmp[0]])/2.
   ENDIF ELSE BEGIN
+     if indexmin LT 1 OR indexmax GT n_elements(ratios)-2 then goto,failedattempt
      pa[1]=ABS(angles[indexmin-1]-angles[indexmin+1])/2.
   ENDELSE
   IF keyword_set(debug) then print,'This is the diff max min,'+string(maxrat-minrat )
@@ -214,7 +220,7 @@ wrongpa:
   endif
   IF minrat LT 0.204 then  minrat=0.204
   IF 1./maxrat LT 0.204 then  maxrat=1./0.204
-  
+
   incl[0]=MEAN([double(acos(SQRT((minrat^2-0.2^2)/0.96))*180./!pi+2.),double(acos(SQRT(((1./maxrat)^2-0.2^2)/0.96))*180./!pi+2.)])
   IF keyword_set(debug) then begin
      print,'hjkg understyand no?>'
@@ -242,7 +248,7 @@ wrongpa:
 ;inhomogeneities so we should try to correct for them
 ;let's not do inclinations lower than 1
 
-  IF incl[1] LT 2 AND  incl[0] GE 20 then incl[1]=2. 
+  IF incl[1] LT 2 AND  incl[0] GE 20 then incl[1]=2.
   IF incl[1] LT 2 AND  incl[0] LT 20 then incl[1]=5.
   extent=TOTAL(tmpwidth[indexmin-1:indexmin+1])/30.
   If incl[0] LT 40. AND incl[1] LT abs(40.-incl[0])/2. then incl[1]=abs(40.-incl[0])/2.
@@ -255,7 +261,7 @@ wrongpa:
                                 ;we assume that the initial values are
                                 ;accurate enough to use them to
                                 ;deproject and rotate the map
-     
+
      result=ROT(map, pa[0]-90,1.0,center[0],center[1],CUBIC=-0.5,/PIVOT)
      IF keyword_set(debug) then begin
         mkhdr,hed,result
@@ -274,27 +280,27 @@ wrongpa:
         prof[*]=result[i,*]
         newprof=1
         interpolate,prof,axis,newradii=newaxis,output=newprof
-        dep_map[i,*]=newprof     
+        dep_map[i,*]=newprof
      endfor
-     
 
-     
+
+
                                 ;Now let's rotate our extract
                                 ;line profile s at all angles
                                 ;and create a median profile deprojected map and average out any inhomgeneities
 
-     
+
      IF keyword_set(debug) then writefits,'dep_map.fits',dep_map,hed
 
      angles=(findgen(fix(355./5.)))*5.
-     
+
      maps=dblarr(n_elements(angles)+1,n_elements(dep_map[*,0]),n_elements(dep_map[0,*]))
      maps[0,*,*]=dep_map[*,*]
      for i=0,n_elements(angles)-1 do begin
         result=ROT(dep_map, angles[i],1.0,center[0],center[1],CUBIC=-0.5,/PIVOT)
         maps[i,*,*]=result[*,*]
      endfor
-     
+
      rot_map=dblarr(n_elements(dep_map[*,0]),n_elements(dep_map[0,*]))
      for i=0,n_elements(rot_map[*,0])-1 do begin
         for j=0,n_elements(rot_map[0,*])-1 do begin
@@ -306,15 +312,15 @@ wrongpa:
      IF keyword_set(debug) then writefits,'rot_map.fits',rot_map,hed
                                 ;Let's subtract this minimum
                                 ;map from the dep map
-     
+
      res_map=dep_map-rot_map
-     
+
      tmp=WHERE(res_map LT 2.*MEDIAN(res_map[WHERE(res_map GT 0.)]))
      res_map[tmp]=0.
      res_map=fat_smooth(res_map,3,/GAUSSIAN)
      IF keyword_set(debug) then writefits,'res_map.fits',res_map,hed
 
-     
+
                                 ;then we deproject the circular map
      inc_map=rot_map
      inc_map[*]=0.
@@ -324,20 +330,20 @@ wrongpa:
         prof[*]=res_map[i,*]
         newprof=1
         interpolate,prof,axis,newradii=newaxis,output=newprof
-        inc_map[i,*]=newprof     
+        inc_map[i,*]=newprof
      endfor
      IF keyword_set(debug) then writefits,'inc_map.fits',inc_map,hed
                                 ;Let's get a correction factor
                                 ;by measuring the inclination
                                 ;of the features
 
-     
 
 
 
-     
+
+
                                 ;and we rotate it back to the estimated pa
-     
+
      in_map=ROT(inc_map, -1*pa[0]-90,1.0,center[0],center[1],CUBIC=-0.5,/PIVOT)
      IF keyword_set(debug) then writefits,'corr_res_map.fits',in_map,hed
                                 ;We need to check whether we have
@@ -349,7 +355,7 @@ wrongpa:
      ENDIF
      IF MEAN(in_map[tmp]) GT noise and n_elements(tmp) GT n_elements(tmpinmap)*0.075 then begin
 
-     
+
                                 ;Let's get the inclination and
                                 ;pa from the inhomogeneities.
         ratios=obtain_ratios(angles,in_map,center=center,gdlidl=gdlidl,noise=MAX(in_map)/20.,beam=beam)
@@ -358,26 +364,26 @@ wrongpa:
         indexmax=WHERE(ratios EQ maxrat)
         indexmin=where(ratios EQ minrat)
         pa_in=MEAN([angles[indexmax]-90,angles[indexmin]])
-     
+
         incl_in=MEAN([double(acos(SQRT((minrat^2-0.2^2)/0.96))*180./!pi+2.),double(acos(SQRT(((1./maxrat)^2-0.2^2)/0.96))*180./!pi+2.)])
         if keyword_set(debug) then begin
            print,'These are the pa and incl of the inhomogenieties'
            print,pa_in, incl_in
         endif
-           
+
         tmp=WHERE(map NE 0.)
         bright_in=MEAN(in_map[tmp])
         map=map-in_map
         bright=MEAN(map[tmp])
                                 ;map=fat_smooth(map,beam[0],/GAUSSIAN)
         IF keyword_set(debug) then writefits,'corr_map.fits',map,hed
-     
-        space2=space2/2.      
+
+        space2=space2/2.
         corrected_map++
         goto,use_corrected
-     ENDIF 
-  endif 
-  
+     ENDIF
+  endif
+
 ;If we looked for inhomogeneties we want to correct
   if corrected_map EQ 1  then begin
      IF keyword_set(debug) then begin
@@ -397,9 +403,9 @@ wrongpa:
         pa[1]=pa[1]+5.
         incl[1]=incl[1]+10.
      ENDELSE
-     
-  endif 
-  
+
+  endif
+
 
 
   IF FINITE(TOTAL([PA,incl])) EQ 0 then begin
@@ -408,9 +414,3 @@ wrongpa:
      incl=[0.,0.]
   ENDIF
 end
-
-
-
-
-
-

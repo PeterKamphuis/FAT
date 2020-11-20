@@ -1,6 +1,6 @@
-Pro organize_output,names,version,directories
+Pro organize_output,names,version,allnew,directories
 
-    
+
 ;+
 ; NAME:
 ;       ORGANIZE_OUTPUT
@@ -10,7 +10,7 @@ Pro organize_output,names,version,directories
 ;
 ; CATEGORY:
 ;       Support
-; 
+;
 ; CALLING SEQUENCE:
 ;       ORGANIZE_OUTPUT,names,version,directories
 ;
@@ -27,7 +27,7 @@ Pro organize_output,names,version,directories
 ;      all other output. 5 indicates a failed fit clean up. >6 is the same as 0. Residuals are created for
 ;      all cases where the fits files are maintained. If 0.5 is added
 ;      the final fit was the first fit.
-;      directories = the directories to organize things into.   
+;      directories = the directories to organize things into.
 ;
 ; OPTIONAL INPUTS:
 ;       -
@@ -39,22 +39,22 @@ Pro organize_output,names,version,directories
 ;
 ; OPTIONAL OUTPUTS:
 ;       -
-; 
+;
 ; PROCEDURES CALLED:
-;       
+;
 ;
 ; EXAMPLE:
-;      
+;
 ;
 ; MODIFICATION HISTORY:
 ;       Written 24-07-2015 P.Kamphuis v1.0
 ;
 ; NOTE:
-;     
+;
 ;-
   COMPILE_OPT IDL2
   for index=0,n_elements(directories)-1 do begin
-     
+
      exist=FILE_TEST(directories[index],/DIRECTORY)
      IF exist EQ 0 then spawn,'mkdir '+directories[index],isthere
      case directories[index] of
@@ -113,9 +113,14 @@ Pro organize_output,names,version,directories
         end
         'Sofia_Output':begin
            check=str_sep(names[3],'/')
-           IF FILE_TEST(names[3]+'.fits') AND check[0] NE 'Sofia_Output' then spawn,'mv '+names[3]+'.fits Sofia_Output/'
-           check=str_sep(names[5],'/')
-           IF FILE_TEST(names[5]) AND check[0] NE 'Sofia_Output' then spawn,'mv '+names[5]+' Sofia_Output/'
+           check2=str_sep(names[5],'/')
+           IF allnew EQ 2 THEN BEGIN
+              IF FILE_TEST(names[3]+'.fits') AND check[0] NE 'Sofia_Output' then spawn,'cp '+names[3]+'.fits Sofia_Output/'
+              IF FILE_TEST(names[5]) AND check2[0] NE 'Sofia_Output' then spawn,'cp '+names[5]+' Sofia_Output/'
+           ENDIF ELSE Begin
+              IF FILE_TEST(names[3]+'.fits') AND check[0] NE 'Sofia_Output' then spawn,'mv '+names[3]+'.fits Sofia_Output/'
+              IF FILE_TEST(names[5]) AND check2[0] NE 'Sofia_Output' then spawn,'mv '+names[5]+' Sofia_Output/'
+           ENDELSE  
            spawn,'ls Sofia_Output',filled
            IF filled[0] EQ '' then spawn,'rm -Rf Sofia_Output'
         end
@@ -180,7 +185,7 @@ Pro organize_output,names,version,directories
                  endfor
               endfor
            ENDELSE
-          
+
            IF FILE_TEST('progress1.txt') then spawn,'mv progress1.txt Intermediate/',isthere
            IF FILE_TEST('progress2.txt') then spawn,'mv progress2.txt Intermediate/',isthere
            IF FILE_TEST('sofia_input.txt') then spawn,'mv sofia_input.txt Intermediate/',isthere
@@ -190,7 +195,7 @@ Pro organize_output,names,version,directories
         end
         'Def_Files':begin
       ;     spawn,'mv *.def Def_Files/',isthere
-           IF fix(version) EQ version then begin 
+           IF fix(version) EQ version then begin
               IF FILE_TEST('1stfit.def') then spawn,'mv 1stfit.def Def_Files/No_Warp.def',isthere
               IF FILE_TEST('1stfit_opt.def') then spawn,'mv 1stfit_opt.def Def_Files/No_Warp_opt.def',isthere
               IF FILE_TEST('1stfitold.def') then spawn,'mv 1stfitold.def Def_Files/No_Warp_prev.def',isthere

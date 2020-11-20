@@ -1,4 +1,4 @@
-Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishafter=finishafter,debug=debug,fixedpars=fixedpars
+Pro book_keeping,filenames,version,distance,gdlidl,allnew,log=log,noise=noise,finishafter=finishafter,debug=debug,fixedpars=fixedpars
 
 ;+
 ; NAME:
@@ -76,7 +76,7 @@ Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishaft
      print,filenames
   endif
   IF version NE 5 AND finishafter NE 0 then create_residuals,filenames,version
-  organize_output,filenames,version, ['Optimized','Intermediate','Finalmodel','No_Warp','Moments','PV-Diagrams','Sofia_Output']
+  organize_output,filenames,version,allnew, ['Optimized','Intermediate','Finalmodel','No_Warp','Moments','PV-Diagrams','Sofia_Output']
   IF version NE 5 AND finishafter NE 0 then overview_plot,distance,gdlidl,noise=noise,finishafter=finishafter,filenames=filenames,version=version,fixedpars=fixedpars
   IF size(log,/TYPE) EQ 7 then begin
      openu,66,log,/APPEND
@@ -102,7 +102,7 @@ Pro book_keeping,filenames,version,distance,gdlidl,log=log,noise=noise,finishaft
               printf,66,linenumber()+'BOOK_KEEPING: rm -Rf Optimized'
               close,66
            endif
-           spawn,'rm -f No_Warp/No_Warp.log Intermediate/No_Warp_first_correct_center.log Intermediate/No_Warp_prev.log Finalmodel/Finalmodel.log Intermediate/Finalmodel_sloped.log Intermediate/Finalmodel_prev.log Intermediate/Finalmodel_uncorrected.log Intermediate/Finalmodel_unsmoothed.log Intermediate/tirific.def',isthere 
+           spawn,'rm -f No_Warp/No_Warp.log Intermediate/No_Warp_first_correct_center.log Intermediate/No_Warp_prev.log Finalmodel/Finalmodel.log Intermediate/Finalmodel_sloped.log Intermediate/Finalmodel_prev.log Intermediate/Finalmodel_uncorrected.log Intermediate/Finalmodel_unsmoothed.log Intermediate/tirific.def',isthere
            IF size(log,/TYPE) EQ 7 then begin
               openu,66,log,/APPEND
               printf,66,linenumber()+'BOOK_KEEPING: rm -f No_Warp/No_Warp.log Intermediate/No_Warp_first_correct_center.log Intermediate/No_Warp_prev.log Finalmodel/Finalmodel.log Intermediate/Finalmodel_sloped.log Intermediate/Finalmodel_prev.log Intermediate/Finalmodel_uncorrected.log Intermediate/Finalmodel_unsmoothed.log Intermediate/sofia_input.txt Intermediate/tirific.def'
