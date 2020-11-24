@@ -132,7 +132,7 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
         print,linenumber()+'CLEAN_HEADER: We have set it to '+veltype+'. Please ensure that is correct.'
      ENDELSE
   ENDIF
-  IF veltype NE 'M/S' and veltype NE 'KM/S' then BEGIN
+  IF STRUPCASE(veltype) NE 'M/S' and STRUPCASE(veltype) NE 'KM/S' then BEGIN
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         printf,66,linenumber()+'CLEAN_HEADER: Your header has an unrecognized velocity unit'
