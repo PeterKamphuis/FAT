@@ -1609,7 +1609,7 @@ noconfig:
      ;ENDIF
                                 ;Now let's obtain a initial pa
                                 ;and inclination for the galaxy
-     obtain_pa_incl,moment0map,newPA,newinclination,[RApix[0],DECpix[0]],NOISE=momnoise,BEAM=catmajbeam[i]/(pixelsize*3600.),gdlidl=gdlidl,extent=noringspix
+     obtain_pa_incl,moment0map,newPA,newinclination,[RApix[0],DECpix[0]],NOISE=momnoise,BEAM=catmajbeam[i]/(pixelsize*3600.),gdlidl=gdlidl,extent=noringspix,/debug
 
      IF TOTAL([newPA,newinclination]) EQ 0. then begin
         comment = "No initial estimates. Likely the source is too faint."
