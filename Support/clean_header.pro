@@ -132,7 +132,24 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
         print,linenumber()+'CLEAN_HEADER: We have set it to '+veltype+'. Please ensure that is correct.'
      ENDELSE
   ENDIF
-
+  IF veltype NE 'M/S' and veltype NE 'KM/S' then BEGIN
+     IF size(log,/TYPE) EQ 7 then begin
+        openu,66,log,/APPEND
+        printf,66,linenumber()+'CLEAN_HEADER: Your header has an unrecognized velocity unit'
+        printf,66,linenumber()+'CLEAN_HEADER: Please provide us with a decent cube with proper units'
+        close,66
+     ENDIF ELSE BEGIN
+        print,linenumber()+'CLEAN_HEADER: Your header has an unrecognized velocity unit'
+        print,linenumber()+'CLEAN_HEADER: Please provide us with a decent cube with proper units'
+     ENDELSE
+     comment = 'The Cube is not arranged properly'
+     commentlen='A'+strtrim(string(strlen(comment)),2)
+     openu,1,outputcatalogue,/APPEND
+     printf,1,Dir,strtrim(string(0),2),strtrim(string(0),2),comment,format='("",('+dirformat+')," ",2(A6),"  ",('+commentlen+'))'
+     close,1
+     writecube=2
+     goto,finishup
+  ENDIF
   IF STRUPCASE(strtrim(velproj,2)) NE 'VELO-HEL' AND $
      STRUPCASE(strtrim(velproj,2)) NE 'VELO-LSR' AND $
      STRUPCASE(strtrim(velproj,2)) NE 'VELO' AND $

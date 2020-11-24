@@ -102,7 +102,7 @@ use_corrected:
 ;determine the PAs
   space=5
   angles=findgen(fix(180/space))*space
-  ratios = obtain_ratios(angles,map,center=center,gdlidl=gdlidl,noise=noise,beam=beam,/debug)
+  ratios = obtain_ratios(angles,map,center=center,gdlidl=gdlidl,noise=noise,beam=beam)
   IF TOTAL(ratios) EQ 0 then goto,failedattempt
 
   tmp=WHERE(ratios GT 0.)
@@ -144,7 +144,7 @@ wrongpa:
      print,angles
      print,'done angles'
   ENDIF
-  ratios=obtain_ratios(angles,map,center=center,MAJ_AXIS=tmpwidth,gdlidl=gdlidl,noise=noise,beam=beam,/debug)
+  ratios=obtain_ratios(angles,map,center=center,MAJ_AXIS=tmpwidth,gdlidl=gdlidl,noise=noise,beam=beam)
   IF TOTAL(ratios) EQ n_elements(ratios) then BEGIN
     IF keyword_set(debug) then begin
        print,'All ratios are one this means the sources is unresolved'
@@ -364,7 +364,7 @@ wrongpa:
 
                                 ;Let's get the inclination and
                                 ;pa from the inhomogeneities.
-        ratios=obtain_ratios(angles,in_map,center=center,gdlidl=gdlidl,noise=MAX(in_map)/20.,beam=beam,/debug)
+        ratios=obtain_ratios(angles,in_map,center=center,gdlidl=gdlidl,noise=MAX(in_map)/20.,beam=beam)
         tmp=WHERE(ratios GT 0.)
         maxrat=MAX(ratios[tmp],min=minrat)
         indexmax=WHERE(ratios EQ maxrat)
