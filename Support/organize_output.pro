@@ -120,19 +120,31 @@ Pro organize_output,names,version,allnew,directories
            ENDIF ELSE Begin
               IF FILE_TEST(names[3]+'.fits') AND check[0] NE 'Sofia_Output' then spawn,'mv '+names[3]+'.fits Sofia_Output/'
               IF FILE_TEST(names[5]) AND check2[0] NE 'Sofia_Output' then spawn,'mv '+names[5]+' Sofia_Output/'
-           ENDELSE  
+           ENDELSE
            spawn,'ls Sofia_Output',filled
            IF filled[0] EQ '' then spawn,'rm -Rf Sofia_Output'
         end
         'Moments':begin
-           check=str_sep(names[1],'/')
-           IF FILE_TEST(names[1]+'.fits') AND check[0] NE 'Moments' then spawn,'mv '+names[1]+'.fits'+' Moments/'
-           check=str_sep(names[2],'/')
-           IF FILE_TEST(names[2]+'.fits') AND check[0] NE 'Moments' then spawn,'mv '+names[2]+'.fits'+' Moments/'
-           check=str_sep(names[7],'/')
-           IF FILE_TEST(names[7]+'.fits') AND check[0] NE 'Moments' then spawn,'mv '+names[7]+'.fits'+' Moments/'
-           check=str_sep(names[4],'/')
-           IF FILE_TEST(names[4]+'.fits') AND check[0] NE 'Moments' then spawn,'mv '+names[4]+'.fits'+' Moments/'
+            ;If we started from preprocessed sofia we want to copy not move
+             IF allnew EQ 2 THEN BEGIN
+               check=str_sep(names[1],'/')
+               IF FILE_TEST(names[1]+'.fits') AND check[0] NE 'Moments' then spawn,'cp '+names[1]+'.fits'+' Moments/'
+               check=str_sep(names[2],'/')
+               IF FILE_TEST(names[2]+'.fits') AND check[0] NE 'Moments' then spawn,'cp '+names[2]+'.fits'+' Moments/'
+               check=str_sep(names[7],'/')
+               IF FILE_TEST(names[7]+'.fits') AND check[0] NE 'Moments' then spawn,'cp '+names[7]+'.fits'+' Moments/'
+               check=str_sep(names[4],'/')
+               IF FILE_TEST(names[4]+'.fits') AND check[0] NE 'Moments' then spawn,'cp '+names[4]+'.fits'+' Moments/'
+            ENDIF ELSE BEGIN
+               check=str_sep(names[1],'/')
+               IF FILE_TEST(names[1]+'.fits') AND check[0] NE 'Moments' then spawn,'mv '+names[1]+'.fits'+' Moments/'
+               check=str_sep(names[2],'/')
+               IF FILE_TEST(names[2]+'.fits') AND check[0] NE 'Moments' then spawn,'mv '+names[2]+'.fits'+' Moments/'
+               check=str_sep(names[7],'/')
+               IF FILE_TEST(names[7]+'.fits') AND check[0] NE 'Moments' then spawn,'mv '+names[7]+'.fits'+' Moments/'
+               check=str_sep(names[4],'/')
+               IF FILE_TEST(names[4]+'.fits') AND check[0] NE 'Moments' then spawn,'mv '+names[4]+'.fits'+' Moments/'
+            ENDELSE
            if fix(version) EQ version then begin
               IF FILE_TEST('1stfit_mom0.fits') then spawn,'mv 1stfit_mom0.fits Moments/No_Warp_mom0.fits'
               IF FILE_TEST('2ndfit_mom0.fits') then spawn,'mv 2ndfit_mom0.fits Moments/Finalmodel_mom0.fits'
