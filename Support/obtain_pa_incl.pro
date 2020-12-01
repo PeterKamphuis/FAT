@@ -170,7 +170,9 @@ wrongpa:
 
   maxrat=MAX(ratios[tmp],min=minrat)
   indexmax=WHERE(ratios EQ maxrat)
+  if n_elements(indexmax) GT 1. then indexmax=indexmax[n_elements(indexmax)-1]
   indexmin=where(ratios EQ minrat)
+  if n_elements(indexmin) GT 1. then indexmin=indexmin[0]
 
   IF keyword_set(debug) then print,ratios
   if indexmin[0] LT 2 and miss NE 1 then begin
