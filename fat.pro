@@ -308,7 +308,7 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
      stop
   ENDIF
   skipcatch:
-  version='V2.0'
+  version='V2.0.1'
                                 ;First thing we do is to check whether we run IDL or GDL
   DEFSYSV, '!GDL', EXISTS = gdlidl ;is 1 when running GDL
   if n_elements(supportdir) EQ 0 then supportdir='Support'
@@ -955,27 +955,40 @@ noconfig:
                  close,66
               ENDIF
            end
-           writecube EQ 1:begin
+           writecube EQ 1 OR  writecube EQ 3:begin
+              IF size(log,/TYPE) EQ 7 then begin
+                 openu,66,log,/APPEND
+                 printf,66,linenumber()+"The input cube is not suitable for fitting we are rewriting it."
+                 close,66
+              ENDIF
                                 ;If we changed something we rewrite the cube
               writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_preprocessed'+cubeext,float(dummy),header
               currentfitcube=currentfitcube+'_preprocessed'
               if allnew EQ 0 then allnew=1
+              if allnew EQ 2  then begin
+                ;If we have pre-processed sofia we need to make sure our mask is treated in the same way
+                maskin =  readfits(maindir+'/'+catdirname[i]+'/'+catMaskname[i]+cubeext,mask_header,/NOSCALE,/SILENT)
+                preprocessing,maskin,mask_header,writecube,catalogue=outputcatalogue,noise=noise,name=catMaskname[i],directory=catdirname[i],log=log,dir_format=dirformat,/mask
+                writefits,maindir+'/'+catdirname[i]+'/'+catMaskname[i]+'_preprocessed'+cubeext,float(maskin),mask_header
+                catMaskname[i]=catMaskname[i]+'_preprocessed'
+
+              ENDIF
            end
            writecube EQ 2:begin
                                 ;If we encountered a problem we abort
               bookkeeping=5
               GOTO,FINISHTHISGALAXY
            end
-           writecube EQ 3:begin
+           ;writecube EQ 3:begin
                                 ;If we have changed more than just the
                                 ;header we need new moment maps even
                                 ;if they already exists and user does
                                 ;not ask for them. Only not when sofia
                                 ;pre-prepared output is used.
-              writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_preprocessed'+cubeext,float(dummy),header
-              currentfitcube=currentfitcube+'_preprocessed'
-              if allnew EQ 0 then allnew=1
-           end
+            ;  writefits,maindir+'/'+catdirname[i]+'/'+currentfitcube+'_preprocessed'+cubeext,float(dummy),header
+          ;    currentfitcube=currentfitcube+'_preprocessed'
+        ;      if allnew EQ 0 then allnew=1
+        ;   end
            else:begin
               IF size(log,/TYPE) EQ 7 then begin
                  openu,66,log,/APPEND
@@ -988,6 +1001,13 @@ noconfig:
         endcase
      ENDIF ELSE BEGIN
         currentfitcube=currentfitcube+'_preprocessed'
+        if allnew EQ 2 then BEGIN
+          ;we should check if we have a preprocessed mask in case of the preprocessed Sofia output
+           premask=FILE_TEST(maindir+'/'+catdirname[i]+'/'+catMaskname[i]+'_preprocessed'+cubeext)
+           if premask then begin
+             catMaskname[i] = catMaskname[i]+'_preprocessed'
+           ENDIF
+        ENDIF
         dummy=readfits(maindir+'/'+catdirname[i]+'/'+currentfitcube+cubeext,header,/NOSCALE,/SILENT)
         tmpnoblank=dummy[0:5,0:5,*]
         rmsbottoml=STDDEV(tmpnoblank[WHERE(FINITE(tmpnoblank))])
@@ -1184,10 +1204,12 @@ noconfig:
         ROTboun=sxpar(header,'CRVAL3')+(VSYSpix[1:2]-sxpar(header,'CRPIX3')+1)*sxpar(header,'CDELT3')
         ROTboun=ROTboun[SORT(ROTboun)]
      ENDELSE
+
      ;if the distance is -1 we assume Hubble follow
      if catDistance[i] EQ -1 then catDistance[i] = catVSYS[i]/H_0
      ;Let.s ensure it is not less than 0.5 Mpc to  avoid crashes
      if catDistance[i] LT 0.5 then catDistance[i] = 0.5
+
 
      mask=readfits(maindir+'/'+catdirname[i]+'/'+catmaskname[i]+'.fits',headermask,/NOSCALE,/SILENT)
                                 ;let's make sure our cube and mask have the same size
@@ -2108,11 +2130,14 @@ noconfig:
      beaminpixels=fix(catmajbeam[i]/((ABS(pixelsizeRA)+ABS(pixelsizeDEC))/2.*3600.))
      centralarea=moment0map[fix(RApix[0]-beaminpixels):fix(RApix[0]+beaminpixels),fix(DECpix[0]-beaminpixels):fix(DECpix[0]+beaminpixels)]
      cenav=TOTAL(centralarea[WHERE(FINITE(centralarea))])/n_elements(centralarea[WHERE(FINITE(centralarea))])
+
      peaksbr=cenav*channelwidth/(catmajbeam[i]*catminbeam[i])
+
                                 ; at high inclinations rings overlap
                                 ; so the peaksbr needs to be reduced
                                 ; according to the inclination and the
                                 ; physical size of the galaxy
+
      IF catinc[i] GT 70. then begin
         IF convertskyanglefunction(DHI,catDistance[i]) GT 1. then $
            peaksbr=peaksbr/(convertskyanglefunction(DHI,catDistance[i])*SIN(catinc[i]*!DtoR)*0.5) else $
@@ -6863,7 +6888,7 @@ noconfig:
         fix_sdis = 0
      ENDIF
      names=[currentfitcube,catMom0name[i],catMom1name[i],catmaskname[i],noisemapname,catCatalogname[i],basicinfo,catMom2name[i]]
-     book_keeping,names,bookkeeping,catdistance[i],gdlidl,log=log,noise=catnoise[i],finishafter=finishafter,fixedpars=[fix_pa,fix_incl,fix_sdis]
+     book_keeping,names,bookkeeping,catdistance[i],gdlidl,allnew,log=log,noise=catnoise[i],finishafter=finishafter,fixedpars=[fix_pa,fix_incl,fix_sdis]
      IF size(log,/TYPE) EQ 7 then begin
         openu,66,log,/APPEND
         printf,66,linenumber()+"Finished "+catDirname[i]+" which is galaxy # "+strtrim(string(fix(i)),2)+" at "+systime()
