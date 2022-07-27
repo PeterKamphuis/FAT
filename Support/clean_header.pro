@@ -194,6 +194,7 @@ Pro clean_header,header,writecube,beam,log=log,catalogue=outputcatalogue,directo
      sxaddpar,header,'CDELT3',sxpar(header,'CDELT3')*1000.
      sxaddpar,header,'CRVAL3',sxpar(header,'CRVAL3')*1000.
      sxaddpar,header,'CUNIT3','M/S'
+     writecube=1
   ENDIF
                                 ;Let's check for presence of the beam in the header. IF present
                                 ;supersede the input. !!!!Be careful with smoothed data. If not let's add
