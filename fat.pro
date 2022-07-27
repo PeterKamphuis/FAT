@@ -119,7 +119,7 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;      22-03-2017 P.Kamphuis; Added condition for very massive
 ;                             galaxies to not be rising
 ;      07-03-2017 P.Kamphuis; Removed the debug parameter from the
-;                             regularisation calls.
+;                     NGC_2903_2.0Beams_3.0SNR        regularisation calls.
 ;      06-03-2017 P.Kamphuis; Added a part such that central continuum
 ;                             sources can be blanked no matter what
 ;                             way SoFiA swings on it.
@@ -308,7 +308,7 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
      stop
   ENDIF
   skipcatch:
-  version='V2.0.1'
+  version='V2.0.2'
                                 ;First thing we do is to check whether we run IDL or GDL
   DEFSYSV, '!GDL', EXISTS = gdlidl ;is 1 when running GDL
   if n_elements(supportdir) EQ 0 then supportdir='Support'
