@@ -2505,15 +2505,17 @@ noconfig:
                                 ;   IF we have a low inclination we first want to fit the PA by itself
      PAest=0.
      INCLest=0.
-
+     if counter EQ 0. then begin
+        PAinincl=catPA[i]
+        INCLinincl=catinc[i]
+        maxrotinincl=catmaxrot[i]
+     endif
      IF (catinc[i]  LT 50 OR mismatch EQ 1) AND counter EQ 0. then begin
                                 ;If we have a small number of beams
                                 ;acros the minor axis the inclination
                                 ;is very unsure and we first want to
                                 ;fit the inclination
-        PAinincl=catPA[i]
-        INCLinincl=catinc[i]
-        maxrotinincl=catmaxrot[i]
+      
         fixstring='VROT '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+':'+strtrim(strcompress(string(fix(norings[0]*0.5+2),format='(I3)')),1)+' VROT_2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+':'+strtrim(strcompress(string(fix(norings[0]*0.5+2),format='(I3)')),1)
         IF ceil(norings[0]*COS(catinc[i]*!DtoR))*ring_spacing LE 5 OR catinc[i] LT 30. OR mismatch EQ 1 then begin
 
@@ -6419,7 +6421,7 @@ noconfig:
      IF norings GT 4 and finishafter NE 1.1 then begin
                                 ;PA
         if float(PAinput1[1]) GT 360 then pamax=PAinput1[1] else pamax='360'
-        if float(PAinput1[2]) LT 0 then pamin=PAinput1[2] else pamin='0'                          
+        if float(PAinput1[2]) LT 0 then pamin=PAinput1[2] else pamin='0'
         PAinput1=['PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' '+$
                   'PA_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
                   pamax,pamin,string(0.5),string(0.1),string(0.5),string(0.1),'3','70','70']
