@@ -119,7 +119,7 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
 ;      22-03-2017 P.Kamphuis; Added condition for very massive
 ;                             galaxies to not be rising
 ;      07-03-2017 P.Kamphuis; Removed the debug parameter from the
-;                             regularisation calls.
+;                     NGC_2903_2.0Beams_3.0SNR        regularisation calls.
 ;      06-03-2017 P.Kamphuis; Added a part such that central continuum
 ;                             sources can be blanked no matter what
 ;                             way SoFiA swings on it.
@@ -308,7 +308,7 @@ Pro fat,SUPPORT=supportdir,CONFIGURATION_FILE=configfile,DEBUG=debug,INSTALLATIO
      stop
   ENDIF
   skipcatch:
-  version='V2.0.1'
+  version='V2.0.2'
                                 ;First thing we do is to check whether we run IDL or GDL
   DEFSYSV, '!GDL', EXISTS = gdlidl ;is 1 when running GDL
   if n_elements(supportdir) EQ 0 then supportdir='Support'
@@ -2505,15 +2505,17 @@ noconfig:
                                 ;   IF we have a low inclination we first want to fit the PA by itself
      PAest=0.
      INCLest=0.
-
+     if counter EQ 0. then begin
+        PAinincl=catPA[i]
+        INCLinincl=catinc[i]
+        maxrotinincl=catmaxrot[i]
+     endif
      IF (catinc[i]  LT 50 OR mismatch EQ 1) AND counter EQ 0. then begin
                                 ;If we have a small number of beams
                                 ;acros the minor axis the inclination
                                 ;is very unsure and we first want to
                                 ;fit the inclination
-        PAinincl=catPA[i]
-        INCLinincl=catinc[i]
-        maxrotinincl=catmaxrot[i]
+      
         fixstring='VROT '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+':'+strtrim(strcompress(string(fix(norings[0]*0.5+2),format='(I3)')),1)+' VROT_2 '+strtrim(strcompress(string(norings[0]-1,format='(I3)')),1)+':'+strtrim(strcompress(string(fix(norings[0]*0.5+2),format='(I3)')),1)
         IF ceil(norings[0]*COS(catinc[i]*!DtoR))*ring_spacing LE 5 OR catinc[i] LT 30. OR mismatch EQ 1 then begin
 
@@ -4754,13 +4756,13 @@ noconfig:
      SBRarr2unmod=SBRarr2
                                 ;We always want to smooth the surface brightnes. Added 16-06-2017
     ; IF finalsmooth GE 1 OR norings[0]*ring_spacing GT 4 then begin
-        IF size(log,/TYPE) EQ 7 then begin
-           openu,66,log,/APPEND
-           printf,66,linenumber()+"Smoothing the full SBR profile."
-           Close,66
-        ENDIF
-        SBRarr=fat_savgol(SBRarr,RADarr)
-        SBRarr2=fat_savgol(SBRarr2,RADarr)
+     IF size(log,/TYPE) EQ 7 then begin
+       openu,66,log,/APPEND
+       printf,66,linenumber()+"Smoothing the full SBR profile."
+       Close,66
+     ENDIF
+     SBRarr=fat_savgol(SBRarr,RADarr)
+     SBRarr2=fat_savgol(SBRarr2,RADarr)
      ;endif else begin
      ;   IF size(log,/TYPE) EQ 7 then begin
      ;      openu,66,log,/APPEND
@@ -5988,6 +5990,11 @@ noconfig:
                                 ;Update counters and go to a new
                                 ;iteration of the model.
            sbrmodify++
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"We are resetting the finalsmooth and overwrite as we subtracted a ring"
+              Close,66
+           ENDIF
            finalsmooth=0.
            overwrite=0.
            prevrings=[prevrings,norings[0]]
@@ -6205,6 +6212,11 @@ noconfig:
 
                                 ;Update counters and go back to the fitting proces
            sbrmodify++
+           IF size(log,/TYPE) EQ 7 then begin
+              openu,66,log,/APPEND
+              printf,66,linenumber()+"We are resetting the finalsmooth as we added a ring"
+              Close,66
+           ENDIF
            finalsmooth=0.
            prevrings=[prevrings,norings[0]]
            goto,notacceptedtwo
@@ -6386,7 +6398,14 @@ noconfig:
            close,66
         END
         goto,lastadjust
-     ENDIF
+     ENDIF ELSE begin
+        IF size(log,/TYPE) EQ 7 then begin
+           openu,66,log,/APPEND
+           printf,66,linenumber()+"We completed the polynomial fit."
+           close,66
+        END
+    ENDELSE
+
                                 ;IF the fitting rings are very small set them to the minimum of 4
      IF newindrings[0] LT 4 then newindrings[0]=4
      IF newindrings[1] LT 4 then newindrings[1]=4
@@ -6401,9 +6420,11 @@ noconfig:
      SBRinput2[0]='SBR_2 '+strtrim(strcompress(string(newindrings[1],format='(F7.4)')),1)+':3'
      IF norings GT 4 and finishafter NE 1.1 then begin
                                 ;PA
+        if float(PAinput1[1]) GT 360 then pamax=PAinput1[1] else pamax='360'
+        if float(PAinput1[2]) LT 0 then pamin=PAinput1[2] else pamin='0'
         PAinput1=['PA 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' '+$
                   'PA_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
-                  '360','0',string(0.5),string(0.1),string(0.5),string(0.1),'3','70','70']
+                  pamax,pamin,string(0.5),string(0.1),string(0.5),string(0.1),'3','70','70']
                                 ;INCL
         INCLinput1=['INCL 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1)+' '+$
                     'INCL_2 1:'+strtrim(strcompress(string(norings[0],format='(F7.4)')),1),$
@@ -6509,6 +6530,11 @@ noconfig:
            printf,66,linenumber()+"Tirific ran through "+strtrim(strcompress(string(loops)))+" loops and produced "+strtrim(strcompress(string(toymodels)))+" models."
            printf,66,linenumber()+"Disk 1 had "+strtrim(strcompress(string(nopoints[0])))+" point sources and Disk 2 "+strtrim(strcompress(string(nopoints[1])))
         ENDELSE
+        close,66
+     ENDIF
+     IF size(log,/TYPE) EQ 7 then begin
+        openu,66,log,/APPEND
+        printf,66,linenumber()+"What happens after this"
         close,66
      ENDIF
                                 ;Go and see wether all parameters are satisfied
