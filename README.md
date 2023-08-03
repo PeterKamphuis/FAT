@@ -1,3 +1,7 @@
+The IDL/GDL version of FAT is now archived and will not be developed further.
+Please see https://github.com/PeterKamphuis/pyFAT-astro for a python version that is still in development.
+
+
 # Fully Automated TiRiFiC (FAT)
 =====
 
