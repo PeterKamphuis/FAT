@@ -43,6 +43,9 @@ Under ubuntu the astrolib package and mpfit package were not found after install
 Installation
 ------------
 
+A docker image for FAT is available here: https://hub.docker.com/r/alankardutta/fat_gdl
+
+If you prefer to have a local installation please see the instuctions below.
 Unpack the zip file in a desired directory and you are ready to run FAT from this directory under IDL. 
 The rename command might have to be aliased to rename -s, as this depends on which exact rename command and their are many versions available the code excutes the command "rename originalstring replacestring filesonwhichtoexecute" make sure that this is what the rename command does in the shell that is run by IDL.
 
