@@ -18,6 +18,10 @@ FAT is not an automated version of the extended functionality of [TiRiFiC](http:
 
 Requirements
 ------------
+A docker image with FAT can be found here: https://hub.docker.com/r/alankardutta/fat_gdl
+
+If you prefer a local installation please follow the instructions below.
+
 The code requires full installation of:
 
     IDL 7.0 or higher or GDL 0.9.6 or higher with astrolib
